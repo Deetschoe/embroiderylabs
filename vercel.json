@@ -8,24 +8,8 @@
   ],
   "routes": [
     {
-      "src": "/api/(.*)",
-      "dest": "app.py"
-    },
-    {
-      "src": "/app.html",
-      "dest": "/app.html"
-    },
-    {
-      "src": "/home.html",
-      "dest": "/home.html"
-    },
-    {
-      "src": "/emb.png",
-      "dest": "/emb.png"
-    },
-    {
       "src": "/(.*)",
-      "dest": "/home.html"
+      "dest": "app.py"
     }
   ]
 }

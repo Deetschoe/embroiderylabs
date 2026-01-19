@@ -1,6 +1,8 @@
 # Embroidery Digitizer
 
-Professional embroidery design tool for creating PES files compatible with Brother/Babylock machines.
+testing embroidery design tools for those starting clothing brands
+
+compatible with Brother/Babylock machines.
 
 ## Features
 

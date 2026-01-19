@@ -206,17 +206,23 @@ def check_api():
         'version': version
     })
 
+@app.route('/health')
+def health():
+    """Health check endpoint for Coolify"""
+    return jsonify({'status': 'healthy'}), 200
+
+# Print startup info
+print("Embroidery Digitizer - Creative Tools")
+if HAS_PYEMBROIDERY:
+    print("   ✓ Server-side PES export available (pyembroidery)")
+else:
+    print("   ✗ Install pyembroidery for PES support:")
+    print("     pip install pyembroidery")
+print("")
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8000))
     debug = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
     
-    print("Embroidery Digitizer - Creative Tools")
     print(f"   Server starting on port {port}")
-    if HAS_PYEMBROIDERY:
-        print("   ✓ Server-side PES export available (pyembroidery)")
-    else:
-        print("   ✗ Install pyembroidery for PES support:")
-        print("     pip install pyembroidery")
-    print("")
-    
     app.run(debug=debug, host='0.0.0.0', port=port)

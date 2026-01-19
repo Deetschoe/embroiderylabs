@@ -18,10 +18,11 @@ try:
     from pyembroidery.EmbConstant import *
     HAS_PYEMBROIDERY = True
     print("✓ pyembroidery loaded successfully")
-except ImportError:
+except (ImportError, Exception) as e:
     HAS_PYEMBROIDERY = False
-    print("✗ pyembroidery not available")
+    print(f"✗ pyembroidery not available: {e}")
     print("  Install with: pip install pyembroidery")
+    print("  App will continue without PES export functionality")
 
 @app.route('/')
 def index():

@@ -14,9 +14,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application files
 COPY . .
 
-# Copy and set permissions for entrypoint script
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# Test that the app can be imported (catch errors early)
+RUN python -c "import app; print('✓ App imports successfully')" || (echo "✗ App import failed" && exit 1)
 
 # Expose port
 EXPOSE 8000
@@ -24,6 +23,7 @@ EXPOSE 8000
 # Set environment variables
 ENV FLASK_APP=app.py
 ENV PYTHONUNBUFFERED=1
+ENV PORT=8000
 
-# Use entrypoint script
-ENTRYPOINT ["/entrypoint.sh"]
+# Run gunicorn directly - use shell form to allow PORT variable expansion
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-8000} --workers 2 --timeout 120 --access-logfile - --error-logfile - --log-level info app:app"]

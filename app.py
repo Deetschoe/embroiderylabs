@@ -26,15 +26,24 @@ except (ImportError, Exception) as e:
 
 @app.route('/')
 def index():
-    return send_from_directory('.', 'home.html')
+    try:
+        return send_from_directory('.', 'home.html')
+    except Exception as e:
+        return f"Error loading home.html: {str(e)}", 500
 
 @app.route('/app.html')
 def app_page():
-    return send_from_directory('.', 'app.html')
+    try:
+        return send_from_directory('.', 'app.html')
+    except Exception as e:
+        return f"Error loading app.html: {str(e)}", 500
 
 @app.route('/home.html')
 def home_page():
-    return send_from_directory('.', 'home.html')
+    try:
+        return send_from_directory('.', 'home.html')
+    except Exception as e:
+        return f"Error loading home.html: {str(e)}", 500
 
 # Serve static files (images, etc.)
 @app.route('/emb.png')

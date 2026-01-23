@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EmbroideryLabs - Free Fast Embroidery Software</title>
+    <title>EmbroideryLabs</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
@@ -86,11 +86,11 @@
         .logo-img {
             width: 32px;
             height: 32px;
-            transition: transform 0.3s ease;
+            transition: transform 0.1s ease;
         }
         
         .logo-link:hover .logo-img {
-            transform: scale(1.15) rotate(5deg);
+            transform: scale(1.05) rotate(2deg);
         }
         
         .nav-links {
@@ -152,15 +152,18 @@
         }
         
         .logo-period-img {
-            width: 24px;
-            height: 24px;
-            vertical-align: middle;
-            opacity: 0.8;
+            width: 21px;
+            height: 21px;
+
+            vertical-align: baseline;
+    position: relative;
+    top: 2px;              /* increase to push it lower */
+            opacity: 0.9;
             transition: transform 0.2s ease, opacity 0.2s ease;
         }
         
         .logo-period:hover .logo-period-img {
-            transform: scale(1.2) rotate(5deg);
+            transform: scale(1.05) rotate(2deg);
             opacity: 1;
         }
         
@@ -238,13 +241,7 @@
             background-clip: text;
             font-weight: 700;
         }
-        
-        /* Tools Preview */
-        .tools {
-            padding: 100px 24px;
-            background: var(--bg-light);
-            position: relative;
-        }
+    
         
         .tools-content {
             max-width: 1200px;
@@ -427,7 +424,7 @@
                 <span>EmbroideryLabs</span>
             </a>
             <nav class="nav-links">
-                <a href="/app.html" class="nav-link">Tools</a>
+                <a href="/app.html" class="nav-link">Embroidr</a>
                 <a href="https://github.com/deetschoe/embroiderylabs" target="_blank" class="nav-link">GitHub</a>
             </nav>
         </div>
@@ -435,8 +432,8 @@
     
     <main>
         <section class="hero">
-            <h1>Free Fast<br>Embroidery Software<span class="logo-period"><img src="emb.png" alt="" class="logo-period-img" onerror="this.style.display='none'"></span></h1>
-            <p class="hero-subtitle">Trace and create patterns and export to PES format.</p>
+            <h1>Fast&Free<br>Embroidery Software<span class="logo-period"><img src="emb.png" alt="" class="logo-period-img" onerror="this.style.display='none'"></span></h1>
+            <p class="hero-subtitle">Trace designs and export to PES</p>
             <a href="/app.html" class="hero-cta">Launch Embroidr →</a>
         </section>
 </body>

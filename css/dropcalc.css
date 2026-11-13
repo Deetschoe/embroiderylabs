@@ -1,0 +1,155 @@
+/* EMBROIDERY LABS - css/dropcalc.css (dropcalc.html only). Loaded after css/base.css.
+   Tokens only: no new colours, type sizes, radii, shadows or breakpoints. */
+
+/* BASE-CANDIDATE: nothing reserves room for the sticky site header, so a field reached with Shift+Tab (or a # link)
+   scrolls to the top edge of the window and sits underneath it. */
+html { scroll-padding-top: calc(var(--head-h) + var(--s-4)); }
+
+/* ---------- layout: ledger on the left, results on the right --------------- */
+.dc { display: grid; grid-template-columns: minmax(0, 720px) 400px; justify-content: space-between; gap: var(--s-6); padding-block: var(--s-5); align-items: start; }
+
+/* ---------- the ledger ------------------------------------------------------ */
+.ledger { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-5); min-width: 0; }
+.ledger__sec { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: var(--s-3); padding-bottom: var(--s-5); border-bottom: 1px solid var(--line-1); }
+.ledger__sec:last-child { border-bottom: 0; padding-bottom: 0; }
+.ledger__sec > .num { font-size: var(--fs-1); color: var(--ink-3); padding-top: 6px; }
+.ledger__rows { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-2); min-width: 0; }
+.ledger__rows > header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s-1) var(--s-3); margin-bottom: var(--s-1); }
+.ledger__rows > header + p { color: var(--ink-2); font-size: var(--fs-2); line-height: var(--lh-3); max-width: 62ch; margin-bottom: var(--s-1); }
+.ledger__sub { margin-top: var(--s-3); padding-top: var(--s-2); border-top: 1px solid var(--line-1); }
+.lrow { display: grid; grid-template-columns: minmax(0, 1fr) 148px; align-items: center; gap: var(--s-1) var(--s-3); min-height: var(--ctl-h); }
+.lrow > label { display: grid; gap: 0; }
+.lrow > label > small { font-size: var(--fs-1); line-height: var(--lh-1); color: var(--ink-3); }
+.lrow > .field__error { grid-column: 1 / -1; text-align: right; }
+.lrow--total { margin-top: var(--s-1); padding-top: var(--s-2); border-top: 1px solid var(--line-3); font-weight: 700; }
+.lrow--total > .num { text-align: right; font-size: var(--fs-3); font-weight: 500; }
+.dc-savestate[data-state="bad"] { color: var(--bad); }
+.dc-examples { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin-top: var(--s-1); }
+
+/* ---------- product cards ---------------------------------------------------- */
+.prods { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-3); }
+.prod { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-3); padding: var(--s-3); }
+.prod__head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); min-height: var(--ctl-h); }
+.prod__head > .label { color: var(--ink-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.prod__grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--s-3); align-items: start; }
+.prod__grid > .field { grid-column: span 4; }
+.prod__grid > .f-6 { grid-column: span 6; }
+.prod__grid > .f-3 { grid-column: span 3; }
+.prod .field > .label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prods__foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); }
+
+/* ---------- work backwards ---------------------------------------------------- */
+.helper { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-2); }
+.helper__out { padding: var(--s-2) var(--s-3); border-left: 3px solid var(--line-3); background: var(--panel); font-size: var(--fs-3); line-height: var(--lh-3); }
+.helper + .helper { margin-top: var(--s-3); padding-top: var(--s-3); border-top: 1px solid var(--line-1); }
+
+/* ---------- results cluster ---------------------------------------------------- */
+/* The headline plate follows you down the ledger inside its track; the full summary sits in the page beside the
+   last sections, so nothing is cut off and nothing has a scrollbar of its own. --cluster-top is set by
+   js/dropcalc.js only when the plate is taller than the window. */
+.cluster { align-self: stretch; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; gap: var(--s-4); }
+.cluster__main { position: sticky; top: var(--cluster-top, calc(var(--head-h) + var(--s-4))); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-4); padding: var(--s-4); }
+.cluster__pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-4); padding-top: var(--s-3); border-top: 1px solid var(--line-1); }
+.cluster__pair > div { display: grid; gap: var(--s-0); min-width: 0; }
+.cluster__pair .num { font-size: var(--fs-4); font-weight: 500; }
+.dro--xl > .num { overflow-wrap: anywhere; white-space: normal; }
+.meter { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-1); }
+.meter > .muted.num { font-size: var(--fs-1); }
+.meter > .between > .label { display: flex; align-items: center; gap: var(--s-2); }
+.meter > .field__hint { font-size: var(--fs-2); line-height: var(--lh-3); color: var(--ink-2); }
+.meter > .field__hint[data-state="bad"] { color: var(--bad); font-weight: 600; }
+.keys { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-0); font-size: var(--fs-2); }
+.keys > div { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-2); white-space: nowrap; }
+.receipt .spec > .dc-sub { margin-top: var(--s-1); padding-top: var(--s-1); border-top: 1px solid var(--line-1); }
+.receipt .spec > .dc-sub > dt, .receipt .spec > .dc-sub > dd { font-weight: 700; color: var(--ink-1); }
+.receipt .spec > .dc-sub + div:not(.dc-sub) { margin-top: var(--s-1); }
+.receipt__after > div > dt, .receipt__after > div > dd { color: var(--ink-3); }
+.receipt__note { font-size: var(--fs-1); line-height: var(--lh-1); color: var(--ink-3); }
+
+/* phone-only strip that keeps the three headline numbers in view */
+.dc-strip { display: none; }
+
+/* ---------- saved scenarios ---------------------------------------------------- */
+.dc-block { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-3); padding-block: var(--s-5); border-top: 1px solid var(--line-3); }
+.dc-block > header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s-1) var(--s-3); }
+.dc-block > header + p { color: var(--ink-2); max-width: 70ch; }
+/* positioned, so visually hidden text in far-right cells is clipped by the scroller instead of widening the page */
+.dc-scn .table-wrap { position: relative; }
+/* scenario names wrap: cut short, "Summer drop" and "Summer drop 2" would read the same */
+.dc-cmp thead th { max-width: 200px; padding-block: var(--s-1); white-space: normal; overflow-wrap: anywhere; vertical-align: bottom; }
+.dc-cmp tbody th { position: sticky; left: 0; top: auto; height: var(--row-h); background: var(--raised); border-bottom: 1px solid var(--line-1);
+  font: var(--w-medium) var(--fs-3)/var(--lh-3) var(--font-ui); font-stretch: var(--wd-norm); letter-spacing: 0; text-transform: none; color: var(--ink-2); }
+.dc-cmp tbody tr[data-differs="true"] > th { color: var(--ink-1); font-weight: 700; box-shadow: inset 3px 0 0 var(--signal); }
+.dc-cmp tbody td { padding-block: var(--s-1); }
+.dc-cmp tbody td[data-same="true"] { color: var(--ink-3); }
+.dc-delta { display: block; font-size: var(--fs-1); line-height: var(--lh-1); color: var(--ink-2); }
+.dc-cmp tfoot td { padding-block: var(--s-2); font-weight: 400; }
+.dc-scn-actions { display: inline-flex; gap: var(--s-1); }
+.dc-legend { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-4); font-size: var(--fs-2); color: var(--ink-2); }
+.dc-legend > span { display: inline-flex; align-items: center; gap: var(--s-2); }
+.dc-legend i { display: inline-block; width: 12px; height: 12px; }
+.dc-legend .k-diff { box-shadow: inset 3px 0 0 var(--signal); border: 1px solid var(--line-1); }
+.dc-legend .k-best { background: var(--signal-wash); border: 1px solid var(--line-1); }
+
+/* ---------- how the numbers are worked out ------------------------------------ */
+.dc-notes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2) var(--s-6); color: var(--ink-2); font-size: var(--fs-3); line-height: var(--lh-3); }
+.dc-notes > li { padding-left: var(--s-3); border-left: 1px solid var(--line-2); }
+.dc-notes strong { color: var(--ink-1); }
+
+/* ---------- save dialog --------------------------------------------------------- */
+.dialog > form { display: flex; flex-direction: column; min-height: 0; }
+
+/* BASE-CANDIDATE: a print-only utility, the mirror of [data-noprint]. Hidden on screen, shown on paper. */
+.dc-print { display: none; }
+
+@media screen and (max-width: 1100px) {
+  .dc { grid-template-columns: minmax(0, 1fr) 340px; gap: var(--s-5); }
+  .prod__grid > .field, .prod__grid > .f-3 { grid-column: span 6; }
+  .prod__grid > .prod__name, .prod__grid > .prod__price { grid-column: 1 / -1; }
+}
+@media screen and (max-width: 720px) {
+  html { scroll-padding-top: calc(var(--head-h) + var(--s-8)); }   /* the header and the strip of headline numbers */
+  .dc { grid-template-columns: minmax(0, 1fr); padding-block: var(--s-3); }
+  .cluster { grid-template-rows: auto; }
+  .cluster__main { position: static; }
+  .dc-strip { position: sticky; top: var(--head-h); z-index: 2; display: grid; grid-template-columns: 1.3fr 1fr 1fr; margin-inline: calc(var(--gutter) * -1); background: var(--panel); border-bottom: 1px solid var(--line-3); }
+  .dc-strip > div { display: grid; gap: 0; padding: var(--s-2) var(--s-3); border-left: 1px solid var(--line-1); min-width: 0; }
+  .dc-strip > div:first-child { border-left: 0; padding-left: var(--gutter); }
+  .dc-strip .num { font-size: var(--fs-4); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dc-strip [data-state="bad"] { color: var(--bad); }
+  .ledger__sec { grid-template-columns: minmax(0, 1fr); gap: var(--s-1); }
+  .lrow { grid-template-columns: minmax(0, 1fr) 132px; }
+  .dc-notes { grid-template-columns: minmax(0, 1fr); }
+  .page-head__actions > .btn { flex: 1 1 auto; }
+  .dc-cmp tbody th { white-space: normal; min-width: 96px; max-width: 112px; padding-block: var(--s-1); font-size: var(--fs-2); }
+  .dc-cmp thead th { max-width: 132px; }
+}
+
+@media print {
+  @page { margin: 12mm; }
+  .page-head, .dc-strip, .ledger, .dc-scn, .visually-hidden { display: none !important; }
+  .dc-print { display: block; }
+  .dc-print__head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding-bottom: 8px; border-bottom: 2px solid var(--line-3); }
+  .dc-print__head > div { display: grid; gap: 2px; }
+  .dc { display: block; padding-block: 12px; }
+  .cluster { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto; gap: 16px; align-items: start; }
+  .cluster__main { position: static; padding: 12px; gap: 10px; border-color: var(--line-2); }
+  .cluster__main, .receipt, .dc-print__sheet .table tr, .dc-print__inputs > div, .dc-notes > li { break-inside: avoid; }
+  .receipt { padding-top: 12px; gap: 8px; }
+  .spec > div { min-height: 18px; }
+  .satin-bar > i, .gauge > i, .costbar > i { transition: none; }
+  .dc-print__sheet { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .dc-print__sheet .table-wrap { overflow: visible; }
+  .dc-print__sheet .table, .dc-print__sheet .table .n { font-size: var(--fs-1); }
+  .dc-print__sheet .table th { position: static; }
+  .dc-print__sheet .table td { height: 22px; }
+  .dc-print__sheet .table td:first-child { white-space: normal; overflow-wrap: break-word; }
+  .dc-print__sheet .table th, .dc-print__sheet .table td { padding-inline: 4px; }
+  .dc-print__sheet .table th { letter-spacing: .03em; }
+  /* the middle list has the longest labels; a label that still does not fit wraps instead of running under its amount */
+  .dc-print__inputs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  .dc-print__inputs .spec dt { white-space: normal; }
+  .dc-print__inputs .spec dt::after { min-width: 0; }
+  .dc-block { padding-block: 12px; gap: 8px; border-top: 1px solid var(--line-3); break-inside: avoid; }
+  .dc-notes { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 16px; font-size: var(--fs-1); line-height: var(--lh-1); }
+}

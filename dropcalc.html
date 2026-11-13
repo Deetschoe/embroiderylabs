@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Drop Calc - EmbroideryLabs</title>
+<meta name="description" content="Work out cost, pricing, profit and break-even for a clothing drop. Free, runs in your browser, nothing to install.">
+<meta name="theme-color" content="#FAF9F6">
+<link rel="icon" href="emb.png">
+<script>(function(){var d=document.documentElement,t=null;try{t=localStorage.getItem('el-theme');if(t!=='light'&&t!=='dark'){t=localStorage.getItem('theme-mode');if(t==='light'||t==='dark')localStorage.setItem('el-theme',t);else t=null}}catch(e){t=null}if(!t){try{t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}catch(e){t='light'}}d.setAttribute('data-theme',t)})();</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/dropcalc.css">
+<script src="js/site.js" defer></script>
+<script src="js/dropcalc.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-head">
+  <div class="site-head__row">
+    <a class="brand" href="index.html" aria-label="EmbroideryLabs home"><img class="brand__mark" src="emb.png" alt="" width="24" height="24"><span>Embroidery<b>Labs</b></span></a>
+    <nav class="nav" aria-label="Tools">
+      <a href="app.html"><span class="num" aria-hidden="true">01</span>Embroidr</a>
+      <a href="blanks.html"><span class="num" aria-hidden="true">02</span>Blanks</a>
+      <a href="techpack.html"><span class="num" aria-hidden="true">03</span>Tech Packs</a>
+      <a href="dropcalc.html"><span class="num" aria-hidden="true">04</span>Drop Calc</a>
+    </nav>
+    <div class="site-head__tools">
+      <a class="btn btn--ghost hide-phone" href="https://github.com/deetschoe/embroiderylabs" target="_blank" rel="noopener">GitHub</a>
+      <button class="btn btn--ghost btn--icon" type="button" data-theme-toggle aria-label="Switch theme" aria-pressed="false"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor"/></svg></button>
+    </div>
+  </div>
+</header>
+
+<main id="main" class="wrap">
+  <div class="page-head">
+    <div class="page-head__text">
+      <span class="label"><span class="num">04</span> Drop Calc</span>
+      <h1 class="title">Know what you keep before you order.</h1>
+      <p>Enter your costs and what you expect to sell. Every figure is an estimate from your own numbers.</p>
+    </div>
+    <div class="page-head__actions">
+      <button class="btn btn--primary" type="button" id="dc-save">Save scenario</button>
+      <button class="btn" type="button" id="dc-csv">Export CSV</button>
+      <button class="btn" type="button" id="dc-print">Print or save PDF</button>
+      <button class="btn btn--danger" type="button" id="dc-reset">Start over</button>
+    </div>
+  </div>
+
+  <noscript><p class="notice notice--warn"><span class="label">Needs JavaScript</span><span>The calculator runs in your browser and needs JavaScript turned on.</span></p></noscript>
+
+  <div class="dc-strip" aria-hidden="true">
+    <div><span class="label">Net</span><span class="num" id="st-net">$0.00</span></div>
+    <div><span class="label">Margin</span><span class="num" id="st-margin">n/a</span></div>
+    <div><span class="label">Break-even</span><span class="num" id="st-be">0</span></div>
+  </div>
+
+  <div class="dc-print dc-print__head">
+    <div><span class="label">EmbroideryLabs Drop Calc. Estimate only.</span><strong class="h2" id="pr-name">Untitled drop</strong></div>
+    <span class="num muted" id="pr-date"></span>
+  </div>
+
+  <div class="dc">
+    <form class="ledger" id="dc-form" novalidate autocomplete="off">
+
+      <section class="ledger__sec" aria-labelledby="sec-drop">
+        <span class="num" aria-hidden="true">01</span>
+        <div class="ledger__rows">
+          <header><h2 class="h3" id="sec-drop">The drop</h2><span class="label dc-savestate" id="dc-savestate">Not saved yet</span></header>
+          <div class="field"><label class="label" for="dc-name">Drop name</label><input class="input" type="text" id="dc-name" maxlength="80" autocomplete="off" placeholder="Summer tee drop"></div>
+          <div class="dc-examples" role="group" aria-label="Start from an example">
+            <span class="label">Start from an example</span>
+            <button class="btn" type="button" data-example="tshirt">T-shirt</button>
+            <button class="btn" type="button" data-example="hoodie">Hoodie</button>
+            <button class="btn" type="button" data-example="collection">Collection</button>
+          </div>
+          <p class="notice" id="dc-example-note" hidden><span class="label">Example</span><span>Made-up numbers. Replace them with your own.</span></p>
+        </div>
+      </section>
+
+      <section class="ledger__sec" aria-labelledby="sec-products">
+        <span class="num" aria-hidden="true">02</span>
+        <div class="ledger__rows">
+          <header><h2 class="h3" id="sec-products">Products</h2></header>
+          <p>Sell-through is the share of sellable pieces you expect to sell. Wholesale pieces come out of that share, with no fees or shipping.</p>
+          <div class="prods" id="dc-products"></div>
+          <div class="prods__foot">
+            <button class="btn" type="button" id="dc-add">Add product</button>
+            <span class="field__hint" id="dc-add-hint" hidden>20 products is the limit.</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="ledger__sec" aria-labelledby="sec-making">
+        <span class="num" aria-hidden="true">03</span>
+        <div class="ledger__rows">
+          <header><h2 class="h3" id="sec-making">Making it</h2><span class="label">Per piece made</span></header>
+          <div class="lrow"><label for="f-labels">Labels and tags<small>Neck label, hang tag, care label</small></label><div class="input-unit"><span>$</span><input type="number" id="f-labels" data-field="labels" min="0" step="any" inputmode="decimal" placeholder="0.00" autocomplete="off"></div></div>
+          <div class="lrow"><label for="f-packaging">Packaging<small>Poly bag, tissue, sticker</small></label><div class="input-unit"><span>$</span><input type="number" id="f-packaging" data-field="packaging" min="0" step="any" inputmode="decimal" placeholder="0.00" autocomplete="off"></div></div>
+          <div class="lrow"><label for="f-defectPct">Defect rate<small>Pieces you pay for but cannot sell</small></label><div class="input-unit"><input type="number" id="f-defectPct" data-field="defectPct" min="0" max="100" step="any" inputmode="decimal" placeholder="0" autocomplete="off"><span>%</span></div></div>
+          <div class="lrow lrow--total"><span>Average cost to make one piece<br><small class="field__hint">Blank, decoration, labels and packaging</small></span><span class="num" id="t-unit">n/a</span></div>
+        </div>
+      </section>
+
+      <section class="ledger__sec" aria-labelledby="sec-selling">
+        <span class="num" aria-hidden="true">04</span>
+        <div class="ledger__rows">
+          <header><h2 class="h3" id="sec-selling">Selling it</h2><span class="label">Retail sales</span></header>
+          <div class="lrow"><label for="f-discountPct">Average discount<small>Codes and markdowns, across all retail sales</small></label><div class="input-unit"><input type="number" id="f-discountPct" data-field="discountPct" min="0" max="100" step="any" inputmode="decimal" placeholder="0" autocomplete="off"><span>%</span></div></div>
+          <div class="lrow"><label for="f-itemsPerOrder">Pieces per order<small>Average. Per-order costs are split across them</small></label><div class="input-unit"><input type="number" id="f-itemsPerOrder" data-field="itemsPerOrder" min="1" max="100" step="any" inputmode="decimal" placeholder="1" autocomplete="off"><span>pcs</span></div></div>
+          <div class="lrow"><label for="f-shipCharged">Shipping you charge<small>Per order</small></label><div class="input-unit"><span>$</span><input type="number" id="f-shipCharged" data-field="shipCharged" min="0" step="any" inputmode="decimal" placeholder="0.00" autocomplete="off"></div></div>
+          <div class="lrow"><label for="f-shipCost">Postage you pay<small>Per order</small></label><div class="input-unit"><span>$</span><input type="number" id="f-shipCost" data-field="shipCost" min="0" step="any" inputmode="decimal" placeholder="0.00" autocomplete="off"></div></div>
+          <div class="lrow"><label for="f-shipMaterials">Shipping materials<small>Mailer, box, label, per order</small></label><div class="input-unit"><span>$</span><input type="number" id="f-shipMaterials" data-field="shipMaterials" min="0" step="any" inputmode="decimal" placeholder="0.00" autocomplete="off"></div></div>
+          <div class="lrow"><label for="f-payPct">Payment processing<small>Share of each checkout total</small></label><div class="input-unit"><input type="number" id="f-payPct" data-field="payPct" min="0" max="100" step="any" inputmode="decimal" placeholder="0" autocomplete="off"><span>%</span></div></div>
+          <div class="lrow"><label for="f-payFixed">Payment fee<small>Per order</small></label><div class="input-unit"><span>$</span><input type="number" id="f-payFixed" data-field="payFixed" min="0" step="any" inputmode="decimal" placeholder="0.00" autocomplete="off"></div></div>
+          <div class="lrow"><label for="f-platformPct">Platform fee<small>Marketplace or storefront share of sales</small></label><div class="input-unit"><input type="number" id="f-platformPct" data-field="platformPct" min="0" max="100" step="any" inputmode="decimal" placeholder="0" autocomplete="off"><span>%</span></div></div>
+          <div class="lrow"><label for="f-returnPct">Return rate<small>Share of retail pieces sent back and refunded</small></label><div class="input-unit"><input type="number" id="f-returnPct" data-field="returnPct" min="0" max="100" step="any" inputmode="decimal" placeholder="0" autocomplete="off"><span>%</span></div></div>
+          <div class="lrow"><label for="f-returnCost">Cost to handle one return<small>Return postage, repacking</small></label><div class="input-unit"><span>$</span><input type="number" id="f-returnCost" data-field="returnCost" min="0" step="any" inputmode="decimal" placeholder="0.00" autocomplete="off"></div></div>
+          <div class="lrow"><label for="f-taxPct">Sales tax collected<small>Passed on. Never counted as revenue or profit</small></label><div class="input-unit"><input type="number" id="f-taxPct" data-field="taxPct" min="0" max="100" step="any" inputmode="decimal" placeholder="0" autocomplete="off"><span>%</span></div></div>
+        </div>
+      </section>
+
+      <section class="ledger__sec" aria-labelledby="sec-fixed">
+        <span class="num" aria-hidden="true">05</span>
+        <div class="ledger__rows">
+          <header><h2 class="h3" id="sec-fixed">One-time costs</h2><span class="label">Whole drop</span></header>
+          <div class="lrow"><label for="f-design">Design<small>Artwork, fonts, freelance work</small></label><div class="input-unit"><span>$</span><input type="number" id="f-design" data-field="design" min="0" step="any" inputmode="decimal" placeholder="0.00" autocomplete="off"></div></div>
+          <div class="lrow"><label for="f-samples">Samples<small>Test pieces before the run</small></label><div class="input-unit"><span>$</span><input type="number" id="f-samples" data-field="samples" min="0" step="any" inputmode="decimal" placeholder="0.00" autocomplete="off"></div></div>
+          <div class="lrow"><label for="f-setup">Setup and digitizing<small>Screens, digitizing, one-off fees</small></label><div class="input-unit"><span>$</span><input type="number" id="f-setup" data-field="setup" min="0" step="any" inputmode="decimal" placeholder="0.00" autocomplete="off"></div></div>
+          <span class="label ledger__sub">Marketing</span>
+          <div class="lrow"><label for="f-photo">Photography and content</label><div class="input-unit"><span>$</span><input type="number" id="f-photo" data-field="photo" min="0" step="any" inputmode="decimal" placeholder="0.00" autocomplete="off"></div></div>
+          <div class="lrow"><label for="f-ads">Ads</label><div class="input-unit"><span>$</span><input type="number" id="f-ads" data-field="ads" min="0" step="any" inputmode="decimal" placeholder="0.00" autocomplete="off"></div></div>
+          <div class="lrow"><label for="f-seeding">Seeding and influencers</label><div class="input-unit"><span>$</span><input type="number" id="f-seeding" data-field="seeding" min="0" step="any" inputmode="decimal" placeholder="0.00" autocomplete="off"></div></div>
+          <div class="lrow"><label for="f-otherMarketing">Other marketing</label><div class="input-unit"><span>$</span><input type="number" id="f-otherMarketing" data-field="otherMarketing" min="0" step="any" inputmode="decimal" placeholder="0.00" autocomplete="off"></div></div>
+          <span class="label ledger__sub">Overhead</span>
+          <div class="lrow"><label for="f-workspace">Workspace<small>Share of rent or storage for this drop</small></label><div class="input-unit"><span>$</span><input type="number" id="f-workspace" data-field="workspace" min="0" step="any" inputmode="decimal" placeholder="0.00" autocomplete="off"></div></div>
+          <div class="lrow"><label for="f-software">Software<small>Share of store and app subscriptions</small></label><div class="input-unit"><span>$</span><input type="number" id="f-software" data-field="software" min="0" step="any" inputmode="decimal" placeholder="0.00" autocomplete="off"></div></div>
+          <div class="lrow"><label for="f-otherFixed">Other</label><div class="input-unit"><span>$</span><input type="number" id="f-otherFixed" data-field="otherFixed" min="0" step="any" inputmode="decimal" placeholder="0.00" autocomplete="off"></div></div>
+          <div class="lrow lrow--total"><span>One-time costs</span><span class="num" id="t-fixed">$0.00</span></div>
+        </div>
+      </section>
+
+      <section class="ledger__sec" aria-labelledby="sec-back" data-noprint>
+        <span class="num" aria-hidden="true">06</span>
+        <div class="ledger__rows">
+          <header><h2 class="h3" id="sec-back">Work backwards</h2><span class="label">Estimates</span></header>
+          <div class="helper">
+            <div class="lrow"><label for="h-target">Margin you want to keep<small>Net profit as a share of revenue</small></label><div class="input-unit"><input type="number" id="h-target" min="0" max="100" step="any" inputmode="decimal" placeholder="0" autocomplete="off"><span>%</span></div></div>
+            <p class="helper__out" id="h-target-out" aria-live="polite"></p>
+            <dl class="spec" id="h-target-list" hidden></dl>
+          </div>
+          <div class="helper">
+            <div class="lrow"><label for="h-sell">Pieces you might sell<small>Across all products, in your planned mix</small></label><div class="input-unit"><input type="number" id="h-sell" min="0" step="1" inputmode="numeric" placeholder="0" autocomplete="off"><span>pcs</span></div></div>
+            <p class="helper__out" id="h-sell-out" aria-live="polite"></p>
+          </div>
+        </div>
+      </section>
+    </form>
+
+    <aside class="cluster" aria-label="Results">
+      <div class="cluster__track">
+      <div class="plate cluster__main">
+        <div class="dro dro--xl" id="r-net-wrap"><span class="label" id="r-net-label">Net profit, whole drop</span><span class="num" id="r-net">$0.00</span></div>
+        <div class="meter">
+          <div class="between"><span class="label">Net margin</span><span class="num" id="r-margin">n/a</span></div>
+          <div class="gauge" id="r-gauge"><i></i></div>
+          <div class="between muted num" aria-hidden="true"><span>0</span><span>25</span><span>50</span><span>75</span><span>100%</span></div>
+          <span class="field__hint" id="r-margin-note"></span>
+        </div>
+        <div class="meter">
+          <div class="between"><span class="label">Break-even <span class="tag" id="r-be-word"></span></span><span class="num" id="r-be">0</span></div>
+          <div class="satin-bar" id="r-bebar" data-state="ok"><i></i></div>
+          <span class="field__hint" id="r-be-text"></span>
+        </div>
+        <div class="meter">
+          <span class="label" id="r-bar-label">Where the money goes</span>
+          <div class="costbar" id="r-costbar" role="img" aria-label="Cost breakdown"></div>
+          <div class="keys" id="r-keys"></div>
+        </div>
+        <div class="cluster__pair">
+          <div><span class="label">Profit per piece sold</span><span class="num" id="r-ppu">n/a</span></div>
+          <div><span class="label">Cost per piece made</span><span class="num" id="r-cpu">n/a</span></div>
+        </div>
+      </div>
+      </div>
+      <div class="receipt">
+        <div class="receipt__head"><span class="label">Drop summary, estimate</span><span class="num muted" id="r-rc-count"></span></div>
+        <dl class="spec" id="r-spec"></dl>
+        <hr class="stitch-rule">
+        <div class="receipt__total" id="r-total-wrap"><span class="label" id="r-total-label">You keep</span><span class="num" id="r-total">$0.00</span></div>
+        <dl class="spec receipt__after" id="r-after"></dl>
+        <p class="receipt__note">Estimate only. Not tax, legal or accounting advice.</p>
+      </div>
+    </aside>
+  </div>
+
+  <section class="dc-print dc-print__sheet" aria-label="Your numbers">
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th scope="col">Product</th><th scope="col" class="n">Made</th><th scope="col" class="n">Sell %</th><th scope="col" class="n">Sold</th><th scope="col" class="n">Retail</th><th scope="col" class="n">Blank</th><th scope="col" class="n">Decor</th><th scope="col" class="n">Wholesale</th><th scope="col" class="n">Revenue</th></tr></thead>
+        <tbody id="pr-products"></tbody>
+      </table>
+    </div>
+    <div class="dc-print__inputs" id="pr-inputs"></div>
+  </section>
+
+  <section class="dc-block dc-scn" id="dc-scn" aria-labelledby="scn-h" data-noprint>
+    <header><h2 class="h2" id="scn-h">Saved scenarios</h2><span class="label"><span class="num" id="dc-scn-count">0 of 8</span> saved on this device</span></header>
+    <div class="empty" id="dc-scn-empty"><strong>No scenarios yet.</strong><span>Save these numbers, change a price or a quantity, then compare the two side by side.</span></div>
+    <div class="stack" id="dc-scn-wrap" hidden>
+      <div class="table-wrap" role="region" aria-label="Scenario comparison" tabindex="0">
+        <table class="table dc-cmp">
+          <caption class="visually-hidden">Your current numbers beside each saved scenario</caption>
+          <thead><tr id="dc-scn-head"></tr></thead>
+          <tbody id="dc-scn-body"></tbody>
+          <tfoot><tr id="dc-scn-foot"></tr></tfoot>
+        </table>
+      </div>
+      <p class="dc-legend"><span><i class="k-diff"></i>Row differs from now</span><span><i class="k-best"></i>Best value in the row</span><span>Small figures are the change from now.</span><span id="dc-scn-swipe" hidden>Slide the table sideways to see every scenario.</span></p>
+    </div>
+  </section>
+
+  <section class="dc-block" aria-labelledby="notes-h">
+    <header><h2 class="h2" id="notes-h">How the numbers are worked out</h2><span class="tag">Estimates only</span></header>
+    <ul class="dc-notes">
+      <li><strong>Estimates,</strong> from the numbers you type and the rules below. Not tax, legal or accounting advice.</li>
+      <li><strong>You pay for every piece you make.</strong> Production is counted for the whole run, sold or not. Defective pieces are paid for once and cannot be sold.</li>
+      <li><strong>Pieces sold</strong> is sellable pieces times sell-through, rounded to whole pieces.</li>
+      <li><strong>Discounts</strong> apply to every retail sale as an average. Wholesale pieces sell at the wholesale price with no discount, fees, shipping or returns.</li>
+      <li><strong>A return</strong> refunds the piece but not the shipping. Payment fees are not handed back, and a returned piece is not counted as sold again.</li>
+      <li><strong>Per-order amounts</strong> (shipping, postage, materials, the fixed payment fee) are split across the pieces in an average order.</li>
+      <li><strong>Sales tax</strong> is shown as collected and passed on. It is never part of revenue or profit. The payment fee is charged on it.</li>
+      <li><strong>Break-even</strong> is the smallest number of pieces sold, in your planned mix, at which net profit is zero or more. Production and one-time costs count as already spent.</li>
+      <li><strong>Net margin</strong> is net profit divided by revenue. Revenue is sales after discounts and refunds, plus wholesale and shipping paid by customers.</li>
+      <li><strong>Saved on this device.</strong> Your draft and scenarios stay in this browser. Nothing is uploaded.</li>
+    </ul>
+  </section>
+
+  <p class="visually-hidden" id="dc-live" role="status" aria-live="polite"></p>
+</main>
+
+<template id="dc-product-tpl">
+  <div class="plate prod" role="group">
+    <div class="prod__head"><span class="label" data-p="title">Product</span><button class="btn btn--ghost" type="button" data-p="remove">Remove</button></div>
+    <div class="prod__grid">
+          <div class="field f-6 prod__name"><label class="label" data-for="name">Name</label><input class="input" type="text" data-pfield="name" maxlength="60" autocomplete="off" placeholder="Essential tee"></div>
+          <div class="field f-3"><label class="label" data-for="made">Pieces made</label><div class="input-unit"><input type="number" data-pfield="made" min="0" step="1" inputmode="numeric" placeholder="0" autocomplete="off"><span>pcs</span></div></div>
+          <div class="field f-3"><label class="label" data-for="sellPct">Sell-through</label><div class="input-unit"><input type="number" data-pfield="sellPct" min="0" max="100" step="any" inputmode="decimal" placeholder="0" autocomplete="off"><span>%</span></div></div>
+          <div class="field prod__price"><label class="label" data-for="price">Retail price</label><div class="input-unit"><span>$</span><input type="number" data-pfield="price" min="0" step="any" inputmode="decimal" placeholder="0.00" autocomplete="off"></div></div>
+          <div class="field"><label class="label" data-for="blank">Blank garment</label><div class="input-unit"><span>$</span><input type="number" data-pfield="blank" min="0" step="any" inputmode="decimal" placeholder="0.00" autocomplete="off"></div></div>
+          <div class="field"><label class="label" data-for="decor">Decoration</label><div class="input-unit"><span>$</span><input type="number" data-pfield="decor" min="0" step="any" inputmode="decimal" placeholder="0.00" autocomplete="off"></div></div>
+          <div class="field f-6"><label class="label" data-for="wsUnits">Wholesale pieces</label><div class="input-unit"><input type="number" data-pfield="wsUnits" min="0" step="1" inputmode="numeric" placeholder="0" autocomplete="off"><span>pcs</span></div></div>
+          <div class="field f-6"><label class="label" data-for="wsPrice">Wholesale price</label><div class="input-unit"><span>$</span><input type="number" data-pfield="wsPrice" min="0" step="any" inputmode="decimal" placeholder="0.00" autocomplete="off"></div></div>
+    </div>
+    <p class="field__hint" data-p="note"></p>
+  </div>
+</template>
+
+<dialog class="dialog" id="dc-save-dialog" aria-labelledby="dc-save-title">
+  <form id="dc-save-form" method="dialog" novalidate>
+    <div class="dialog__head"><span class="label" id="dc-save-title">Save scenario</span></div>
+    <div class="dialog__body">
+      <div class="field">
+        <label class="label" for="dc-save-name">Scenario name</label>
+        <input class="input" type="text" id="dc-save-name" maxlength="60" autocomplete="off" aria-describedby="dc-save-err">
+        <span class="field__hint">Saved on this device. Using a name you already have replaces that scenario.</span>
+        <span class="field__error" id="dc-save-err" role="alert" hidden></span>
+      </div>
+    </div>
+    <div class="dialog__foot">
+      <button class="btn" type="button" data-dialog-close>Cancel</button>
+      <button class="btn btn--primary" type="submit">Save scenario</button>
+    </div>
+  </form>
+</dialog>
+
+<footer class="site-foot">
+  <div class="wrap site-foot__care">
+    <ul class="care" aria-label="How these tools work">
+      <li><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M2 6l1.5 9h11L16 6M2 6c1.2 1 2.3 1 3.5 0s2.3-1 3.5 0 2.3 1 3.5 0 2.3-1 3.5 0"/></svg>Runs in your browser</li>
+      <li><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M9 2.5 16 15H2zM4 4l10 12M14 4 4 16"/></svg>No account</li>
+      <li><svg viewBox="0 0 18 18" aria-hidden="true"><rect x="2.5" y="2.5" width="13" height="13"/><circle cx="9" cy="9" r="4.5"/></svg>Files stay on your device</li>
+      <li><svg viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="6.5"/><path d="M3 3l12 12M15 3 3 15"/></svg>Do not pay</li>
+    </ul>
+  </div>
+  <div class="wrap site-foot__row">
+    <span>EmbroideryLabs. Free, open-source tools for people who make clothes.</span>
+    <nav aria-label="Footer">
+      <a class="link" href="app.html">Embroidr</a>
+      <a class="link" href="blanks.html">Blanks</a>
+      <a class="link" href="techpack.html">Tech Packs</a>
+      <a class="link" href="dropcalc.html">Drop Calc</a>
+      <a class="link" href="https://github.com/deetschoe/embroiderylabs" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>

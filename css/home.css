@@ -1,0 +1,61 @@
+/* EMBROIDERY LABS - css/home.css (index.html only). Loaded after css/base.css. */
+
+/* BASE-CANDIDATE: a page shorter than the window left a strip of --bg under the footer
+   (98px at 1920x1080). Keep the footer on the bottom edge; the slack goes above it. */
+body { display: flex; flex-direction: column; }
+main { flex: 1 0 auto; }
+
+/* Hero: copy left, figure right */
+.hero { border-bottom: 0; }
+.hero__grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); }
+.hero__copy { display: grid; align-content: center; justify-items: start; gap: var(--s-5); padding: var(--s-8) var(--s-6) var(--s-8) 0; }
+.hero__fig { display: grid; grid-template-columns: minmax(0, 1fr); align-content: center; min-width: 0; padding: var(--s-6); }
+.hero__art { display: grid; place-items: center; }
+.hero__art svg { width: min(100%, 420px); height: auto; overflow: visible; }
+
+/* Hero figure. viewBox units are 0.1 mm from the hoop centre; both thread paths are a real stitch
+   layout (tatami fill, then satin border), each one continuous run so .sew-line draws it in sewing order. */
+.fig-hoop__frame { fill: var(--sunken); stroke: var(--line-3); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.fig-hoop__cloth { fill: var(--fabric); stroke: var(--line-3); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.fig-hoop__field { fill: none; stroke: var(--fabric-ink); stroke-opacity: .28; stroke-width: 1px; stroke-dasharray: 1 5; vector-effect: non-scaling-stroke; }
+.fig-thread { fill: none; stroke-linejoin: round; stroke-linecap: butt; }
+.fig-thread--a { stroke: var(--thread-a); stroke-width: 3.9; }
+.fig-thread--b { stroke: var(--thread-b); stroke-width: 3.2; animation-duration: calc(var(--t-stitch) * .7); animation-delay: calc(var(--t-stitch) + .3s); }
+.fig-holes { fill: none; stroke: var(--fabric); stroke-opacity: .8; stroke-width: 1.1; stroke-linecap: butt; }
+.fig-vector path { fill: none; stroke: var(--fabric-ink); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.fig-nodes rect { fill: var(--fabric); stroke: var(--fabric-ink); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.fig-needle { fill: none; stroke: var(--fabric-signal); stroke-width: 1px; }
+.fig-needle path, .fig-needle circle { vector-effect: non-scaling-stroke; }
+.fig-needle circle { fill: var(--fabric); }
+
+/* The four tools. One soft card per tool and the whole card is the link. */
+.tools { padding-top: var(--s-4); }
+.tools__list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-3); }
+.tool { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-content: start; align-items: center; gap: var(--s-1) var(--s-3); height: 100%; padding: var(--s-5); border: 1px solid var(--line-1); border-radius: var(--r-0); background: var(--raised); color: inherit; text-decoration: none; transition: border-color var(--t-1) var(--ease), background var(--t-1) var(--ease); }
+.tool:hover { border-color: var(--line-2); }
+.tool:active { background: var(--hover); }
+.tool:focus-visible { outline-offset: 2px; border-radius: var(--r-0); }
+.tool__no { display: none; }
+.tool__go { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.5; color: var(--ink-3); transition: transform var(--t-2) var(--ease), color var(--t-1) var(--ease); }
+.tool:hover .tool__go, .tool:focus-visible .tool__go { color: var(--signal-text); transform: translateX(3px); }
+.tool__name { grid-column: 1; grid-row: 1; font-size: var(--fs-6); line-height: var(--lh-6); }
+.tool__go { grid-column: 2; grid-row: 1; }
+.tool__what { grid-column: 1 / -1; color: var(--ink-2); font-size: var(--fs-4); line-height: var(--lh-4); text-wrap: balance; }
+
+@media screen and (max-width: 1100px) {
+  /* BASE-CANDIDATE: from 721 to 750px wide the header row is up to 29px too long and the nav
+     cuts "Drop Calc" off (an iPad mini in portrait is 744px). Tighter spacing lets it fit. */
+  .site-head__row { column-gap: var(--s-2); padding-inline: var(--s-3); }
+  .tools__list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media screen and (max-width: 720px) {
+  .site-head__row { column-gap: 0; padding-inline: 0; }
+  .hero__grid { grid-template-columns: minmax(0, 1fr); }
+  .hero__copy { padding: var(--s-5) 0; border-right: 0; gap: var(--s-4); }
+  .hero__copy > .btn { width: 100%; }
+  .hero__fig { padding: 0 0 var(--s-5); }
+  .hero__art svg { width: min(100%, 240px); }
+  .tools { padding-top: var(--s-5); }
+  .tools__list { grid-template-columns: minmax(0, 1fr); }
+  .tool { padding: var(--s-4); }
+}

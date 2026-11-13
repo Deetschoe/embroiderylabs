@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Engine worker test</title>
+<link rel="icon" href="data:,">
+</head>
+<body>
+<h1>Engine worker test</h1>
+<p>Opened by <code>node tests/run.js --browser</code>. Runs the engine in a Web Worker and on the main thread and compares the bytes.</p>
+<pre id="log"></pre>
+<script>
+// Everything that goes wrong on this page is collected before any other script runs.
+window.__errors = [];
+window.addEventListener('error', function (e) { window.__errors.push('error: ' + (e.message || e.type) + (e.filename ? ' @ ' + e.filename + ':' + e.lineno : '')); });
+window.addEventListener('unhandledrejection', function (e) { window.__errors.push('unhandledrejection: ' + (e.reason && e.reason.message ? e.reason.message : String(e.reason))); });
+['error', 'warn'].forEach(function (k) {
+  var orig = console[k];
+  console[k] = function () { window.__errors.push('console.' + k + ': ' + Array.prototype.join.call(arguments, ' ')); return orig.apply(console, arguments); };
+});
+</script>
+<script src="../../../js/engine/embwriter.js"></script>
+<script src="../../../js/engine/digitize.js"></script>
+<script src="../../../js/engine/engine.js"></script>
+<script src="../designs.js"></script>
+<script src="worker-page.js"></script>
+</body>
+</html>

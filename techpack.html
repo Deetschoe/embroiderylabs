@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tech pack builder - EmbroideryLabs</title>
+<meta name="description" content="Build a garment spec sheet a factory can quote from: measurements, materials, colourways and artwork placement. Runs in your browser, saves on your device, prints to PDF.">
+<meta name="theme-color" content="#FAF9F6">
+<link rel="icon" href="emb.png">
+<script>(function(){var d=document.documentElement,t=null;try{t=localStorage.getItem('el-theme');if(t!=='light'&&t!=='dark'){t=localStorage.getItem('theme-mode');if(t==='light'||t==='dark')localStorage.setItem('el-theme',t);else t=null}}catch(e){t=null}if(!t){try{t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}catch(e){t='light'}}d.setAttribute('data-theme',t)})();</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/techpack.css">
+<script src="js/site.js" defer></script>
+<script src="js/techpack.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-head">
+  <div class="site-head__row">
+    <a class="brand" href="index.html" aria-label="EmbroideryLabs home"><img class="brand__mark" src="emb.png" alt="" width="24" height="24"><span>Embroidery<b>Labs</b></span></a>
+    <nav class="nav" aria-label="Tools">
+      <a href="app.html"><span class="num" aria-hidden="true">01</span>Embroidr</a>
+      <a href="blanks.html"><span class="num" aria-hidden="true">02</span>Blanks</a>
+      <a href="techpack.html"><span class="num" aria-hidden="true">03</span>Tech Packs</a>
+      <a href="dropcalc.html"><span class="num" aria-hidden="true">04</span>Drop Calc</a>
+    </nav>
+    <div class="site-head__tools">
+      <a class="btn btn--ghost hide-phone" href="https://github.com/deetschoe/embroiderylabs" target="_blank" rel="noopener">GitHub</a>
+      <button class="btn btn--ghost btn--icon" type="button" data-theme-toggle aria-label="Switch theme" aria-pressed="false"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor"/></svg></button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <div class="wrap page-head">
+    <div class="page-head__text">
+      <span class="label"><span class="num">03</span> Tech Packs</span>
+      <h1 class="title">A spec sheet a factory can quote from.</h1>
+      <p>The sheet builds as you type and saves on this device.</p>
+    </div>
+    <div class="page-head__actions">
+      <div class="seg only-phone" role="group" aria-label="View"><button type="button" aria-pressed="true" data-view="form">Edit</button><button type="button" aria-pressed="false" data-view="sheet">Sheet</button></div>
+      <button class="btn" type="button" id="tp-import">Import file</button>
+      <input type="file" id="tp-import-file" accept=".json,application/json" aria-label="Tech pack file to import" hidden>
+      <button class="btn" type="button" id="tp-export">Export file</button>
+      <button class="btn btn--danger" type="button" id="tp-reset">Start over</button>
+      <button class="btn btn--primary" type="button" id="tp-print">Print or save PDF</button>
+    </div>
+  </div>
+
+  <div class="tp" data-view="form">
+    <nav class="tp__index" aria-label="Sections">
+      <button type="button" class="num" aria-current="step" aria-label="1 Style" data-section="section1">01</button>
+      <button type="button" class="num" aria-label="2 Measurements" data-section="section2">02</button>
+      <button type="button" class="num" aria-label="3 Materials" data-section="section3">03</button>
+      <button type="button" class="num" aria-label="4 Colourways" data-section="section4">04</button>
+      <button type="button" class="num" aria-label="5 Artwork placement" data-section="section5">05</button>
+      <button type="button" class="num" aria-label="6 Labels and trims" data-section="section6">06</button>
+      <button type="button" class="num" aria-label="7 Packaging" data-section="section7">07</button>
+      <button type="button" class="num" aria-label="8 Order and notes" data-section="section8">08</button>
+    </nav>
+
+    <form class="tp__form" id="tp-form" novalidate autocomplete="off">
+
+      <details class="plate tp-ready" id="tp-ready">
+        <summary class="plate__head"><span class="label">What a factory would still ask</span><span class="num" id="tp-ready-count">0 / 8</span></summary>
+        <div class="plate__body stack">
+          <div class="satin-bar" id="tp-ready-bar" role="progressbar" aria-label="Sections ready" aria-valuemin="0" aria-valuemax="8" aria-valuenow="0"><i></i></div>
+          <p id="tp-ready-text" class="muted" hidden></p>
+          <ul class="tp-ready__list" id="tp-ready-list"></ul>
+        </div>
+      </details>
+
+      <section class="tp__section" id="section1" aria-labelledby="s1-h">
+        <header><span class="num">01</span><h2 class="h3" id="s1-h" tabindex="-1">Style</h2></header>
+        <div class="field">
+          <label class="label" for="templateSelect">Start from a template</label>
+          <div class="tp-inline">
+            <span class="select"><select id="templateSelect">
+              <option value="">No template</option>
+              <option value="basic-tee">Basic tee</option>
+              <option value="hoodie">Hoodie</option>
+              <option value="crewneck">Crewneck</option>
+              <option value="shorts">Shorts</option>
+            </select></span>
+            <button class="btn" type="button" id="tp-template-apply">Apply template</button>
+          </div>
+          <span class="field__hint">Starting points in inches, not a factory standard. Check every number against your sample.</span>
+        </div>
+        <div class="fgrid">
+          <label class="field"><span class="label">Brand name</span><input class="input" id="brandName" data-f="brandName" placeholder="Your brand"></label>
+          <label class="field"><span class="label">Season</span><input class="input" id="season" data-f="season" list="seasonSuggestions" placeholder="For example SS27"></label>
+          <label class="field span2"><span class="label">Style name</span><input class="input" id="productName" data-f="productName" placeholder="For example Classic logo tee"></label>
+          <label class="field"><span class="label">Style number</span><input class="input num" id="styleNumber" data-f="styleNumber" placeholder="TS-001"></label>
+          <label class="field"><span class="label">Category</span><span class="select"><select id="productCategory" data-f="productCategory" data-opts="category"></select></span></label>
+          <label class="field"><span class="label">Fit</span><span class="select"><select id="fitType" data-f="fitType" data-opts="fit"></select></span></label>
+          <label class="field"><span class="label">Date</span><input class="input num" type="date" id="packDate" data-f="packDate"></label>
+          <label class="field"><span class="label">Designer or created by</span><input class="input" id="designer" data-f="designer" placeholder="Name"></label>
+          <label class="field"><span class="label">Version</span><input class="input num" id="version" data-f="version" placeholder="v1.0"></label>
+        </div>
+        <datalist id="seasonSuggestions"></datalist>
+      </section>
+
+      <section class="tp__section" id="section2" aria-labelledby="s2-h">
+        <header><span class="num">02</span><h2 class="h3" id="s2-h" tabindex="-1">Measurements</h2><span class="grow"></span>
+          <div class="seg" role="group" aria-label="Units" id="tp-units"><button type="button" aria-pressed="true" data-unit="in">in</button><button type="button" aria-pressed="false" data-unit="cm">cm</button></div>
+        </header>
+        <fieldset class="tp-set">
+          <legend class="label">Sizes in this style</legend>
+          <div class="tp-checks" id="tp-sizes"></div>
+        </fieldset>
+        <div id="tp-measure"></div>
+        <div class="field">
+          <label class="label" for="tp-measure-name">Add a point of measure</label>
+          <div class="tp-inline">
+            <input class="input" id="tp-measure-name" list="measureSuggestions" placeholder="For example Chest width" maxlength="80">
+            <button class="btn" type="button" id="tp-measure-add">Add measurement</button>
+          </div>
+          <span class="field__hint">Tol. &plusmn; is the difference you accept either way. Fractions such as 8 1/4 work.</span>
+        </div>
+        <datalist id="measureSuggestions">
+          <option value="Chest width"></option><option value="Body length"></option><option value="Sleeve length"></option><option value="Shoulder width"></option><option value="Hem width"></option><option value="Neck width"></option><option value="Across shoulder"></option><option value="Waist width"></option><option value="Outseam length"></option><option value="Inseam length"></option>
+        </datalist>
+        <details class="plate tp-grade" id="tp-grade">
+          <summary class="plate__head"><span class="label">Grade the other sizes from a base size</span></summary>
+          <div class="plate__body stack">
+            <p class="field__hint">A step is how much a measurement changes from one size to the next. There is no universal rule: enter your own.</p>
+            <label class="field tp-grade__base"><span class="label">Base size</span><span class="select"><select id="tp-grade-base"></select></span></label>
+            <div class="fgrid" id="tp-grade-steps"></div>
+            <div class="row"><button class="btn" type="button" id="tp-grade-apply">Fill sizes from base</button></div>
+          </div>
+        </details>
+      </section>
+
+      <section class="tp__section" id="section3" aria-labelledby="s3-h">
+        <header><span class="num">03</span><h2 class="h3" id="s3-h" tabindex="-1">Materials</h2></header>
+        <div class="fgrid">
+          <label class="field span2"><span class="label">Base blank or fabric</span><input class="input" id="baseBlank" data-f="baseBlank" list="blankSuggestions" placeholder="For example Gildan 5000, or cut and sew"></label>
+          <label class="field"><span class="label">Fabric composition</span><input class="input" id="fabricComp" data-f="fabricComp" placeholder="For example 100% cotton jersey"></label>
+          <label class="field"><span class="label">Fabric weight</span><span class="input-unit"><input id="gsmWeight" data-f="gsmWeight" inputmode="decimal" placeholder="200"><span>gsm</span></span></label>
+          <div class="field span2">
+            <span class="label" id="fabricColor-l">Fabric colour</span>
+            <div class="tp-inline">
+              <input class="tp-color" type="color" id="fabricColorPicker" data-f="fabricColorPicker" aria-label="Fabric colour swatch" value="#ffffff">
+              <input class="input" id="fabricColorName" data-f="fabricColorName" aria-labelledby="fabricColor-l" placeholder="Name or reference, for example Black">
+            </div>
+          </div>
+        </div>
+        <h3 class="label tp-sub">Construction</h3>
+        <div class="fgrid">
+          <label class="field"><span class="label">Stitch type</span><span class="select"><select id="stitchType" data-f="stitchType" data-opts="stitch"></select></span></label>
+          <label class="field"><span class="label">Seam allowance</span><input class="input" id="seamAllowance" data-f="seamAllowance" placeholder="For example 1/2 inch"></label>
+          <label class="field"><span class="label">Hem style</span><span class="select"><select id="hemStyle" data-f="hemStyle" data-opts="hem"></select></span></label>
+          <label class="field"><span class="label">Neck finish</span><span class="select"><select id="neckFinish" data-f="neckFinish" data-opts="neck"></select></span></label>
+          <label class="field span2"><span class="label">Construction notes</span><textarea class="textarea" id="constructionNotes" data-f="constructionNotes" rows="3" placeholder="Any special construction requirements"></textarea></label>
+        </div>
+        <datalist id="blankSuggestions">
+          <option value="Gildan 5000"></option><option value="Gildan 18000"></option><option value="LA Apparel 1801"></option><option value="Comfort Colors 1717"></option><option value="Champion S600"></option><option value="Independent Trading IND4000"></option><option value="Bella+Canvas 3001"></option><option value="Next Level 3600"></option><option value="AS Colour 5001"></option><option value="Cut &amp; Sew Custom"></option>
+        </datalist>
+      </section>
+
+      <section class="tp__section" id="section4" aria-labelledby="s4-h">
+        <header><span class="num">04</span><h2 class="h3" id="s4-h" tabindex="-1">Colourways</h2></header>
+        <div class="stack" id="tp-colorways"></div>
+        <div class="row"><button class="btn" type="button" id="tp-colorway-add">Add colourway</button></div>
+      </section>
+
+      <section class="tp__section" id="section5" aria-labelledby="s5-h">
+        <header><span class="num">05</span><h2 class="h3" id="s5-h" tabindex="-1">Artwork placement</h2></header>
+        <label class="check-row"><input class="check" type="checkbox" id="noArtwork" data-f="noArtwork"><span>This style has no artwork or decoration</span></label>
+        <div id="tp-art">
+          <div class="stack">
+            <p class="field__hint">Pick a zone to add a placement. Left and right are the wearer's.</p>
+            <div class="tp-diagram" id="tp-diagram"></div>
+            <div class="field">
+              <label class="label" for="tp-placement-loc">Add a placement by name</label>
+              <div class="tp-inline">
+                <span class="select"><select id="tp-placement-loc"></select></span>
+                <button class="btn" type="button" id="tp-placement-add">Add placement</button>
+              </div>
+            </div>
+            <div class="stack" id="tp-placements"></div>
+            <h3 class="label tp-sub">Artwork and reference images</h3>
+            <p class="field__hint">PNG, JPEG, WebP, GIF or SVG. Large images are scaled down to fit this browser's storage.</p>
+            <div class="tp-imgs" id="tp-images"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="tp__section" id="section6" aria-labelledby="s6-h">
+        <header><span class="num">06</span><h2 class="h3" id="s6-h" tabindex="-1">Labels and trims</h2></header>
+        <div class="fgrid">
+          <label class="field"><span class="label">Label type</span><span class="select"><select id="labelType" data-f="labelType" data-opts="label"></select></span></label>
+          <label class="field"><span class="label">Label placement</span><input class="input" id="labelPlacement" data-f="labelPlacement" placeholder="For example centre back, below neck seam"></label>
+          <label class="field span2"><span class="label">Country of origin</span><input class="input" id="countryOrigin" data-f="countryOrigin" placeholder="For example Portugal"></label>
+        </div>
+        <fieldset class="tp-set">
+          <legend class="label">Care label instructions</legend>
+          <div class="tp-checks tp-checks--2" id="tp-care"></div>
+        </fieldset>
+      </section>
+
+      <section class="tp__section" id="section7" aria-labelledby="s7-h">
+        <header><span class="num">07</span><h2 class="h3" id="s7-h" tabindex="-1">Packaging</h2></header>
+        <div class="fgrid">
+          <label class="field"><span class="label">Packaging type</span><span class="select"><select id="packagingType" data-f="packagingType" data-opts="packaging"></select></span></label>
+          <div class="field"><span class="label" aria-hidden="true">Hang tag</span><label class="check-row"><input class="check" type="checkbox" id="hangTagToggle" data-f="hangTagToggle"><span>Attach a hang tag</span></label></div>
+          <label class="field span2" id="hangTagDescField" hidden><span class="label">Hang tag description</span><input class="input" id="hangTagDesc" data-f="hangTagDesc" placeholder="Size, stock, string and where it attaches"></label>
+          <label class="field span2"><span class="label">Packaging notes</span><textarea class="textarea" id="packagingNotes" data-f="packagingNotes" rows="2" placeholder="Folding, stickers, carton quantities"></textarea></label>
+        </div>
+      </section>
+
+      <section class="tp__section" id="section8" aria-labelledby="s8-h">
+        <header><span class="num">08</span><h2 class="h3" id="s8-h" tabindex="-1">Order and notes</h2></header>
+        <div class="fgrid">
+          <label class="field"><span class="label">Order quantity (MOQ)</span><span class="input-unit"><input id="moq" data-f="moq" inputmode="numeric" placeholder="100"><span>units</span></span></label>
+          <label class="field"><span class="label">Target cost per unit</span><span class="input-unit"><span>$</span><input id="costUnit" data-f="costUnit" inputmode="decimal" placeholder="0.00"></span></label>
+          <label class="field"><span class="label">Target retail price</span><span class="input-unit"><span>$</span><input id="retailPrice" data-f="retailPrice" inputmode="decimal" placeholder="0.00"></span></label>
+          <label class="field span2"><span class="label">General notes</span><textarea class="textarea" id="generalNotes" data-f="generalNotes" rows="5" placeholder="Anything else the manufacturer should know"></textarea></label>
+        </div>
+      </section>
+
+      <div class="tp__actions">
+        <span class="label tp__save" id="tp-save" role="status">Saves as you type</span>
+        <button class="btn" type="button" id="tp-back">Back</button>
+        <button class="btn btn--ink" type="button" id="tp-next">Next: Measurements</button>
+      </div>
+    </form>
+
+    <div class="tp__preview" id="previewContent">
+      <article class="tp-sheet paper marked" id="tp-sheet" aria-label="Tech pack sheet"></article>
+    </div>
+  </div>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap site-foot__care">
+    <ul class="care" aria-label="How these tools work">
+      <li><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M2 6l1.5 9h11L16 6M2 6c1.2 1 2.3 1 3.5 0s2.3-1 3.5 0 2.3 1 3.5 0 2.3-1 3.5 0"/></svg>Runs in your browser</li>
+      <li><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M9 2.5 16 15H2zM4 4l10 12M14 4 4 16"/></svg>No account</li>
+      <li><svg viewBox="0 0 18 18" aria-hidden="true"><rect x="2.5" y="2.5" width="13" height="13"/><circle cx="9" cy="9" r="4.5"/></svg>Files stay on your device</li>
+      <li><svg viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="6.5"/><path d="M3 3l12 12M15 3 3 15"/></svg>Do not pay</li>
+    </ul>
+  </div>
+  <div class="wrap site-foot__row">
+    <span>EmbroideryLabs. Free, open-source tools for people who make clothes.</span>
+    <nav aria-label="Footer">
+      <a class="link" href="app.html">Embroidr</a>
+      <a class="link" href="blanks.html">Blanks</a>
+      <a class="link" href="techpack.html">Tech Packs</a>
+      <a class="link" href="dropcalc.html">Drop Calc</a>
+      <a class="link" href="https://github.com/deetschoe/embroiderylabs" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,9 @@
+# Local-only files: never part of the deployed site
+.backup-*/
+venv/
+tests/
+__pycache__/
+Dockerfile
+.dockerignore
+nginx.conf
+*.md

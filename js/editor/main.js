@@ -88,18 +88,23 @@
   /* ---------- design / stitch-out view ---------------------------------------------------- */
   function initViewMode() {
     var btns = document.querySelectorAll('[data-view]'), i;   /* the bar, and a second switch on the stage for phones */
+    function mock() { return !!(Editor.Mockup && Editor.Mockup.isOpen()); }
     function render() {
-      var st = V.mode === 'stitch';
-      for (var k = 0; k < btns.length; k++) btns[k].setAttribute('aria-pressed', (btns[k].getAttribute('data-view') === 'stitch') === st ? 'true' : 'false');
+      var st = V.mode === 'stitch', current = mock() ? 'mockup' : st ? 'stitch' : 'design';
+      for (var k = 0; k < btns.length; k++) btns[k].setAttribute('aria-pressed', btns[k].getAttribute('data-view') === current ? 'true' : 'false');
       V.el.view.classList.toggle('is-stitch', st);
     }
     for (i = 0; i < btns.length; i++) on(btns[i], 'click', function () {
-      var mode = this.getAttribute('data-view') === 'stitch' ? 'stitch' : 'design';
-      if (mode === V.mode) return;
+      var want = this.getAttribute('data-view');
+      if (want === 'mockup') { if (Editor.Mockup && !mock()) Editor.Mockup.open(); return; }
+      var mode = want === 'stitch' ? 'stitch' : 'design', was = mock();
+      if (was) Editor.Mockup.close();
+      if (mode === V.mode) { if (was) render(); return; }
       T.cancel();
       V.setMode(mode); Editor.say(mode === 'stitch' ? 'Stitch-out view' : 'Design view');
     });
     Editor.on('viewmode', render);
+    Editor.on('mockup', render);
     render();
   }
 

@@ -20,7 +20,7 @@
     satin: 'M2 12 4 4l2 8 2-8 2 8 2-8 2 8',
     running: 'M1.5 8h3M6.5 8h3M11.5 8h3'
   };
-  var LINE_NAMES = { running: 'running line', bean: 'bean line', satin: 'satin line' };
+  var LINE_NAMES = { running: 'running line', bean: 'bean line', satin: 'satin line', raw: 'imported stitches' };
   var MAX_WARNINGS = 6;
 
   function $(id) { return document.getElementById(id); }
@@ -63,7 +63,7 @@
   function apply(key, value, coalesce) {
     var ids = M.selection.slice();
     if (ids.length) M.setProp(ids, key, value, coalesce);
-    M.setDefault(key, value);
+    if (!(key === 'lineType' && value === 'raw')) M.setDefault(key, value);   /* a drawn stroke is never "as imported" */
   }
   function canFill(o) { return o.type !== 'line' && !(o.type === 'pen' && !o.closed && o.pts.length < 3); }
   /* Which controls do anything for the selection (all of them for the defaults). */
@@ -77,7 +77,7 @@
       if (line) u.lineType = true;
       if (satin) u.lineWidth = true;
       if (fill || satin) u.spacing = true;
-      if (fill || (line && !satin)) u.stitchLen = true;
+      if (fill || (line && !satin && o.lineType !== 'raw')) u.stitchLen = true;   /* imported stitches keep their own points */
       if (fill) { u.angle = true; u.pattern = true; }
     });
     return u;
@@ -108,7 +108,11 @@
     el.hex.textContent = color.mixed ? 'Mixed' : color.value.toUpperCase();
 
     var type = current('lineType');
-    el.type.value = type.value;
+    /* "As imported" is only offered for stitches that were opened from a machine file */
+    var rawOpt = el.type.querySelector('option[value="raw"]'), anyRaw = sel.some(function (o) { return o.lineType === 'raw'; });
+    if (anyRaw && !rawOpt) { rawOpt = document.createElement('option'); rawOpt.value = 'raw'; rawOpt.textContent = 'As imported'; el.type.appendChild(rawOpt); }
+    else if (!anyRaw && rawOpt) rawOpt.remove();
+    el.type.value = type.value === 'raw' && !anyRaw ? 'running' : type.value;
     setOff(el.type.closest('.prop'), !use.lineType, 'Only used when the shape has a line (Paint: Line or Both).', [el.type]);
 
     if (el.pattern) {

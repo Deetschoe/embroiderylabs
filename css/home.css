@@ -41,8 +41,25 @@ main { flex: 1 0 auto; }
 .step__name { font: var(--w-semi) var(--fs-5)/32px var(--font-ui); }
 .step__what { grid-column: 2; color: var(--ink-2); font-size: var(--fs-4); line-height: var(--lh-4); text-wrap: balance; }
 
+/* Design feed: starter designs to open and change */
+.feed { padding-top: var(--s-7); }
+.feed[hidden] { display: none; }
+.feed__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s-1) var(--s-4); margin-bottom: var(--s-4); }
+.feed__head > p { color: var(--ink-2); font-size: var(--fs-4); }
+.feed__list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-3); }
+.design { display: grid; gap: 2px; height: 100%; padding: var(--s-2) var(--s-2) var(--s-3); border: 1px solid var(--line-1); border-radius: var(--r-0); background: var(--raised); color: inherit; text-decoration: none; transition: border-color var(--t-1) var(--ease), transform var(--t-2) var(--ease); }
+.design:hover { border-color: var(--line-2); transform: translateY(-2px); }
+.design:focus-visible { outline-offset: 2px; border-radius: var(--r-0); }
+.design__pic { display: block; aspect-ratio: 1; margin-bottom: var(--s-2); border-radius: calc(var(--r-0) - 5px); background: #f4f1ea; overflow: hidden; }
+.design__pic > img { width: 100%; height: 100%; object-fit: cover; }
+.design__name { padding: 0 var(--s-1); font: var(--w-semi) var(--fs-4)/var(--lh-4) var(--font-ui); }
+.design__meta { padding: 0 var(--s-1); color: var(--ink-3); font-size: var(--fs-2); line-height: var(--lh-3); }
+.design__go { padding: var(--s-1) var(--s-1) 0; color: var(--signal-text); font: var(--w-semi) var(--fs-2)/1 var(--font-ui); }
+@media (prefers-reduced-motion: reduce) { .design:hover { transform: none; } }
+
 @media screen and (max-width: 1100px) {
   .steps__list { grid-template-columns: minmax(0, 1fr); }
+  .feed__list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media screen and (max-width: 720px) {
   .hero__grid { grid-template-columns: minmax(0, 1fr); }
@@ -51,6 +68,8 @@ main { flex: 1 0 auto; }
   .hero__actions > .btn { flex: 1 1 auto; }
   .hero__fig { padding: 0 0 var(--s-5); }
   .hero__art svg { width: min(100%, 240px); }
+  .feed { padding-top: var(--s-6); }
+  .feed__list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2); }
   .steps { padding-top: 0; }
   .step { padding: var(--s-4); }
 }

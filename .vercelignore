@@ -3,6 +3,7 @@
 venv/
 tests/
 archive/
+designs/src/
 __pycache__/
 Dockerfile
 .dockerignore

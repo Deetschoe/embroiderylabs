@@ -227,6 +227,54 @@
       reader.readAsText(file);
     });
   }
+  /* A machine file (.pes, .pec, .dst) opens as its stitches: one stroke per run of thread, sewn point for
+     point. It gets a tab of its own, in the smallest hoop that holds it. */
+  var STITCH_MAX_BYTES = 12 * 1024 * 1024;
+  function looksLikeStitches(file) { return /\.(pes|pec|dst)$/i.test(String(file.name || '')); }
+  function openStitches(file) {
+    if (!Editor.StitchFile) return Promise.resolve(null);
+    if (file.size > STITCH_MAX_BYTES) { toast('That file is too large to open.', { kind: 'bad', label: 'Open file' }); return Promise.resolve(null); }
+    return new Promise(function (resolve) {
+      var reader = new FileReader();
+      reader.onerror = function () { toast('The file could not be read.', { kind: 'bad', label: 'Open file' }); resolve(null); };
+      reader.onload = function () {
+        var parsed = Editor.StitchFile.read(new Uint8Array(reader.result), file.name);
+        if (!parsed.ok) { toast(parsed.error, { kind: 'bad', label: 'Open file', timeout: 8000 }); resolve(null); return; }
+        var made = Editor.StitchFile.toObjects(parsed, M.HOOPS, Editor.Prefs.hoop());
+        var name = String(file.name || 'stitches').replace(/\.[^.]+$/, '').slice(0, 60) || 'stitches';
+        if (Editor.Mockup && Editor.Mockup.isOpen()) Editor.Mockup.close();
+        if (Editor.Tabs && hasWork() && !Editor.Tabs.add(null, true)) { resolve(null); return; }
+        var dropped = IO.applyPayload({ doc: { name: name, hoop: made.hoop, objects: made.objects } }) + made.dropped, n = M.doc.objects.length;
+        freshView(); IO.saveNow();
+        if (!n) { toast('No stitches could be read from the file.', { kind: 'bad', label: 'Open file' }); resolve(null); return; }
+        var U = Editor.Units, msg = 'Opened ' + file.name + ': ' + parsed.stitches.toLocaleString('en-US') + ' stitches, ' + parsed.colors + (parsed.colors === 1 ? ' colour, ' : ' colours, ') + U.size(made.width, made.height) + ' ' + U.label() + '.';
+        if (dropped) msg += ' ' + dropped + ' runs of thread were left out (too many pieces).';
+        msg += ' ' + parsed.notes.join(' ') + ' The stitches can be moved, recoloured, erased and exported again; they are not shapes, so fills cannot be changed.';
+        toast(msg, { kind: 'ok', label: 'File', timeout: 12000 });
+        Editor.say('Machine file opened: ' + parsed.stitches + ' stitches');
+        resolve({ added: n });
+      };
+      reader.readAsArrayBuffer(file);
+    });
+  }
+  /* A link from the design feed: app.html?design=<id> fetches designs/<id>.embroidr and opens it in a tab of
+     its own. The address is cleaned afterwards, so a reload does not open it a second time. */
+  function openFromLink() {
+    var m = /[?&]design=([a-z0-9-]{1,60})(?:&|$)/.exec(window.location.search || '');
+    if (!m || !window.fetch) return;
+    var id = m[1];
+    try { window.history.replaceState(null, '', window.location.pathname); } catch (e) { /* file:// */ }
+    fetch('designs/' + id + '.embroidr', { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('missing'); return r.json(); }).then(function (data) {
+      var doc = data && typeof data === 'object' ? (data.doc && typeof data.doc === 'object' ? data.doc : data) : null;
+      if (!doc || !Array.isArray(doc.objects)) throw new Error('not a design');
+      if (Editor.Mockup && Editor.Mockup.isOpen()) Editor.Mockup.close();
+      if (Editor.Tabs && hasWork() && !Editor.Tabs.add(null, true)) return;
+      IO.applyPayload(data); freshView(); IO.saveNow();
+      var n = M.doc.objects.length;
+      toast('Opened ' + M.doc.name + ': ' + n + (n === 1 ? ' shape' : ' shapes') + '. It is yours to change; File > Save keeps your version.', { kind: 'ok', label: 'Design', timeout: 7000 });
+      Editor.say('Design opened: ' + M.doc.name);
+    }).catch(function () { toast('That design could not be opened.', { kind: 'bad', label: 'Design' }); });
+  }
   function saveProject() {
     if (!hasWork()) { toast('Nothing to save yet. Draw a shape first.', { kind: 'bad', label: 'Save' }); return false; }
     var f = IO.projectFile();
@@ -270,10 +318,11 @@
     T.cancel();
     var job;
     if (looksLikeProject(file)) job = openProject(file);
+    else if (looksLikeStitches(file)) job = openStitches(file);
     else if (Editor.SvgImport && Editor.SvgImport.looksLikeSvg(file)) job = Editor.SvgImport.importFile(file);
     else if (Editor.Trace && Editor.Trace.accepts(file)) job = Editor.Trace.load(file);
-    else if (/\.(pes|pec|dst|exp|jef|vp3|xxx|hus)$/i.test(file.name || '')) { toast('A machine file holds stitches, not shapes, so it cannot be opened for editing. Open the design file you saved (File > Save) instead.', { kind: 'bad', label: 'Open file', timeout: 9000 }); return Promise.resolve(null); }
-    else { toast('Use a saved design (.embroidr), an SVG file, or a PNG, JPG, WebP or GIF picture.', { kind: 'bad', label: 'Open file' }); return Promise.resolve(null); }
+    else if (/\.(exp|jef|vp3|xxx|hus|pcs|sew|vip|art)$/i.test(file.name || '')) { toast('That machine format cannot be opened yet. PES, PEC and DST can.', { kind: 'bad', label: 'Open file', timeout: 8000 }); return Promise.resolve(null); }
+    else { toast('Use a saved design (.embroidr), a PES or DST file, an SVG file, or a PNG, JPG, WebP or GIF picture.', { kind: 'bad', label: 'Open file' }); return Promise.resolve(null); }
     return Promise.resolve(job).then(function (r) {
       if (r && (r === true || r.added) && Editor.closeSheet) Editor.closeSheet();   /* phone: show what arrived */
       return r;
@@ -730,6 +779,7 @@
     if (!info.restored && !info.damaged && !M.doc.objects.length) step('first hoop', function () { M.load(M.blank()); V.fit(); });
     if (Editor.Tabs) step('tabs', Editor.Tabs.init);
     if (Editor.Mockup) step('mockup', Editor.Mockup.init);
+    step('design link', openFromLink);
     step('export', initExport); step('empty hoop', initEmpty);
     step('render', P.render);
     document.addEventListener('keydown', onKeyDown);

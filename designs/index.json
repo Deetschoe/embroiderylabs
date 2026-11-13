@@ -1,0 +1,45 @@
+{
+ "v": 1,
+ "designs": [
+  {
+   "id": "smiling-man",
+   "title": "Smiling man",
+   "tags": [
+    "portrait"
+   ],
+   "file": "designs/smiling-man.embroidr",
+   "thumb": "designs/thumbs/smiling-man.webp",
+   "stitches": 9123,
+   "colors": 19,
+   "stops": 22,
+   "minutes": 39.4,
+   "width": 86.4,
+   "height": 86.5,
+   "hoop": {
+    "w": 130,
+    "h": 180
+   },
+   "shapes": 86
+  },
+  {
+   "id": "sunflower",
+   "title": "Sunflower",
+   "tags": [
+    "flower"
+   ],
+   "file": "designs/sunflower.embroidr",
+   "thumb": "designs/thumbs/sunflower.webp",
+   "stitches": 14811,
+   "colors": 10,
+   "stops": 11,
+   "minutes": 39,
+   "width": 93.2,
+   "height": 142.8,
+   "hoop": {
+    "w": 130,
+    "h": 180
+   },
+   "shapes": 67
+  }
+ ]
+}

@@ -33,7 +33,7 @@
   var WHITE = '#FFFFFF';
 
   var Mock = Editor.Mockup = { GARMENTS: GARMENTS };
-  var el = {}, open = false, state = { garment: 'hoodie', side: 'front', color: '#4A4D52', placements: { front: [], back: [] } };
+  var el = {}, open = false, state = { garment: 'hoodie', side: 'front', color: '#4A4D52', scene: 'studio', placements: { front: [], back: [] } };
   var selected = null, view = { scale: 1, ox: 0, oy: 0, auto: true }, raf = 0, recolorRaf = 0;
   var blank = { key: '', grey: null, alpha: null, canvas: null, loading: null };     /* the garment picture in use */
   var designs = {};                                                                  /* tab id -> { sig, canvas, ppm, w, h, name, busy, empty, result } */
@@ -171,20 +171,84 @@
     var g = garment(), a = sideInfo().anchor, w = d.w * g.pxPerMm * p.scale, h = d.h * g.pxPerMm * p.scale;
     return { x: a[0] + p.dx * g.pxPerMm - w / 2, y: a[1] + p.dy * g.pxPerMm - h / 2, w: w, h: h, d: d };
   }
-  /* bg: a colour to fill behind the garment in a file, or null for nothing (the screen and the transparent file) */
-  function paint(c, scale, ox, oy, forFile, bg) {
-    if (forFile && bg) { c.fillStyle = bg; c.fillRect(0, 0, SIZE * scale, SIZE * scale); }
+  /* ---------- the wooden floor: drawn here once, no picture file -------------------------- */
+  var wood = null;
+  function makeWood() {
+    if (wood) return wood;
+    var c = document.createElement('canvas'); c.width = SIZE; c.height = SIZE;
+    var x = c.getContext('2d'), seed = 20261113;
+    function rnd() { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }
+    var planks = 7, pw = SIZE / planks, i, k;
+    for (i = 0; i < planks; i++) {
+      var x0 = i * pw, y = -rnd() * 1100;
+      while (y < SIZE) {                                                     /* boards end to end down each row */
+        var len = 900 + rnd() * 900, hue = 27 + rnd() * 7, sat = 34 + rnd() * 10, lit = 55 + rnd() * 11;
+        x.save(); x.beginPath(); x.rect(x0, y, pw, len); x.clip();
+        x.fillStyle = 'hsl(' + hue + ',' + sat + '%,' + lit + '%)'; x.fillRect(x0, y, pw, len);
+        for (k = 0; k < 150; k++) {                                          /* grain: long, slightly wavy lines */
+          var gx = x0 + rnd() * pw, dark = rnd() < 0.62, a = 0.03 + rnd() * 0.09, ph = rnd() * 6.3, amp = 0.4 + rnd() * 1.6, yy;
+          x.strokeStyle = dark ? 'rgba(74,44,18,' + a + ')' : 'rgba(255,236,200,' + a * 0.9 + ')'; x.lineWidth = 0.6 + rnd() * 2.4;
+          x.beginPath(); x.moveTo(gx, y - 20);
+          for (yy = y; yy <= y + len + 40; yy += 44) { gx += (rnd() - 0.5) * 3.2 + Math.sin(yy * 0.0045 + ph) * amp; x.lineTo(gx, yy); }
+          x.stroke();
+        }
+        if (rnd() < 0.3) {                                                   /* now and then a knot, with the grain bending round it */
+          var kx = x0 + pw * (0.2 + rnd() * 0.6), ky = y + len * (0.15 + rnd() * 0.7), kr = 14 + rnd() * 22;
+          for (k = 5; k >= 0; k--) { x.strokeStyle = 'rgba(70,40,16,' + (0.10 + 0.05 * (5 - k)) + ')'; x.lineWidth = 2; x.beginPath(); x.ellipse(kx, ky, kr * (0.45 + k * 0.32), kr * (0.8 + k * 0.5), 0, 0, Math.PI * 2); x.stroke(); }
+          var grad = x.createRadialGradient(kx, ky, 1, kx, ky, kr); grad.addColorStop(0, 'rgba(48,26,10,.85)'); grad.addColorStop(1, 'rgba(48,26,10,0)');
+          x.fillStyle = grad; x.beginPath(); x.ellipse(kx, ky, kr * 0.6, kr, 0, 0, Math.PI * 2); x.fill();
+        }
+        x.restore();
+        x.fillStyle = 'rgba(38,22,9,.55)'; x.fillRect(x0, y + len - 2, pw, 3);          /* the joint between two boards */
+        x.fillStyle = 'rgba(255,238,210,.10)'; x.fillRect(x0, y + len + 1, pw, 1.5);
+        y += len;
+      }
+      x.fillStyle = 'rgba(34,19,8,.62)'; x.fillRect(x0 - 1.5, 0, 3, SIZE);              /* the gap between two rows */
+      x.fillStyle = 'rgba(255,238,210,.12)'; x.fillRect(x0 + 1.5, 0, 1.5, SIZE);
+    }
+    try {                                                                   /* fine speckle, so it reads as a photo and not a drawing */
+      var img = x.getImageData(0, 0, SIZE, SIZE), d = img.data, n = SIZE * SIZE;
+      for (i = 0, k = 0; i < n; i++, k += 4) { var v = (rnd() - 0.5) * 16; d[k] += v; d[k + 1] += v; d[k + 2] += v * 0.9; }
+      x.putImageData(img, 0, 0);
+    } catch (e) { /* the grain is enough */ }
+    var light = x.createLinearGradient(0, 0, SIZE, SIZE);                    /* light from the upper left */
+    light.addColorStop(0, 'rgba(255,246,228,.16)'); light.addColorStop(0.5, 'rgba(255,246,228,0)'); light.addColorStop(1, 'rgba(26,14,5,.26)');
+    x.fillStyle = light; x.fillRect(0, 0, SIZE, SIZE);
+    var vig = x.createRadialGradient(SIZE * 0.45, SIZE * 0.45, SIZE * 0.35, SIZE / 2, SIZE / 2, SIZE * 0.8);
+    vig.addColorStop(0, 'rgba(20,10,4,0)'); vig.addColorStop(1, 'rgba(20,10,4,.30)');
+    x.fillStyle = vig; x.fillRect(0, 0, SIZE, SIZE);
+    wood = c; return c;
+  }
+
+  /* scene: 'studio' (white), 'wood' (wooden floor) or null (nothing behind the garment: the transparent file) */
+  function paint(c, scale, ox, oy, forFile, scene) {
+    c.save();
+    if (scene === 'wood') {                             /* the floor is the picture: nothing, not even the shadow, falls outside it */
+      c.beginPath(); c.rect(ox, oy, SIZE * scale, SIZE * scale); c.clip();
+      c.drawImage(makeWood(), ox, oy, SIZE * scale, SIZE * scale);
+    }
+    if (scene !== 'wood' && forFile && scene === 'studio') { c.fillStyle = WHITE; c.fillRect(0, 0, SIZE * scale, SIZE * scale); }
+    var bg = scene;
     c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
     if (blank.canvas && blank.grey) {
-      c.save();
-      if (bg || !forFile) { c.shadowColor = 'rgba(40,35,25,.20)'; c.shadowBlur = 36 * scale; c.shadowOffsetY = 14 * scale; }   /* a soft shadow on white; none in the transparent file */
-      c.drawImage(blank.canvas, ox, oy, SIZE * scale, SIZE * scale);
-      c.restore();
+      if (scene === 'wood') {
+        /* lying on the floor in light from the upper left: a long soft shadow to the right and below, and a tight one where the cloth touches */
+        c.save(); c.shadowColor = 'rgba(30,16,6,.50)'; c.shadowBlur = 80 * scale; c.shadowOffsetX = 52 * scale; c.shadowOffsetY = 38 * scale;
+        c.drawImage(blank.canvas, ox, oy, SIZE * scale, SIZE * scale); c.restore();
+        c.save(); c.shadowColor = 'rgba(22,12,4,.45)'; c.shadowBlur = 16 * scale; c.shadowOffsetX = 12 * scale; c.shadowOffsetY = 9 * scale;
+        c.drawImage(blank.canvas, ox, oy, SIZE * scale, SIZE * scale); c.restore();
+      } else {
+        c.save();
+        if (bg) { c.shadowColor = 'rgba(40,35,25,.20)'; c.shadowBlur = 36 * scale; c.shadowOffsetY = 14 * scale; }   /* a soft shadow on white; none in the transparent file */
+        c.drawImage(blank.canvas, ox, oy, SIZE * scale, SIZE * scale);
+        c.restore();
+      }
     }
     items().forEach(function (p) {
       var r = place(p); if (!r) return;
       c.drawImage(r.d.canvas, ox + r.x * scale, oy + r.y * scale, r.w * scale, r.h * scale);
     });
+    c.restore();
   }
   function draw() {
     var cv = el.canvas; if (!cv || !open) return;
@@ -195,7 +259,7 @@
     var c = cv.getContext('2d');
     c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height);
     c.setTransform(dpr, 0, 0, dpr, 0, 0);
-    paint(c, view.scale, view.ox, view.oy, false, null);
+    paint(c, view.scale, view.ox, view.oy, false, state.scene);
     var sel = selectedItem(), r = sel && place(sel);
     if (r) {
       var accent = (window.EL && window.EL.token && window.EL.token('--signal')) || '#4E7396';
@@ -214,7 +278,7 @@
 
   /* ---------- placements ------------------------------------------------------------------ */
   function selectedItem() { var list = items(); for (var i = 0; i < list.length; i++) if (list[i].id === selected) return list[i]; return null; }
-  function save() { if (window.EL) window.EL.store.set(KEY, { v: 1, garment: state.garment, side: state.side, color: state.color, placements: state.placements }); }
+  function save() { if (window.EL) window.EL.store.set(KEY, { v: 1, garment: state.garment, side: state.side, color: state.color, scene: state.scene, placements: state.placements }); }
   function hit(px, py) {
     var list = items(), x = (px - view.ox) / view.scale, y = (py - view.oy) / view.scale;
     for (var i = list.length - 1; i >= 0; i--) { var r = place(list[i]); if (r && x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return list[i]; }
@@ -244,7 +308,7 @@
   function setBusy(text) { if (el.busy) { el.busy.textContent = text; el.busy.hidden = !text; } }
   function pressed(nodes, attr, value) { nodes.forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute(attr) === value ? 'true' : 'false'); }); }
   function renderControls() {
-    pressed(el.garmentBtns, 'data-garment', state.garment); pressed(el.sideBtns, 'data-side', state.side);
+    pressed(el.garmentBtns, 'data-garment', state.garment); pressed(el.sideBtns, 'data-side', state.side); pressed(el.sceneBtns, 'data-scene', state.scene);
     var rgb = hexToRgb(state.color), hsl = rgbToHsl(rgb[0], rgb[1], rgb[2]);
     el.color.value = state.color; el.hex.textContent = state.color.toUpperCase(); el.swatch.style.setProperty('--c', state.color);
     if (document.activeElement !== el.hue) el.hue.value = hsl[0];
@@ -299,14 +363,14 @@
     setBusy('Making the picture...');
     return settle().then(function () {
       var c = document.createElement('canvas'); c.width = SIZE; c.height = SIZE;
-      paint(c.getContext('2d'), 1, 0, 0, true, transparent ? null : WHITE);
+      paint(c.getContext('2d'), 1, 0, 0, true, transparent ? null : state.scene);
       return new Promise(function (resolve) {
         c.toBlob(function (blob) {
           setBusy('');
           if (!blob) { toast('The picture could not be made.', { kind: 'bad', label: 'Mockup' }); resolve(false); return; }
-          var name = fileBase() + '-' + state.garment + '-' + state.side + (transparent ? '-transparent' : '') + '.png';
+          var name = fileBase() + '-' + state.garment + '-' + state.side + (transparent ? '-transparent' : state.scene === 'wood' ? '-wood' : '') + '.png';
           window.EL.download(name, blob, 'image/png');
-          toast(name + ' downloaded, ' + (transparent ? 'with a transparent background' : 'on a white background') + ' (' + SIZE + ' x ' + SIZE + ' px).', { kind: 'ok', label: 'Mockup', timeout: 6000 });
+          toast(name + ' downloaded, ' + (transparent ? 'with a transparent background' : state.scene === 'wood' ? 'on the wood floor' : 'on a white background') + ' (' + SIZE + ' x ' + SIZE + ' px).', { kind: 'ok', label: 'Mockup', timeout: 6000 });
           resolve(true);
         }, 'image/png');
       });
@@ -380,6 +444,7 @@
     el.stage = $('mock-stage'); el.canvas = $('mock-canvas'); el.busy = $('mock-busy'); el.zoom = $('mock-zoom'); el.toggle = $('btn-mockup');
     el.garmentBtns = Array.prototype.slice.call(el.root.querySelectorAll('[data-garment]'));
     el.sideBtns = Array.prototype.slice.call(el.root.querySelectorAll('[data-side]'));
+    el.sceneBtns = Array.prototype.slice.call(el.root.querySelectorAll('[data-scene]'));
     el.color = $('mock-color'); el.hex = $('mock-hex'); el.swatch = $('mock-swatch'); el.chips = $('mock-chips');
     el.hue = $('mock-hue'); el.sat = $('mock-sat'); el.light = $('mock-light'); el.hueVal = $('mock-hue-value'); el.satVal = $('mock-sat-value'); el.lightVal = $('mock-light-value');
     el.placed = $('mock-placed'); el.placedEmpty = $('mock-placed-empty'); el.sideName = $('mock-side-name'); el.adds = $('mock-adds');
@@ -393,6 +458,7 @@
       if (GARMENTS[stored.garment]) state.garment = stored.garment;
       if (stored.side === 'front' || stored.side === 'back') state.side = stored.side;
       if (/^#[0-9a-f]{6}$/i.test(stored.color)) state.color = stored.color;
+      if (stored.scene === 'wood' || stored.scene === 'studio') state.scene = stored.scene;
       ['front', 'back'].forEach(function (s) {
         var list = stored.placements && Array.isArray(stored.placements[s]) ? stored.placements[s] : [];
         state.placements[s] = list.slice(0, 24).filter(function (p) { return p && typeof p.tab === 'string' && isFinite(p.dx) && isFinite(p.dy) && isFinite(p.scale); })
@@ -410,6 +476,7 @@
     [el.hue, el.sat, el.light].forEach(function (s) { s.addEventListener('input', fromSliders); });
     el.garmentBtns.forEach(function (b) { b.addEventListener('click', function () { setGarmentSide(b.getAttribute('data-garment'), null); }); });
     el.sideBtns.forEach(function (b) { b.addEventListener('click', function () { setGarmentSide(null, b.getAttribute('data-side')); }); });
+    el.sceneBtns.forEach(function (b) { b.addEventListener('click', function () { state.scene = b.getAttribute('data-scene') === 'wood' ? 'wood' : 'studio'; save(); renderControls(); invalidate(); }); });
 
     el.placed.addEventListener('click', function (e) {
       var x = e.target.closest ? e.target.closest('[data-remove]') : null;

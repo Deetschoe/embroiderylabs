@@ -143,7 +143,7 @@ Curves must be flattened to points by the caller (a point every 0.5 to 1 mm is p
 
 | Field | Default | Range (clamped) | Meaning |
 |---|---|---|---|
-| `type` | `'running'` | `'running' \| 'bean' \| 'satin'` | `'bean'` is a triple run (forward, back, forward). `'run'` is accepted for `'running'`. |
+| `type` | `'running'` | `'running' \| 'bean' \| 'satin' \| 'raw'` | `'bean'` is a triple run (forward, back, forward). `'run'` is accepted for `'running'`. `'raw'` sews exactly through the points given, one stitch per point (stitches read from a machine file); `stitchLength`, `width` and `spacing` are not used, and a step over the format limit is still split. |
 | `stitchLength` | 2.5 | 1.0 to 7.0 | running and bean stitch length, mm |
 | `width` | 3.0 | 1.0 to 12.0 | satin only: column width, mm. Under 1 mm is sewn as a bean stitch (`SATIN_TOO_NARROW`); over 9 mm warns; over 12 mm is cut to 12 mm (`SATIN_TOO_WIDE`). Stitches over 7 mm are split. |
 | `spacing` | 0.4 | 0.2 to 2.0 | satin only: distance between stitches along the column, mm |

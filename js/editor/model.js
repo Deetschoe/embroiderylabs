@@ -79,7 +79,7 @@
   var HOOPS = [[100, 100], [130, 180], [160, 260], [200, 200], [200, 300], [240, 360], [272, 408]];
   var TYPE_NAMES = { rect: 'Rectangle', ellipse: 'Ellipse', line: 'Line', polygon: 'Polygon', pen: 'Stroke', path: 'Shape' };
   var PAINTS = { fill: 1, line: 1, both: 1 };
-  var LINE_TYPES = { running: 1, bean: 1, satin: 1 };
+  var LINE_TYPES = { running: 1, bean: 1, satin: 1, raw: 1 };   /* raw = stitches opened from a machine file, sewn point for point */
   /* Fill patterns: the engine's own list, so the panel can never offer one it does not sew. */
   var PATTERNS = ENG.FILL_PATTERNS || { smooth: { label: 'Smooth' } };
   function isPattern(v) { return typeof v === 'string' && Object.prototype.hasOwnProperty.call(PATTERNS, v); }

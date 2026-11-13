@@ -1012,7 +1012,7 @@
       const l = obj.line || {};
       let type = String(l.type === undefined ? DEFAULTS.line.type : l.type).toLowerCase();
       if (type === 'run') type = 'running';
-      if (type !== 'running' && type !== 'bean' && type !== 'satin') { warn('PARAM_CLAMPED', { param: 'Line type', value: 'running', message: 'Unknown line type; a running stitch was used.' }); type = 'running'; }
+      if (type !== 'running' && type !== 'bean' && type !== 'satin' && type !== 'raw') { warn('PARAM_CLAMPED', { param: 'Line type', value: 'running', message: 'Unknown line type; a running stitch was used.' }); type = 'running'; }
       let slIn = l.stitchLength, stitchLen;
       if (isNum(slIn) && slIn > LIMITS.lineStitchLength[1]) { stitchLen = LIMITS.lineStitchLength[1]; warn('STITCH_TOO_LONG', { message: 'Line stitches longer than ' + stitchLen + ' mm snag; ' + stitchLen + ' mm was used.' }); }
       else stitchLen = param(l, 'stitchLength', DEFAULTS.line.stitchLength, LIMITS.lineStitchLength, 'Line stitch length');
@@ -1035,11 +1035,13 @@
         const src = type === 'satin' ? simplify(s.pts, 0.08) : s.pts;
         if (budget) {
           const satin = type === 'satin' && width >= LIMITS.satinWidth[0]; // a narrower satin is sewn as a triple run
-          const lb = lineLowerBound(src, s.closed, satin ? spacing / 2 : stitchLen, satin || type === 'running' ? 1 : 3);
+          // 'raw' sews the given points as they are: one stitch per point
+          const lb = type === 'raw' ? Math.max(0, s.pts.length - 1) : lineLowerBound(src, s.closed, satin ? spacing / 2 : stitchLen, satin || type === 'running' ? 1 : 3);
           if (lb > budget.left) { budget.need = lb; return parts; }
           budget.left -= lb;
         }
         if (type === 'satin') pts = satinLine(src, width, { spacing, closed: s.closed, underlay, stitchLen }).points;
+        else if (type === 'raw') pts = cleanPolyline(s.pts);   // stitches read from a machine file: the needle lands on every point, nothing is re-spaced
         else { pts = runStitch(s.pts, stitchLen, { closed: s.closed }); if (type === 'bean') pts = bean(pts, 3); }
         if (pts.length >= 2) { parts.push({ color: lineColor, points: pts, objectIndex: index, kind: 'line' }); made++; }
       }

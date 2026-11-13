@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Engine worker stress test</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { font: 14px/1.4 system-ui, sans-serif; margin: 16px; }
+  li.ok { color: #0a6b2d; } li.bad { color: #b00020; }
+</style>
+<script>
+  // everything that goes wrong on the page is collected before any other script runs
+  window.__errors = [];
+  window.addEventListener('error', function (e) { window.__errors.push('error: ' + (e.message || (e.target && e.target.src) || 'unknown') + (e.filename ? ' @ ' + e.filename + ':' + e.lineno : '')); }, true);
+  window.addEventListener('unhandledrejection', function (e) { window.__errors.push('unhandledrejection: ' + String(e.reason && (e.reason.stack || e.reason.message) || e.reason)); });
+  ['error', 'warn'].forEach(function (k) { var o = console[k]; console[k] = function () { window.__errors.push('console.' + k + ': ' + Array.prototype.map.call(arguments, String).join(' ')); return o.apply(console, arguments); }; });
+</script>
+</head>
+<body>
+<h1>Engine worker stress test</h1>
+<p id="status">running</p>
+<ol id="log"></ol>
+<script src="../../../js/engine/embwriter.js"></script>
+<script src="../../../js/engine/digitize.js"></script>
+<script src="../../../js/engine/engine.js"></script>
+<script src="stress-designs.js"></script>
+<script src="worker-stress.js"></script>
+</body>
+</html>

@@ -1,0 +1,250 @@
+/* EMBROIDERY LABS - css/techpack.css (techpack.html only). Loaded after css/base.css. */
+.tp { display: grid; grid-template-columns: 56px minmax(0, 520px) minmax(0, 1fr); align-items: start; border-top: 1px solid var(--line-1); }
+
+/* Section index: 01..08. aria-current="step" = the open section; .is-done = filled in */
+.tp__index { position: sticky; top: var(--head-h); display: grid; align-content: start; height: calc(100dvh - var(--head-h)); border-right: 1px solid var(--line-1); background: var(--panel); }
+.tp__index { padding: var(--s-2) 0; gap: 2px; }
+.tp__index > button { position: relative; display: grid; place-items: center; height: 40px; margin: 0 var(--s-2); border: 0; border-radius: var(--r-1); background: transparent; color: var(--ink-3); font-size: var(--fs-2); }
+.tp__index > button:hover { background: var(--hover); color: var(--ink-1); }
+.tp__index > [aria-current="step"] { background: var(--signal-wash); color: var(--signal-text); font-weight: 600; }
+.tp__index > .is-done::after { content: ""; position: absolute; right: 5px; top: 5px; width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
+.tp__index > button:focus-visible { outline-offset: -3px; }
+
+/* Form column */
+.tp__form { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-6); align-content: start; padding: var(--s-5); border-right: 1px solid var(--line-1); min-width: 0; }
+/* Section jumps and keyboard focus stay clear of the sticky header above and the sticky save bar below */
+html:has(.tp) { scroll-padding-top: calc(var(--head-h) + var(--s-4)); }
+html:has(.tp[data-view="form"]) { scroll-padding-bottom: calc(var(--ctl-h) + var(--s-3) * 2 + 1px + var(--s-3)); }
+.tp__section { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-3); }
+.tp__section > header { display: flex; align-items: baseline; gap: var(--s-3); padding-bottom: var(--s-2); border-bottom: 1px solid var(--line-3); }
+.tp__section > header .num { font-size: var(--fs-1); color: var(--ink-3); }
+.tp__section > header > .seg { align-self: center; }
+.tp__section > header h2:focus-visible { outline-offset: 4px; }
+.fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); }
+.fgrid > .span2 { grid-column: 1 / -1; }
+.tp__actions { position: sticky; bottom: 0; z-index: 3; display: flex; align-items: center; gap: var(--s-2); justify-content: flex-end; margin: 0 calc(var(--s-5) * -1) calc(var(--s-5) * -1); padding: var(--s-3) var(--s-5); background: var(--panel); border-top: 1px solid var(--line-3); }
+.tp__save { flex: 1; min-width: 0; }
+.tp__save[data-state="bad"] { color: var(--bad); }
+.tp__save[data-state="warn"] { color: var(--warn); }
+
+/* codes typed as text (style number) read left to right; real numbers stay right-aligned */
+.tp__form input.input.num:not([type="number"]) { text-align: left; }
+.tp__form .tp-mtable input.input.num { text-align: right; }
+
+/* A control and its button on one line */
+.tp-inline { display: flex; gap: var(--s-2); min-width: 0; }
+.tp-inline > .select, .tp-inline > .input { flex: 1; min-width: 0; }
+.tp-inline > .btn { flex: none; }
+.tp-sub { margin-top: var(--s-2); padding-bottom: var(--s-1); border-bottom: 1px solid var(--line-1); }
+
+/* Check groups (sizes, care labels) */
+.tp-set { margin: 0; padding: 0; border: 0; min-width: 0; display: grid; gap: var(--s-1); }
+.tp-set > legend { padding: 0; margin-bottom: var(--s-1); }
+.tp-checks { display: flex; flex-wrap: wrap; gap: 0 var(--s-4); }
+.tp-checks--2 { display: grid; grid-template-columns: 1fr 1fr; }
+
+/* BASE-CANDIDATE: a native colour input sized and bordered like every other control */
+.tp-color { flex: none; width: var(--ctl-h); height: var(--ctl-h); padding: 2px; border: 1px solid var(--line-2); border-radius: var(--r-1); background: var(--raised); cursor: pointer; }
+.tp-color:hover { border-color: var(--ink-3); }
+.tp-color::-webkit-color-swatch-wrapper { padding: 0; }
+.tp-color::-webkit-color-swatch { border: 0; border-radius: 0; }
+.tp-color::-moz-color-swatch { border: 0; border-radius: 0; }
+
+/* BASE-CANDIDATE: <details> as a collapsible plate (the summary is the plate head) */
+.tp-ready > summary, .tp-grade > summary { cursor: pointer; list-style: none; user-select: none; }
+.tp-ready > summary::-webkit-details-marker, .tp-grade > summary::-webkit-details-marker { display: none; }
+.tp-ready > summary:hover, .tp-grade > summary:hover { background: var(--hover); }
+.tp-ready > summary:focus-visible, .tp-grade > summary:focus-visible { outline-offset: -3px; }
+.tp-ready:not([open]) > summary, .tp-grade:not([open]) > summary { border-bottom: 0; }
+.tp-ready > summary::after, .tp-grade > summary::after { content: ""; flex: none; width: 6px; height: 6px; margin-right: 4px; border: solid var(--ink-2); border-width: 0 1.5px 1.5px 0; transform: translateY(-2px) rotate(45deg); }
+.tp-ready[open] > summary::after, .tp-grade[open] > summary::after { transform: translateY(1px) rotate(-135deg); }
+.tp-ready > summary > .label { flex: 1; min-width: 0; }
+.tp-ready > summary, .tp-grade > summary { min-height: var(--row-h); }
+.tp-grade__base { max-width: 160px; }
+#tp-grade-steps { align-items: end; }
+#tp-grade-steps .field > .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.input-unit:has([aria-invalid="true"]) { border-color: var(--bad); box-shadow: 0 0 0 3px var(--bad-wash); }
+
+/* Readiness: what a factory would still ask */
+.tp-ready__list { display: grid; grid-template-columns: minmax(0, 1fr); border-top: 1px solid var(--line-1); }
+.tp-ready__list:empty { display: none; }
+.tp-ask { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: var(--s-2); align-items: baseline; width: 100%; min-height: var(--row-h); padding: 6px var(--s-1); border: 0; border-bottom: 1px solid var(--line-1); background: transparent; text-align: left; font-size: var(--fs-2); line-height: var(--lh-2); color: var(--ink-1); }
+.tp-ask:hover { background: var(--hover); }
+.tp-ask:focus-visible { outline-offset: -2px; }
+.tp-ask > .num { font-size: var(--fs-1); color: var(--ink-3); }
+.tp-ask > span:last-child { color: var(--ink-2); }
+.tp-ask strong { color: var(--ink-1); font-weight: var(--w-semi); }
+
+/* Measurement table (form) */
+.tp-mtable .table td { padding: var(--s-0); }
+.tp-mtable .table th { padding: 0 var(--s-1); }
+.tp-mtable .table td:first-child { min-width: 96px; }
+.tp-mtable .table td.n { width: 56px; min-width: 56px; }
+.tp-mtable .table td.n > .input { padding: 0 3px; }
+.tp-mtable .table td.tp-mtable__x { width: var(--ctl-h); }
+.tp-mtable .table tbody tr:hover > td { background: transparent; }
+
+/* Colourways (form) */
+.tp-cw { display: grid; grid-template-columns: auto minmax(0, 1fr) 124px auto; gap: var(--s-2); align-items: end; padding-bottom: var(--s-3); border-bottom: 1px solid var(--line-1); }
+.tp-cw > .tp-cw__thread { grid-column: 1 / -1; grid-row: 2; }
+.tp-cw > .btn { grid-column: 4; grid-row: 1; }
+/* Empty states inside the narrow form column: the shared block is sized for a whole page */
+.tp__form .empty { gap: var(--s-1); padding: var(--s-4); }
+
+/* BASE-CANDIDATE: toasts are fixed to the bottom left, which is where this page keeps its sticky
+   save / back / next bar. Lift them clear of it (bar = control + 2 x 12px padding + 1px rule). */
+body:has(.tp[data-view="form"]) .toasts { bottom: calc(var(--ctl-h) + var(--s-3) * 2 + 1px + var(--s-2)); }
+
+/* Placement cards (form) */
+.tp-pl > .plate__head { padding-right: 0; }
+.tp-pl > .plate__head h3 { color: var(--ink-1); }
+.tp-pl > .plate__head h3 .num { margin-right: var(--s-1); color: var(--ink-3); }
+
+/* Garment diagram: two views, each a sketch with absolutely positioned zone buttons.
+   --x --y --w --h are percentages written by js/techpack.js from the zone table. */
+.tp-diagram { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); }
+.tp-view { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-1); }
+.tp-view__stage { position: relative; aspect-ratio: 200 / 180; border: 1px solid var(--line-1); background: var(--raised); }
+.tp-view__stage > svg { position: absolute; inset: 0; width: 100%; height: 100%; fill: none; stroke: var(--ink-2); stroke-width: 1.25; }
+.tp-zone { position: absolute; left: var(--x); top: var(--y); width: var(--w); height: var(--h); display: grid; place-items: center; padding: 0; overflow: hidden; border: 1px dashed var(--line-2); border-radius: var(--r-1); background: color-mix(in srgb, var(--raised) 72%, transparent); color: var(--ink-2); font-size: var(--fs-1); line-height: 1; }
+.tp-zone:hover { border-style: solid; border-color: var(--signal); background: var(--hover); color: var(--ink-1); }
+.tp-zone.is-selected { border-style: solid; border-color: var(--signal); background: var(--signal); color: var(--signal-ink); }
+.tp-zone:focus-visible { outline-offset: 1px; z-index: 1; }
+
+/* Image slots (form) */
+.tp-imgs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-3); }
+.tp-img { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-1); align-content: start; }
+.tp-img__thumb { display: grid; place-items: center; aspect-ratio: 4 / 3; border: 1px solid var(--line-1); background: var(--raised); overflow: hidden; }
+.tp-img__thumb > img { width: 100%; height: 100%; object-fit: contain; }
+.tp-img__name { font-size: var(--fs-1); line-height: var(--lh-1); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tp-img .btn--drop { height: auto; min-height: var(--ctl-h); padding-block: var(--s-1); white-space: normal; text-align: center; }
+.tp-img .btn--drop:focus-within { outline: 2px solid var(--signal); outline-offset: 2px; }
+
+/* Preview: the sheet lies on the work surface. Class "paper" keeps it white in dark theme. */
+.tp__preview { position: sticky; top: var(--head-h); height: calc(100dvh - var(--head-h)); overflow: auto; padding: var(--s-6); background: var(--grid); background-color: var(--bg); }
+.tp-sheet { position: relative; width: 100%; max-width: 816px; min-height: 1056px; margin: 0 auto; padding: 48px; display: flex; flex-direction: column; outline: 1px solid var(--line-2); font-size: var(--fs-2); line-height: var(--lh-3); overflow-wrap: anywhere; }
+/* The sheet sits in a one-cell layout table so that print can repeat the running header (thead) on every page. */
+.tp-print, .tp-print > tbody, .tp-print > tbody > tr, .tp-print > tbody > tr > td { display: flex; flex-direction: column; flex: 1; min-width: 0; padding: 0; }
+.tp-print { width: 100%; border-collapse: collapse; }
+.tp-print > thead { display: none; }
+.tp-sheet__body { display: flex; flex-direction: column; flex: 1; gap: var(--s-5); min-width: 0; }
+.tp-sheet__head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: var(--s-4); padding-bottom: var(--s-3); border-bottom: 2px solid var(--line-3); }
+.tp-sheet__head > .num { max-width: 280px; text-align: right; }
+.tp-sheet__cols { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-5); }
+.tp-sheet__flat { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2); align-items: center; align-content: center; min-height: 200px; padding: var(--s-2); border: 1px solid var(--line-1); }
+.tp-sheet__flat figure { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-1); justify-items: center; }
+.tp-sheet__flat svg { width: 100%; max-width: 300px; height: auto; fill: none; stroke: var(--ink-1); stroke-width: 1.25; }
+.tp-sheet svg .tp-mark { stroke: var(--ink-1); stroke-width: 1; stroke-dasharray: 3 2; fill: none; }
+.tp-sheet svg .tp-mark-dot { fill: var(--ink-1); stroke: none; }
+.tp-sheet svg .tp-mark-no { fill: var(--ink-inv); stroke: none; font-family: var(--font-mono); font-size: 8px; text-anchor: middle; }
+.tp-sheet .tblock { margin-top: auto; }
+
+.tp-sec { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-2); }
+.tp-sec > h3 { padding-bottom: var(--s-1); border-bottom: 1px solid var(--line-3); color: var(--ink-1); }
+.tp-sec > h3 .num { margin-right: var(--s-1); color: var(--ink-3); }
+.tp-sec__note { white-space: pre-wrap; color: var(--ink-1); }
+/* a wide size run scrolls inside its frame instead of spilling off the paper (print: see below) */
+.tp-sheet .table-wrap { overflow-x: auto; }
+.tp-sheet .table { font-size: var(--fs-2); }
+.tp-sheet .table th { position: static; height: 24px; white-space: normal; }
+.tp-sheet .table td { height: 24px; padding-block: var(--s-1); white-space: normal; vertical-align: top; }
+.tp-sheet .table tbody th { height: 24px; padding-block: var(--s-1); background: transparent; border-bottom: 1px solid var(--line-1); font: inherit; font-stretch: normal; letter-spacing: normal; text-transform: none; color: var(--ink-1); vertical-align: top; }
+.tp-sheet .table .n, .tp-sheet .table .num, .tp-sheet .table thead th { white-space: nowrap; overflow-wrap: normal; }
+.tp-sheet .table tbody th, .tp-sheet .table td:first-child { min-width: 104px; }
+.tp-sheet .table tbody tr:hover > td { background: transparent; }
+.tp-sheet .spec dt { flex: 1 0 auto; }
+.tp-sheet .spec dd { flex: 0 1 auto; min-width: 0; white-space: normal; text-align: right; }
+.spec--2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: var(--s-5); }
+/* Swatch: an inline SVG with a stroke, so it prints with background graphics off */
+.tp-sw { display: inline-block; width: 12px; height: 12px; margin-right: 6px; vertical-align: -2px; flex: none; }
+.tp-sw > rect { stroke: var(--line-3); stroke-width: 1; }
+.tp-sheet__pls { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s-3); }
+.tp-sheet__pl { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-1); align-content: start; padding: var(--s-2); border: 1px solid var(--line-1); }
+.tp-sheet__pl > strong .num { display: inline-block; min-width: 18px; margin-right: var(--s-1); padding: 0 3px; border: 1px solid var(--line-3); text-align: center; font-weight: 400; }
+.tp-sheet__imgs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-3); align-items: start; }
+.tp-sheet__imgs figure { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-1); }
+.tp-sheet__imgs img { width: 100%; height: auto; max-height: 280px; object-fit: contain; border: 1px solid var(--line-1); }
+.tp-sheet__tags { display: flex; flex-wrap: wrap; gap: var(--s-1); }
+.tp-sheet__hint { color: var(--ink-3); }
+
+@media (pointer: coarse) {
+  .tp-diagram { grid-template-columns: minmax(0, 1fr); }
+  /* the hem zone is 22 of 180 units tall: under 44px on a phone without this */
+  .tp-zone { min-width: 44px; min-height: 44px; }
+  .tp-ask { padding-block: var(--s-3); }
+  /* 16px control text needs wider cells; the table scrolls sideways inside its frame */
+  .tp-mtable .table td:first-child { min-width: 128px; }
+  .tp-mtable .table td.n { width: 76px; min-width: 76px; }
+}
+
+@media screen and (max-width: 1100px) {
+  .tp { grid-template-columns: 48px minmax(0, 1fr) minmax(0, 1fr); }
+  .tp__preview { padding: var(--s-4); }
+  .tp-sheet { padding: 28px; }
+  .fgrid { grid-template-columns: minmax(0, 1fr); }
+  .tp-cw { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .tp-cw > .tp-cw__wide { grid-column: 1 / -1; grid-row: auto; }
+  .tp-cw > .btn { grid-row: 1; grid-column: 3; }
+  .tp-imgs { grid-template-columns: minmax(0, 1fr); }
+  .tp-sheet__cols, .tp-sheet__pls, .spec--2 { grid-template-columns: minmax(0, 1fr); }
+  .tp-sheet__head { grid-template-columns: minmax(0, 1fr); }
+  .tp-sheet__head > .num { max-width: none; text-align: left; }
+}
+@media screen and (max-width: 720px) {
+  /* One column. data-view="form" | "sheet" on .tp picks what is shown (a .seg in the page head switches it). */
+  .tp { grid-template-columns: minmax(0, 1fr); }
+  .tp__index { position: sticky; z-index: 4; display: flex; align-items: center; gap: 2px; height: 48px; padding: 0 var(--s-1); overflow-x: auto; scrollbar-width: none; border-right: 0; border-bottom: 1px solid var(--line-1); }
+  .tp__index > button { flex: 1 0 44px; height: 40px; margin: 0; }
+  .tp__form { padding: var(--s-4); border-right: 0; }
+  html:has(.tp[data-view="form"]) { scroll-padding-top: calc(var(--head-h) + 44px + var(--s-4)); scroll-padding-bottom: calc(var(--ctl-h) + var(--s-2) * 3 + 1px + env(safe-area-inset-bottom, 0px)); }
+  /* one row: save status, Back, Next (the section name is dropped from Next at this width) */
+  .tp__actions { margin: 0 calc(var(--s-4) * -1) calc(var(--s-4) * -1); padding: var(--s-2) var(--s-4) calc(var(--s-2) + env(safe-area-inset-bottom, 0px)); }
+  .tp__actions > .btn { flex: none; min-width: 72px; }
+  body:has(.tp[data-view="form"]) .toasts { bottom: calc(var(--ctl-h) + var(--s-2) * 3 + 1px + env(safe-area-inset-bottom, 0px)); }
+  .tp__preview { position: static; height: auto; padding: var(--s-3); }
+  .tp[data-view="form"] .tp__preview, .tp[data-view="sheet"] .tp__form, .tp[data-view="sheet"] .tp__index { display: none; }
+  .tp-sheet { min-height: 0; padding: var(--s-4); }
+  .tp-diagram { grid-template-columns: minmax(0, 1fr); }
+  .tp-checks--2 { grid-template-columns: minmax(0, 1fr); }
+  .tp-sheet__imgs { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Print: only the sheet, always light (.paper + the print tokens in base.css), on whatever
+   paper the printer has (A4 and US Letter both fit: nothing below has a fixed width).
+   These rules come last and are not behind "screen", so they win over the breakpoints above. */
+@media print {
+  @page {
+    margin: 12mm 12mm 16mm;
+    @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 400 8pt "Archivo", "Helvetica Neue", Arial, sans-serif; }
+    @bottom-left { content: "EmbroideryLabs tech pack"; font: 400 8pt "Archivo", "Helvetica Neue", Arial, sans-serif; }
+  }
+  .page-head, .tp__index, .tp__form { display: none !important; }
+  main, .tp { display: block; border: 0; }
+  .tp__preview { display: block !important; position: static; height: auto; overflow: visible; padding: 0; background: none; }
+  .tp-sheet { display: block; max-width: none; min-height: 0; padding: 0; outline: 0; font-size: 9pt; line-height: 1.4; }
+  .tp-sheet.marked::before, .tp-sheet.marked::after { display: none; }
+  .tp-print { display: table; table-layout: fixed; width: 100%; }
+  .tp-print > thead { display: table-header-group; break-inside: avoid; }
+  .tp-print > tbody { display: table-row-group; }
+  .tp-print > thead > tr, .tp-print > tbody > tr { display: table-row; }
+  .tp-print > thead > tr > td, .tp-print > tbody > tr > td { display: table-cell; padding: 0; }
+  .tp-run { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-4); margin-bottom: var(--s-4); padding-bottom: var(--s-1); border-bottom: 1px solid var(--line-3); }
+  .tp-run > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tp-run > span:first-child { flex: 1; }
+  .tp-sheet__body { display: block; }
+  .tp-sheet__body > * + * { margin-top: var(--s-5); }
+  .tp-sheet__cols { grid-template-columns: 1fr 1fr; }
+  .tp-sheet__pls { grid-template-columns: 1fr 1fr; }
+  .spec--2 { grid-template-columns: 1fr 1fr; }
+  .tp-sheet__imgs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .tp-sheet__head { grid-template-columns: minmax(0, 1fr) auto; }
+  .tp-sheet__head > .num { max-width: 280px; text-align: right; }
+  .tp-sheet .table-wrap { overflow: visible; border-color: var(--line-2); }
+  .tp-sheet .title { font-size: 22pt; line-height: 1.1; }
+  /* keep rows, cards and figures whole; let sections flow across pages */
+  .tp-sheet tr, .tp-sheet .spec > div, .tp-sheet__pl, .tp-sheet__imgs figure, .tp-sheet__head, .tp-sheet__flat, .tp-sheet .tblock { break-inside: avoid; }
+  .tp-sec > h3 { break-after: avoid; }
+  .tp-sec__note { orphans: 3; widows: 3; }
+  /* never a last page that holds the title block alone: it travels with the end of the section above */
+  .tp-sheet .tblock { margin-top: var(--s-5); break-before: avoid; }
+}

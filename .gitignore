@@ -13,3 +13,6 @@ env/
 *.swp
 *.swo
 *~
+
+# local safety copies of pre-rebuild files
+.backup-*/

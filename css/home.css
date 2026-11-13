@@ -1,0 +1,56 @@
+/* EMBROIDERY LABS - css/home.css (index.html only). Loaded after css/base.css. */
+
+/* BASE-CANDIDATE: a page shorter than the window left a strip of --bg under the footer
+   (98px at 1920x1080). Keep the footer on the bottom edge; the slack goes above it. */
+body { display: flex; flex-direction: column; }
+main { flex: 1 0 auto; }
+
+/* Header: with no tool nav, the GitHub link and theme switch sit on the right */
+.site-head__tools { margin-left: auto; }
+
+/* Hero: copy left, figure right */
+.hero { border-bottom: 0; }
+.hero__grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); }
+.hero__copy { display: grid; align-content: center; justify-items: start; gap: var(--s-5); padding: var(--s-8) var(--s-6) var(--s-8) 0; }
+.hero__fig { display: grid; grid-template-columns: minmax(0, 1fr); align-content: center; min-width: 0; padding: var(--s-6); }
+.hero__art { display: grid; place-items: center; }
+.hero__art svg { width: min(100%, 420px); height: auto; overflow: visible; }
+
+/* Hero figure. viewBox units are 0.1 mm from the hoop centre; both thread paths are a real stitch
+   layout (tatami fill, then satin border), each one continuous run so .sew-line draws it in sewing order. */
+.fig-hoop__frame { fill: var(--sunken); stroke: var(--line-3); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.fig-hoop__cloth { fill: var(--fabric); stroke: var(--line-3); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.fig-hoop__field { fill: none; stroke: var(--fabric-ink); stroke-opacity: .28; stroke-width: 1px; stroke-dasharray: 1 5; vector-effect: non-scaling-stroke; }
+.fig-thread { fill: none; stroke-linejoin: round; stroke-linecap: butt; }
+.fig-thread--a { stroke: var(--thread-a); stroke-width: 3.9; }
+.fig-thread--b { stroke: var(--thread-b); stroke-width: 3.2; animation-duration: calc(var(--t-stitch) * .7); animation-delay: calc(var(--t-stitch) + .3s); }
+.fig-holes { fill: none; stroke: var(--fabric); stroke-opacity: .8; stroke-width: 1.1; stroke-linecap: butt; }
+.fig-vector path { fill: none; stroke: var(--fabric-ink); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.fig-nodes rect { fill: var(--fabric); stroke: var(--fabric-ink); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.fig-needle { fill: none; stroke: var(--fabric-signal); stroke-width: 1px; }
+.fig-needle path, .fig-needle circle { vector-effect: non-scaling-stroke; }
+.fig-needle circle { fill: var(--fabric); }
+
+.hero__actions { display: flex; flex-wrap: wrap; gap: var(--s-3); }
+
+/* How it works: three short steps */
+.steps { padding-top: var(--s-4); }
+.steps__list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-3); }
+.step { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; align-content: start; gap: 2px var(--s-3); padding: var(--s-5); border: 1px solid var(--line-1); border-radius: var(--r-0); background: var(--raised); }
+.step__no { grid-row: 1 / span 2; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--signal-wash); color: var(--signal-text); font: var(--w-semi) var(--fs-4)/1 var(--font-ui); }
+.step__name { font: var(--w-semi) var(--fs-5)/32px var(--font-ui); }
+.step__what { grid-column: 2; color: var(--ink-2); font-size: var(--fs-4); line-height: var(--lh-4); text-wrap: balance; }
+
+@media screen and (max-width: 1100px) {
+  .steps__list { grid-template-columns: minmax(0, 1fr); }
+}
+@media screen and (max-width: 720px) {
+  .hero__grid { grid-template-columns: minmax(0, 1fr); }
+  .hero__copy { padding: var(--s-5) 0; border-right: 0; gap: var(--s-4); }
+  .hero__actions { width: 100%; }
+  .hero__actions > .btn { flex: 1 1 auto; }
+  .hero__fig { padding: 0 0 var(--s-5); }
+  .hero__art svg { width: min(100%, 240px); }
+  .steps { padding-top: 0; }
+  .step { padding: var(--s-4); }
+}

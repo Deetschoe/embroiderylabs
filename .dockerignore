@@ -13,3 +13,7 @@ README.md
 *.log
 .vscode
 .idea
+
+.backup-*
+tests
+archive

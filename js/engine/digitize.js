@@ -390,6 +390,18 @@
     return Math.max(0, n * repeats - 8);
   }
 
+  // ------------------------------------------------------------------ fill patterns
+  // A pattern is where the needle lands from one row to the next (staggers = how many rows before the needle
+  // points line up again), or a second pass across the first (cross). 'smooth' is the default and is exactly the
+  // fill the engine has always made.
+  const FILL_PATTERNS = {
+    smooth:     { label: 'Smooth' },
+    brick:      { label: 'Brick', staggers: 2 },
+    ribbed:     { label: 'Ribbed', staggers: 1 },
+    diagonal:   { label: 'Diagonal', staggers: 8 },
+    crosshatch: { label: 'Crosshatch', cross: true },
+  };
+
   // ------------------------------------------------------------------ tatami fill
   function tatamiRow(span, L, staggers, dir, out) {
     const phase = ((span.k % staggers) / staggers) * L, minEnd = L * 0.3, at = out.length;
@@ -973,12 +985,27 @@
       const pullComp = param(f, 'pullComp', DEFAULTS.fill.pullComp, LIMITS.pullComp, 'Pull compensation');
       const underlay = f.underlay === undefined ? DEFAULTS.fill.underlay : !!f.underlay;
       if (spacing < LIMITS.denseBelow) warn('TOO_DENSE', { message: 'Fill rows closer than ' + LIMITS.denseBelow + ' mm are very dense; the fabric may pucker.' });
-      const res = fillShape(closedSubs, { spacing, stitchLen, angleDeg: ((angle % 180) + 180) % 180, pullComp, underlay, rule: geo.rule, maxStitches: budget ? budget.left : undefined });
+      let patKey = f.pattern === undefined || f.pattern === null ? 'smooth' : String(f.pattern).toLowerCase();
+      if (!Object.prototype.hasOwnProperty.call(FILL_PATTERNS, patKey)) { warn('PARAM_CLAMPED', { param: 'Fill pattern', value: 'smooth', message: 'Unknown fill pattern; the smooth fill was used.' }); patKey = 'smooth'; }
+      const pat = FILL_PATTERNS[patKey];
+      const fopt = { spacing, stitchLen, angleDeg: ((angle % 180) + 180) % 180, pullComp, underlay, rule: geo.rule, maxStitches: budget ? budget.left : undefined };
+      if (pat.staggers) fopt.staggers = pat.staggers;
+      // crosshatch: an open lattice, two passes at right angles with the rows well apart and nothing underneath
+      if (pat.cross) { fopt.spacing = Math.min(LIMITS.fillSpacing[1], Math.max(1.2, spacing * 3)); fopt.underlay = false; }
+      const res = fillShape(closedSubs, fopt);
       if (res.skipped === 'OVER_LIMIT') { budget.need = res.lowerBound; return parts; }
       if (budget && !res.skipped) budget.left -= res.lowerBound;
       if (res.skipped === 'TOO_LARGE') warn('TOO_LARGE');
       else if (res.skipped) { if (!lineSubs.length) warn('TINY_OBJECT'); }
-      else { parts.push({ color, points: res.points, objectIndex: index, kind: 'fill', stats: res.stats }); if (res.stats.thin) warn('THIN_FILL'); }
+      else {
+        parts.push({ color, points: res.points, objectIndex: index, kind: 'fill', stats: res.stats }); if (res.stats.thin) warn('THIN_FILL');
+        if (pat.cross) {
+          const res2 = fillShape(closedSubs, Object.assign({}, fopt, { angleDeg: (fopt.angleDeg + 90) % 180, maxStitches: budget ? budget.left : undefined }));
+          if (res2.skipped === 'OVER_LIMIT') { budget.need = res2.lowerBound; return parts; }
+          if (budget && !res2.skipped) budget.left -= res2.lowerBound;
+          if (!res2.skipped) parts.push({ color, points: res2.points, objectIndex: index, kind: 'fill', stats: res2.stats });
+        }
+      }
     }
 
     if (lineSubs.length) {
@@ -1154,7 +1181,7 @@
   }
 
   return {
-    OP, OP_NAME, DEFAULTS, LIMITS,
+    OP, OP_NAME, DEFAULTS, LIMITS, FILL_PATTERNS,
     digitize, validateIR, normColor,
     // lower-level pieces, exported for tests and tools (not part of the stable API)
     fillShape, satinLine, runStitch, bean, assemble, EdgeIndex, buildRows, buildRegions, densityStats, simplify, _tuning: T,

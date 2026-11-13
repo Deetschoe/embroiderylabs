@@ -11,7 +11,7 @@
    ========================================================================== */
 (function () {
   'use strict';
-  var Editor = window.Editor, M = Editor.Model, V = Editor.View;
+  var Editor = window.Editor, M = Editor.Model, V = Editor.View, G = Editor.Geom;
   var P = Editor.Panels = {};
   var el = {};
   var SVGNS = 'http://www.w3.org/2000/svg';
@@ -68,9 +68,9 @@
   function canFill(o) { return o.type !== 'line' && !(o.type === 'pen' && !o.closed && o.pts.length < 3); }
   /* Which controls do anything for the selection (all of them for the defaults). */
   function usage(sel) {
-    var u = { paint: true, lineType: true, lineWidth: true, spacing: true, stitchLen: true, angle: true };
+    var u = { paint: true, lineType: true, lineWidth: true, spacing: true, stitchLen: true, angle: true, pattern: true };
     if (!sel.length) return u;
-    u = { paint: false, lineType: false, lineWidth: false, spacing: false, stitchLen: false, angle: false };
+    u = { paint: false, lineType: false, lineWidth: false, spacing: false, stitchLen: false, angle: false, pattern: false };
     sel.forEach(function (o) {
       var p = M.paintOf(o), line = p !== 'fill', fill = p !== 'line', satin = line && o.lineType === 'satin';
       if (canFill(o)) u.paint = true;
@@ -78,7 +78,7 @@
       if (satin) u.lineWidth = true;
       if (fill || satin) u.spacing = true;
       if (fill || (line && !satin)) u.stitchLen = true;
-      if (fill) u.angle = true;
+      if (fill) { u.angle = true; u.pattern = true; }
     });
     return u;
   }
@@ -110,6 +110,12 @@
     var type = current('lineType');
     el.type.value = type.value;
     setOff(el.type.closest('.prop'), !use.lineType, 'Only used when the shape has a line (Paint: Line or Both).', [el.type]);
+
+    if (el.pattern) {
+      var pat = current('pattern');
+      el.pattern.value = pat.mixed ? '' : (pat.value || 'smooth');
+      setOff(el.pattern.closest('.prop'), !use.pattern, 'Only used by fills.', [el.pattern]);
+    }
 
     var why = {
       lineWidth: 'Only used by satin lines.',
@@ -148,6 +154,28 @@
       if (el.hoop.options[i].textContent !== text) el.hoop.options[i].textContent = text;
     }
     el.hoop.value = key;
+    /* Small and Big are the two quick picks; anything else, or a press on Custom, shows the fields */
+    var quick = el.hoopBtns.some(function (b) { return b.getAttribute('data-hoop') === key; });
+    var custom = hoopCustom || !quick;
+    el.hoopBtns.forEach(function (b) {
+      var k = b.getAttribute('data-hoop');
+      b.setAttribute('aria-pressed', (k === 'custom' ? custom : (!custom && k === key)) ? 'true' : 'false');
+    });
+    if (el.hoopCustom) el.hoopCustom.hidden = !custom;
+    var U = Editor.Units;
+    /* nothing here runs while a number is being typed (only after it is entered), so the fields can always be set */
+    if (el.hoopW) el.hoopW.value = U.short(M.doc.hoop.w);
+    if (el.hoopH) el.hoopH.value = U.short(M.doc.hoop.h);
+    el.hoopUnits.forEach(function (n) { n.textContent = U.label(); });
+  }
+  var hoopCustom = false;
+  function setHoopSize(w, h) {
+    w = G.r2(G.clamp(w, 10, 1000)); h = G.r2(G.clamp(h, 10, 1000));
+    if (w === M.doc.hoop.w && h === M.doc.hoop.h) return false;
+    if (!M.setHoop(w, h)) return false;
+    Editor.Prefs.setHoop(w, h);
+    say('Hoop ' + Editor.Units.short(w) + ' by ' + Editor.Units.short(h) + ' ' + Editor.Units.word());
+    return true;
   }
   function renderUnits() {
     var U = Editor.Units;
@@ -168,7 +196,7 @@
     el.target = $('insp-target'); el.footSel = $('footer-sel');
     el.fill = $('btn-fill'); el.stroke = $('btn-stroke'); el.both = $('btn-both');
     el.color = $('shape-color'); el.swatch = $('shape-color-swatch'); el.hex = $('color-hex');
-    el.type = $('stitch-type'); el.hoop = $('hoop-size'); el.fabricColor = $('fabric-color');
+    el.type = $('stitch-type'); el.pattern = $('fill-pattern'); el.hoop = $('hoop-size'); el.hoopBtns = Array.prototype.slice.call(document.querySelectorAll('[data-hoop]')); el.hoopCustom = $('hoop-custom'); el.hoopW = $('hoop-w'); el.hoopH = $('hoop-h'); el.hoopUnits = Array.prototype.slice.call(document.querySelectorAll('[data-hoop-unit]')); el.fabricColor = $('fabric-color');
     el.fabricBtns = Array.prototype.slice.call(document.querySelectorAll('[data-fabric]'));
 
     el.fill.addEventListener('click', function () { apply('paint', 'fill'); });
@@ -178,6 +206,12 @@
     el.color.addEventListener('input', function () { apply('color', el.color.value, true); });
     el.color.addEventListener('change', function () { apply('color', el.color.value, true); M.seal(); });
     el.type.addEventListener('change', function () { apply('lineType', el.type.value); });
+    if (el.pattern) {
+      Object.keys(M.PATTERNS).forEach(function (k) {
+        var opt = document.createElement('option'); opt.value = k; opt.textContent = M.PATTERNS[k].label || k; el.pattern.appendChild(opt);
+      });
+      el.pattern.addEventListener('change', function () { if (el.pattern.value) apply('pattern', el.pattern.value); });
+    }
 
     PAIRS.forEach(function (p) {
       var r = M.RANGES[p.key];
@@ -194,8 +228,28 @@
 
     el.hoop.addEventListener('change', function () {
       var m = /^(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)$/.exec(el.hoop.value);
-      if (m && M.setHoop(parseFloat(m[1]), parseFloat(m[2]))) say('Hoop ' + Editor.Units.short(parseFloat(m[1])) + ' by ' + Editor.Units.short(parseFloat(m[2])) + ' ' + Editor.Units.word());
+      if (m) setHoopSize(parseFloat(m[1]), parseFloat(m[2]));
       renderHoop();
+    });
+    el.hoopBtns.forEach(function (b) {
+      b.addEventListener('click', function () {
+        var k = b.getAttribute('data-hoop'), m = /^(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)$/.exec(k);
+        if (k === 'custom') { hoopCustom = true; renderHoop(); if (el.hoopW) { el.hoopW.focus(); el.hoopW.select(); } return; }
+        hoopCustom = false;
+        if (m) setHoopSize(parseFloat(m[1]), parseFloat(m[2]));
+        renderHoop();
+      });
+    });
+    /* width and height are typed in the unit on show; the document stays in millimetres */
+    function typed() {
+      var k = Editor.Units.get() === 'in' ? Editor.Units.MM_PER_IN : 1, w = parseFloat(el.hoopW.value) * k, h = parseFloat(el.hoopH.value) * k;
+      if (isFinite(w) && isFinite(h) && w > 0 && h > 0) setHoopSize(w, h);
+      renderHoop();
+    }
+    [el.hoopW, el.hoopH].forEach(function (input) {
+      if (!input) return;
+      input.addEventListener('change', typed);
+      input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); input.blur(); } });
     });
 
     el.unitBtns.forEach(function (b) {

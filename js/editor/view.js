@@ -452,6 +452,12 @@
         c.strokeStyle = colors.ink; c.strokeRect(hx, hy, hs, hs);
       }
     }
+    if (V.eraser) {
+      px();
+      var er = V.eraser, ex = V.ox + er.x * ppm, ey = V.oy + er.y * ppm;
+      c.setLineDash([]); c.lineWidth = 1.5; c.strokeStyle = G.rgba(colors.signal, 0.9); c.fillStyle = G.rgba(colors.signal, 0.10);
+      c.beginPath(); c.arc(ex, ey, er.r * ppm, 0, Math.PI * 2); c.fill(); c.stroke();
+    }
     if (V.marquee) {
       px(); b = V.marquee;
       c.fillStyle = G.rgba(colors.signal, 0.08); c.strokeStyle = colors.signal; c.lineWidth = 1; c.setLineDash([4, 3]);

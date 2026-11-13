@@ -331,6 +331,7 @@
   Engine.version = VERSION;
   Engine.OP = OP;
   Engine.DEFAULTS = Digitizer.DEFAULTS;
+  Engine.FILL_PATTERNS = Digitizer.FILL_PATTERNS;   // { key: { label } }: the values `fill.pattern` accepts
   Engine.LIMITS = Digitizer.LIMITS;
   Engine.FORMATS = FORMATS;
   Engine.generate = generate;

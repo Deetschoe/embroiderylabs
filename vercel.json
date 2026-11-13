@@ -6,6 +6,9 @@
   "outputDirectory": ".",
   "redirects": [
     { "source": "/home.html", "destination": "/", "permanent": true },
-    { "source": "/home", "destination": "/", "permanent": true }
+    { "source": "/home", "destination": "/", "permanent": true },
+    { "source": "/blanks.html", "destination": "/", "permanent": false },
+    { "source": "/techpack.html", "destination": "/", "permanent": false },
+    { "source": "/dropcalc.html", "destination": "/", "permanent": false }
   ]
 }

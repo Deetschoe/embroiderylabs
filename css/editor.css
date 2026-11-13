@@ -8,8 +8,10 @@ html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
 
 /* ---------- Shell ---------------------------------------------------------- */
 .ed { display: grid; height: 100dvh; overflow: hidden; background: var(--bg);
+  --tabs-h: 36px; --top-h: calc(var(--bar-h) + var(--tabs-h));   /* top bar + the row of design tabs */
   grid-template:
     "bar  bar  bar   bar"  var(--bar-h)
+    "tabs tabs tabs  tabs" var(--tabs-h)
     "rail insp stage side" minmax(0, 1fr)
     "stat stat stat  stat" var(--status-h)
     / var(--rail-w) 272px minmax(0, 1fr) 264px; }
@@ -161,17 +163,18 @@ div.sec__head { cursor: default; }
 @media screen and (max-width: 1100px) {
   .ed { grid-template:
     "bar  bar  bar"   var(--bar-h)
+    "tabs tabs tabs"  var(--tabs-h)
     "rail insp stage" minmax(0, 1fr)
     "stat stat stat"  var(--status-h)
     / var(--rail-w) 256px minmax(0, 1fr); }
   .ed-bar__drawer { display: inline-flex; }
-  .pane--side { position: fixed; top: var(--bar-h); bottom: var(--status-h); right: 0; width: 280px; z-index: var(--z-drawer); border-left: 1px solid var(--line-1); box-shadow: var(--shadow-sheet); transform: translateX(100%); visibility: hidden; transition: transform var(--t-3) var(--ease), visibility 0s linear var(--t-3); }
+  .pane--side { position: fixed; top: var(--top-h); bottom: var(--status-h); right: 0; width: 280px; z-index: var(--z-drawer); border-left: 1px solid var(--line-1); box-shadow: var(--shadow-sheet); transform: translateX(100%); visibility: hidden; transition: transform var(--t-3) var(--ease), visibility 0s linear var(--t-3); }
   .pane--side.is-open { transform: none; visibility: visible; transition-delay: 0s; }
 }
 /* ---------- Phone: canvas first, tools along the bottom, the rest in the sheet */
 @media screen and (max-width: 720px) {
-  .ed { grid-template: "bar" var(--bar-h) "stage" minmax(0, 1fr) "dock" calc(var(--dock-h) + env(safe-area-inset-bottom, 0px)) / 100%; }
-  .rail, .status, .ed-bar__drawer, .ed-bar .seg, .ed-bar__state, .ed-bar__help, .ed-bar__sep, .ed-bar .brand > span, .ed-bar [data-theme-toggle] { display: none; }
+  .ed { grid-template: "bar" var(--bar-h) "tabs" var(--tabs-h) "stage" minmax(0, 1fr) "dock" calc(var(--dock-h) + env(safe-area-inset-bottom, 0px)) / 100%; }
+  .rail, .status, .ed-bar__drawer, .ed-bar .seg, .ed-bar__state, .ed-bar__help, .ed-bar__sep, .ed-bar .brand > span, .ed-bar [data-theme-toggle], .ed-bar .filemenu { display: none; }   /* File lives in the More menu on phones */
   .ed-bar__file { flex: 1; }
   .ed-bar__file > input { flex: 1; width: auto; max-width: none; }
   .ed-bar__spacer { display: none; }
@@ -180,7 +183,7 @@ div.sec__head { cursor: default; }
   .stage__corner, .ruler-x, .ruler-y { display: none; }
   .dock { display: flex; }
   .sheet { display: flex; flex-direction: column; position: fixed; left: 0; right: 0; bottom: calc(var(--dock-h) + env(safe-area-inset-bottom, 0px)); z-index: var(--z-sheet);
-    height: var(--sheet-h, 60px); max-height: calc(100dvh - var(--bar-h) - var(--dock-h) - env(safe-area-inset-bottom, 0px));
+    height: var(--sheet-h, 60px); max-height: calc(100dvh - var(--top-h) - var(--dock-h) - env(safe-area-inset-bottom, 0px));
     background: var(--panel); border-radius: var(--r-0) var(--r-0) 0 0; box-shadow: var(--shadow-sheet); overflow: hidden; transition: height var(--t-3) var(--ease); }
   .sheet[data-detent="peek"] { --sheet-h: 60px; }
   .sheet[data-detent="half"] { --sheet-h: 46dvh; }
@@ -238,6 +241,10 @@ div.sec__head { cursor: default; }
 .menu > button > .num { color: var(--ink-3); font-size: var(--fs-1); }
 .menu > button:hover, .menu > button:focus-visible { background: var(--hover); }
 .menu > button:focus-visible { outline-offset: -2px; }
+.menu--left { right: auto; left: 0; }
+.menu > button > .num { justify-self: end; }
+.filemenu { position: relative; display: inline-flex; flex: none; }
+.filemenu > .btn { padding: 0 var(--s-2); }
 .tag.is-busy { border-style: dashed; }
 
 /* ---------- Properties: controls that do nothing for the selection ---------- */
@@ -256,6 +263,9 @@ div.sec__head { cursor: default; }
 .mini:hover { background: var(--hover); color: var(--ink-1); }
 .mini[disabled] { color: var(--line-2); cursor: not-allowed; background: transparent; }
 .layers { max-height: 46vh; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
+/* a long sewing order must not squash the preview and read-outs under it: the list gives way, then the panel scrolls */
+.pane--side > .sec__head, .pane--side > .preview, .pane--side > .seq, .pane--side > .stats, .pane--side > .warns { flex: none; }
+.pane--side > .layers { flex: 0 1 auto; min-height: 112px; }
 .layer { position: relative; user-select: none; -webkit-user-select: none; touch-action: pan-y; }
 .layer:focus-visible { outline-offset: -2px; }
 .layer.is-dragging { opacity: .45; }
@@ -341,7 +351,7 @@ button.warn:focus-visible { outline-offset: -2px; }
   .ed-bar .brand > span, .ed-bar__sep, .ed-bar .btn kbd { display: none; }
   .ed-bar__file { flex: 0 1 auto; min-width: 9ch; }
   .ed-bar__file > input { min-width: 0; }
-  .pane--side { top: calc(var(--bar-h) + env(safe-area-inset-top, 0px)); bottom: calc(var(--status-h) + env(safe-area-inset-bottom, 0px)); right: env(safe-area-inset-right, 0px); }
+  .pane--side { top: calc(var(--top-h) + env(safe-area-inset-top, 0px)); bottom: calc(var(--status-h) + env(safe-area-inset-bottom, 0px)); right: env(safe-area-inset-right, 0px); }
 }
 @media screen and (max-width: 720px) {
   .ed { padding-bottom: 0; }   /* the dock carries the bottom inset itself */
@@ -350,12 +360,87 @@ button.warn:focus-visible { outline-offset: -2px; }
   .ed-bar__file { flex: 1; min-width: 0; }
   .more > [data-theme-toggle][aria-pressed="true"] { background: transparent; color: inherit; }   /* a switch, not the active tool */
   .menu { top: calc(var(--bar-h) + env(safe-area-inset-top, 0px) + 4px); }
-  .sheet { left: env(safe-area-inset-left, 0px); right: env(safe-area-inset-right, 0px); max-height: calc(100dvh - var(--bar-h) - var(--dock-h) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); }
+  .sheet { left: env(safe-area-inset-left, 0px); right: env(safe-area-inset-right, 0px); max-height: calc(100dvh - var(--top-h) - var(--dock-h) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); }
   .sheet[data-detent="half"] ~ .stage .hud { bottom: calc(46dvh + var(--s-2)); }   /* stays above the open sheet */
-  .more { right: calc(var(--s-2) + env(safe-area-inset-right, 0px)); max-height: calc(100dvh - var(--bar-h) - var(--dock-h) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 2 * var(--s-2)); overflow-y: auto; }
+  .more { right: calc(var(--s-2) + env(safe-area-inset-right, 0px)); max-height: calc(100dvh - var(--top-h) - var(--dock-h) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 2 * var(--s-2)); overflow-y: auto; }
   .play { left: var(--s-2); right: var(--s-2); top: calc(var(--ctl-h) + 2 * var(--s-2)); width: auto; transform: none; }
   .view.is-stitch > .toasts { top: calc(2 * var(--ctl-h) + 4 * var(--s-2)); }   /* under the playback bar */
 }
 
+.hoop-custom { display: grid; gap: var(--s-1); }
+.hoop-custom[hidden] { display: none; }
+
 /* ---------- Small switch row (Show grid) -------------------------------------------- */
 .prop > .check-row { min-height: var(--row-h); font-size: var(--fs-2); color: var(--ink-2); }
+
+/* ==========================================================================
+   Design tabs and the Mockup view (js/editor/tabs.js, js/editor/mockup.js)
+   ========================================================================== */
+
+/* ---------- Row of design tabs ------------------------------------------------------ */
+.dtabs-row { grid-area: tabs; display: flex; align-items: center; gap: var(--s-1); min-width: 0; padding: 0 var(--s-2); background: var(--bg); border-bottom: 1px solid var(--line-1); }
+.dtabs { display: flex; align-items: center; gap: 2px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.dtabs::-webkit-scrollbar { display: none; }
+.dtab { display: flex; align-items: center; gap: 2px; flex: 0 1 auto; min-width: 72px; max-width: 200px; height: 28px; padding: 0 2px 0 var(--s-3); border-radius: var(--r-1); color: var(--ink-2); cursor: pointer; user-select: none; -webkit-user-select: none;
+  font: var(--w-medium) var(--fs-2)/1 var(--font-ui); transition: background var(--t-1) var(--ease), color var(--t-1) var(--ease); }
+.dtab:hover { background: var(--hover); color: var(--ink-1); }
+.dtab[aria-selected="true"] { background: var(--raised); color: var(--ink-1); box-shadow: var(--shadow-soft), 0 0 0 1px var(--line-1); }
+.dtab:focus-visible { outline-offset: -2px; }
+.dtab__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dtab__x { display: grid; place-items: center; flex: none; width: 22px; height: 22px; padding: 0; border: 0; border-radius: var(--r-2); background: transparent; color: var(--ink-3); cursor: pointer; opacity: 0; }
+.dtab:hover .dtab__x, .dtab[aria-selected="true"] .dtab__x, .dtab__x:focus-visible { opacity: 1; }
+.dtab__x:hover { background: var(--sunken); color: var(--ink-1); }
+.dtab__x svg, .dtab-add svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
+.dtab-add { display: grid; place-items: center; flex: none; width: 28px; height: 28px; padding: 0; border: 0; border-radius: var(--r-1); background: transparent; color: var(--ink-2); cursor: pointer; }
+.dtab-add:hover { background: var(--hover); color: var(--ink-1); }
+.dtab-add[disabled] { opacity: .4; cursor: not-allowed; }
+.dtabs-row > .grow { flex: 1; }
+.dtab-mock { flex: none; height: 28px; gap: 6px; }
+.dtab-mock[aria-pressed="true"] { background: var(--signal-wash); color: var(--signal-text); }
+@media (pointer: coarse) { .ed { --tabs-h: 48px; } .dtab, .dtab-add, .dtab-mock { height: 40px; } .dtab__x { opacity: 1; width: 32px; height: 32px; } }
+
+/* ---------- Mockup view: takes the place of the editor below the tabs ------------------ */
+.mock { grid-column: 1 / -1; grid-row: 3 / -1; display: grid; grid-template-columns: 272px minmax(0, 1fr) 264px; min-height: 0; background: var(--bg); }
+.mock[hidden] { display: none; }
+.ed.is-mock > .rail, .ed.is-mock > .sheet, .ed.is-mock > .stage, .ed.is-mock > .status, .ed.is-mock > .dock { display: none; }
+.ed.is-mock .ed-bar .seg, .ed.is-mock #btn-undo, .ed.is-mock #btn-redo, .ed.is-mock #btn-drawer { visibility: hidden; }
+.mock__left { border-right: 1px solid var(--line-1); }
+.mock__right { border-left: 1px solid var(--line-1); }
+.mock .pane > .sec__head, .mock .pane > .sec, .mock .pane > .mock__foot { flex: none; }
+.mock__stage { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: var(--bg); touch-action: none; }
+.mock__stage[data-backdrop="light"] { background: #F3F1EC; }
+.mock__stage[data-backdrop="dark"] { background: #1E1F22; }
+.mock__stage[data-backdrop="none"] { background-color: var(--raised); background-image: linear-gradient(45deg, var(--sunken) 25%, transparent 25% 75%, var(--sunken) 75%), linear-gradient(45deg, var(--sunken) 25%, transparent 25% 75%, var(--sunken) 75%); background-size: 20px 20px; background-position: 0 0, 10px 10px; }
+.mock__stage > canvas { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; cursor: grab; }
+.mock__stage > canvas:focus, .mock__stage > canvas:focus-visible { outline: none; }   /* the dashed box round the picked design shows where the keys go */
+.mock__busy { position: absolute; left: 50%; top: var(--s-3); transform: translateX(-50%); padding: 6px var(--s-3); border-radius: var(--r-round); background: var(--ink-1); color: var(--ink-inv); font-size: var(--fs-2); white-space: nowrap; pointer-events: none; }
+.mock__busy[hidden] { display: none; }
+.mock__chips { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 6px; padding: 2px 0 var(--s-1); }
+.mock__chip { width: 100%; aspect-ratio: 1; padding: 0; border: 1px solid var(--line-2); border-radius: 50%; background: var(--c, #888); cursor: pointer; }
+.mock__chip:hover { transform: scale(1.08); }
+.mock__chip[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--signal); }
+.mock__item { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--s-2); min-height: var(--row-h); padding: 0 var(--s-2) 0 var(--s-3); border-bottom: 1px solid var(--line-1); font-size: var(--fs-2); cursor: pointer; }
+.mock__item:hover { background: var(--hover); }
+.mock__item[aria-selected="true"] { background: var(--signal-wash); }
+.mock__item > .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.mock__item > .num { color: var(--ink-2); font-size: var(--fs-1); white-space: nowrap; }
+.mock__empty { padding: var(--s-3); color: var(--ink-2); font-size: var(--fs-2); }
+.mock__empty[hidden] { display: none; }
+.mock__adds { display: grid; gap: var(--s-1); }
+.mock__add { justify-content: space-between; font-weight: 500; }
+.mock__add > span { overflow: hidden; text-overflow: ellipsis; }
+.mock__add > small { color: var(--signal-text); font-size: var(--fs-1); font-weight: 600; }
+.mock__add[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
+.mock__add[aria-disabled="true"] > small { color: var(--ink-3); }
+.mock__foot { display: grid; gap: var(--s-2); margin-top: auto; padding: var(--s-3); border-top: 1px solid var(--line-1); }
+@media screen and (max-width: 1100px) { .mock { grid-template-columns: 240px minmax(0, 1fr) 232px; } }
+@media screen and (max-width: 720px) {
+  /* one column: the garment first, the controls under it; the whole view scrolls */
+  .mock { display: flex; flex-direction: column; overflow-y: auto; overscroll-behavior: contain; }
+  .mock[hidden] { display: none; }
+  .mock__stage { order: -1; flex: none; height: 54dvh; }
+  .mock__left, .mock__right { flex: none; min-height: auto; overflow: visible; border: 0; border-top: 1px solid var(--line-1); }
+  .mock .sec__head { position: static; }
+  .mock__foot { margin-top: 0; padding-bottom: calc(var(--s-3) + env(safe-area-inset-bottom, 0px)); }
+  .dtab-mock > span { display: none; }
+}

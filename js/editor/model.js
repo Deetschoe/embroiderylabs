@@ -31,11 +31,12 @@
      machines and thread charts state them). Units only change how SIZES are
      shown: hoop, design size, rulers, cursor position. Inches are the default. */
   var MM_PER_IN = 25.4, PREFS_KEY = 'el-editor-prefs-v1';
-  var prefs = { units: 'in', grid: false };
+  var prefs = { units: 'in', grid: false, hoop: { w: 130, h: 180 } };   /* new designs start on the 5 x 7 in hoop until another is picked */
   try {
     var stored = JSON.parse(window.localStorage.getItem(PREFS_KEY) || 'null');
     if (stored && (stored.units === 'in' || stored.units === 'mm')) prefs.units = stored.units;
     if (stored && typeof stored.grid === 'boolean') prefs.grid = stored.grid;
+    if (stored && stored.hoop && isFinite(stored.hoop.w) && isFinite(stored.hoop.h) && stored.hoop.w >= 10 && stored.hoop.h >= 10 && stored.hoop.w <= 1000 && stored.hoop.h <= 1000) prefs.hoop = { w: +stored.hoop.w, h: +stored.hoop.h };
   } catch (e) { /* private mode or damaged entry: keep the defaults */ }
   function savePrefs() { try { window.localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch (e) { /* not saved, still works */ } }
   function trim(text) { return text.indexOf('.') < 0 ? text : text.replace(/0+$/, '').replace(/\.$/, ''); }
@@ -59,7 +60,10 @@
   };
   Editor.Prefs = {
     grid: function () { return prefs.grid; },
-    setGrid: function (on) { on = !!on; if (on === prefs.grid) return; prefs.grid = on; savePrefs(); Editor.emit('prefs'); }
+    setGrid: function (on) { on = !!on; if (on === prefs.grid) return; prefs.grid = on; savePrefs(); Editor.emit('prefs'); },
+    /* the hoop picked last: what the next new design gets */
+    hoop: function () { return { w: prefs.hoop.w, h: prefs.hoop.h }; },
+    setHoop: function (w, h) { prefs.hoop = { w: w, h: h }; savePrefs(); }
   };
 
   /* ---------- constants ----------------------------------------------------- */
@@ -76,6 +80,9 @@
   var TYPE_NAMES = { rect: 'Rectangle', ellipse: 'Ellipse', line: 'Line', polygon: 'Polygon', pen: 'Stroke', path: 'Shape' };
   var PAINTS = { fill: 1, line: 1, both: 1 };
   var LINE_TYPES = { running: 1, bean: 1, satin: 1 };
+  /* Fill patterns: the engine's own list, so the panel can never offer one it does not sew. */
+  var PATTERNS = ENG.FILL_PATTERNS || { smooth: { label: 'Smooth' } };
+  function isPattern(v) { return typeof v === 'string' && Object.prototype.hasOwnProperty.call(PATTERNS, v); }
   /* Ranges of the per-object stitch settings: the engine's own limits. */
   var RANGES = {
     lineWidth: [L.satinWidth[0], L.satinWidth[1]],
@@ -85,10 +92,10 @@
   };
 
   var M = Editor.Model = {
-    HOOPS: HOOPS, RANGES: RANGES, TYPE_NAMES: TYPE_NAMES, MAX_OBJECTS: MAX_OBJECTS, MAX_POINTS: MAX_POINTS,
+    HOOPS: HOOPS, RANGES: RANGES, TYPE_NAMES: TYPE_NAMES, PATTERNS: PATTERNS, MAX_OBJECTS: MAX_OBJECTS, MAX_POINTS: MAX_POINTS,
     doc: { name: 'untitled', hoop: { w: D.hoop ? D.hoop.width : 100, h: D.hoop ? D.hoop.height : 100 }, objects: [] },
     /* Style the next drawn shape gets. Edited by the panel when nothing is selected. */
-    defaults: { color: '#3157e0', paint: 'fill', lineType: D.line.type || 'running', lineWidth: D.line.width || 3, spacing: D.fill.spacing, stitchLen: D.fill.stitchLength, angle: D.fill.angle || 0 },
+    defaults: { color: '#3157e0', paint: 'fill', lineType: D.line.type || 'running', lineWidth: D.line.width || 3, spacing: D.fill.spacing, stitchLen: D.fill.stitchLength, angle: D.fill.angle || 0, pattern: 'smooth' },
     selection: [],          /* object ids, in the order they were picked */
     clipboard: null
   };
@@ -227,7 +234,15 @@
     G.transform(o, 0, 0, 1, 1, 0, 0);                       /* rounds to 1/100 mm */
     o.color = d.color; o.paint = G.isClosed(o) ? d.paint : 'line';
     o.lineType = d.lineType; o.lineWidth = d.lineWidth; o.spacing = d.spacing; o.stitchLen = d.stitchLen; o.angle = d.angle;
+    o.pattern = isPattern(d.pattern) ? d.pattern : 'smooth';
     return o;
+  };
+  /* A piece left over when part of a line was erased: an open stroke with the style of the original. */
+  M.strokePiece = function (o, pts) {
+    var n = { id: uid(), name: o.name, type: 'pen', pts: pts.map(function (p) { return [G.r2(p[0]), G.r2(p[1])]; }), closed: false };
+    ['color', 'lineType', 'lineWidth', 'spacing', 'stitchLen', 'angle', 'pattern'].forEach(function (k) { n[k] = o[k]; });
+    n.paint = 'line';
+    return n;
   };
   M.add = function (geom, label) {
     var o = M.make(geom);
@@ -248,7 +263,7 @@
       var m = /^(.*) (\d+)$/.exec(o.name), n = m ? parseInt(m[2], 10) : 1;
       names[base] = Math.max(names[base] || 0, n - 1) + 1;
       o.name = st.name ? cleanName(st.name, base + ' ' + names[base]) : base + ' ' + names[base];
-      ['color', 'paint', 'lineType', 'lineWidth', 'spacing', 'stitchLen', 'angle'].forEach(function (k) {
+      ['color', 'paint', 'lineType', 'lineWidth', 'spacing', 'stitchLen', 'angle', 'pattern'].forEach(function (k) {
         if (st[k] == null) return;
         var v = validProp(k, st[k]); if (v !== null) o[k] = v;
       });
@@ -284,6 +299,7 @@
     if (key === 'color') return G.hex(value);
     if (key === 'paint') return PAINTS[value] ? value : null;
     if (key === 'lineType') return LINE_TYPES[value] ? value : null;
+    if (key === 'pattern') return isPattern(value) ? value : null;
     if (RANGES[key]) { var v = Number(value); if (!isFinite(v)) return null; return G.r2(G.clamp(v, RANGES[key][0], RANGES[key][1])); }
     return null;
   }
@@ -302,7 +318,7 @@
       });
     }, coalesce ? { key: 'prop:' + key + ':' + ids.join(',') } : null);
   };
-  var PROP_LABELS = { color: 'thread', paint: 'paint', lineType: 'line type', lineWidth: 'line width', spacing: 'density', stitchLen: 'stitch length', angle: 'fill angle' };
+  var PROP_LABELS = { color: 'thread', paint: 'paint', lineType: 'line type', lineWidth: 'line width', spacing: 'density', stitchLen: 'stitch length', angle: 'fill angle', pattern: 'fill pattern' };
   M.setDefault = function (key, value) {
     var v = validProp(key, value); if (v === null || M.defaults[key] === v) return false;
     M.defaults[key] = v;
@@ -380,6 +396,8 @@
       M.doc.objects.forEach(function (o) { G.translate(o, dx, dy); });
     });
   };
+  /* An empty, untitled design on the hoop that was picked last (a new tab, the very first visit). */
+  M.blank = function () { return { name: 'untitled', hoop: Editor.Prefs.hoop(), objects: [] }; };
   M.setName = function (name) {
     var n = cleanName(name, 'untitled');
     if (n === M.doc.name) return false;
@@ -389,14 +407,16 @@
   };
 
   /* ---------- engine input ------------------------------------------------------- */
-  M.toEngine = function () {
+  /* doc: a stored design (another tab's); without it, the design on the hoop. */
+  M.toEngine = function (doc) {
+    doc = doc && doc.hoop && Array.isArray(doc.objects) ? doc : M.doc;
     return {
-      name: M.doc.name,
-      hoop: { width: M.doc.hoop.w, height: M.doc.hoop.h },
-      objects: M.doc.objects.map(function (o) {
+      name: doc.name,
+      hoop: { width: doc.hoop.w, height: doc.hoop.h },
+      objects: doc.objects.map(function (o) {
         var e = {
           id: o.id, color: o.color, paint: M.paintOf(o),
-          fill: { spacing: o.spacing, stitchLength: o.stitchLen, angle: o.angle },
+          fill: { spacing: o.spacing, stitchLength: o.stitchLen, angle: o.angle, pattern: o.pattern || 'smooth' },
           line: { type: o.lineType, stitchLength: o.stitchLen, width: o.lineWidth, spacing: o.spacing }
         };
         switch (o.type) {
@@ -422,6 +442,7 @@
     o.color = G.hex(r.color) || base.color;
     o.paint = PAINTS[r.paint] ? r.paint : base.paint;
     o.lineType = LINE_TYPES[r.lineType] ? r.lineType : base.lineType;
+    o.pattern = isPattern(r.pattern) ? r.pattern : (isPattern(base.pattern) ? base.pattern : 'smooth');
     ['lineWidth', 'spacing', 'stitchLen', 'angle'].forEach(function (k) {
       var v = typeof r[k] === 'number' ? validProp(k, r[k]) : null;
       o[k] = v === null ? base[k] : v;

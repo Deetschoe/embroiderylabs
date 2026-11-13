@@ -162,14 +162,113 @@
     render();
   }
 
-  /* ---------- files: an SVG becomes shapes, a picture goes under the drawing ------------------ */
+  /* ---------- File: new, open a saved design, save the design file ------------------------------
+     A design file (.embroidr) is the autosave payload as JSON. Model.load checks every field of it,
+     so a hand-edited or hostile file can only give valid shapes or nothing. */
+  var PROJECT_MAX_BYTES = 30 * 1024 * 1024;
+  function looksLikeProject(file) {
+    var n = String(file.name || '').toLowerCase();
+    return /\.(embroidr|json)$/.test(n) || file.type === 'application/json';
+  }
+  function hasWork() { return M.doc.objects.length > 0; }
+  function confirmReplace(title, action) {
+    if (!hasWork()) return Promise.resolve(true);
+    return window.EL.confirm('This replaces the design on the hoop. Save it first (File > Save) if you want to keep it.', { title: title, confirmLabel: action, cancelLabel: 'Keep my design', danger: true });
+  }
+  function freshView() {
+    if (T.current !== 'select') T.set('select');
+    if (V.mode !== 'design') V.setMode('design');
+    V.fit();
+  }
+  /* New never throws work away: the design gets its own tab and the others stay open. */
+  function newDesign() {
+    T.cancel();
+    if (Editor.Mockup && Editor.Mockup.isOpen()) Editor.Mockup.close();
+    if (Editor.Tabs) {
+      if (!hasWork() && M.doc.name === 'untitled') { toast('This design is already empty.', { label: 'File', timeout: 3000 }); return Promise.resolve(true); }
+      return Promise.resolve(!!Editor.Tabs.add());
+    }
+    return confirmReplace('New design', 'Start new').then(function (yes) {
+      if (!yes) return false;
+      M.load(null); freshView(); IO.saveSoon();
+      Editor.say('New design');
+      return true;
+    });
+  }
+  function openProject(file) {
+    if (file.size > PROJECT_MAX_BYTES) { toast('That design file is too large to open.', { kind: 'bad', label: 'Open file' }); return Promise.resolve(null); }
+    return new Promise(function (resolve) {
+      var reader = new FileReader();
+      reader.onerror = function () { toast('The file could not be read.', { kind: 'bad', label: 'Open file' }); resolve(null); };
+      reader.onload = function () {
+        var data = null;
+        try { data = JSON.parse(String(reader.result)); } catch (e) { data = null; }
+        var doc = data && typeof data === 'object' ? (data.doc && typeof data.doc === 'object' ? data.doc : data) : null;
+        if (!doc || !Array.isArray(doc.objects)) { toast('This is not an Embroidr design file.', { kind: 'bad', label: 'Open file' }); resolve(null); return; }
+        if (Editor.Mockup && Editor.Mockup.isOpen()) Editor.Mockup.close();
+        /* a design that is being worked on stays where it is: the file opens in a tab of its own */
+        var ask = Editor.Tabs ? Promise.resolve(true) : confirmReplace('Open design', 'Open');
+        ask.then(function (yes) {
+          if (!yes) { resolve(null); return; }
+          if (Editor.Tabs && hasWork() && !Editor.Tabs.add(null, true)) { resolve(null); return; }
+          var dropped = IO.applyPayload(data), n = M.doc.objects.length;
+          freshView(); IO.saveNow();
+          if (!n) toast('The file had no shapes that could be read.', { kind: 'bad', label: 'Open file' });
+          else toast('Opened ' + M.doc.name + ': ' + n + (n === 1 ? ' shape' : ' shapes') + (dropped ? ' (' + dropped + ' could not be read and ' + (dropped === 1 ? 'was' : 'were') + ' left out)' : '') + '.', { kind: 'ok', label: 'File', timeout: 6000 });
+          Editor.say('Design opened: ' + n + (n === 1 ? ' shape' : ' shapes'));
+          resolve(n ? { added: n } : null);
+        });
+      };
+      reader.readAsText(file);
+    });
+  }
+  function saveProject() {
+    if (!hasWork()) { toast('Nothing to save yet. Draw a shape first.', { kind: 'bad', label: 'Save' }); return false; }
+    var f = IO.projectFile();
+    window.EL.download(f.filename, f.text, f.mime);
+    toast(f.filename + ' saved. Open it again with File > Open to keep editing.', { kind: 'ok', label: 'Saved', timeout: 6000 });
+    Editor.say('Design file saved');
+    return true;
+  }
+  var fileMenuOpen = false;
+  function closeFileMenu(focusBack) {
+    if (!fileMenuOpen) return;
+    fileMenuOpen = false; $('file-menu').hidden = true; $('btn-file').setAttribute('aria-expanded', 'false');
+    if (focusBack) $('btn-file').focus();
+  }
+  function initFileMenu() {
+    var btn = $('btn-file'), menu = $('file-menu'); if (!btn || !menu) return;
+    var actions = { 'new': newDesign, open: browse, save: saveProject, 'export': function () { doExport('pes'); }, mockup: function () { if (Editor.Mockup) Editor.Mockup.open(); } };
+    on(btn, 'click', function () {
+      if (fileMenuOpen) return closeFileMenu(false);
+      fileMenuOpen = true; menu.hidden = false; btn.setAttribute('aria-expanded', 'true');
+      var first = menu.querySelector('button'); if (first) first.focus();
+    });
+    Array.prototype.slice.call(menu.querySelectorAll('[data-file]')).forEach(function (b) {
+      on(b, 'click', function () { closeFileMenu(false); var fn = actions[b.getAttribute('data-file')]; if (fn) fn(); });
+    });
+    on(menu, 'keydown', function (e) {
+      var items = Array.prototype.slice.call(menu.querySelectorAll('button')), i = items.indexOf(document.activeElement), k = e.key;
+      if (k === 'ArrowDown' || k === 'ArrowUp') { e.preventDefault(); e.stopPropagation(); items[(i + (k === 'ArrowDown' ? 1 : items.length - 1)) % items.length].focus(); }
+      else if (k === 'Home') { e.preventDefault(); items[0].focus(); }
+      else if (k === 'End') { e.preventDefault(); items[items.length - 1].focus(); }
+      else if (k === 'Escape') { e.preventDefault(); e.stopPropagation(); closeFileMenu(true); }
+      else if (k === 'Tab') closeFileMenu(false);
+    });
+    document.addEventListener('pointerdown', function (e) { if (fileMenuOpen && !$('file-group').contains(e.target)) closeFileMenu(false); }, true);
+    Editor.file = { 'new': newDesign, open: browse, save: saveProject, openProject: openProject };
+  }
+
+  /* ---------- files: a design file replaces the hoop, an SVG becomes shapes, a picture goes under the drawing */
   function openFile(file) {
     if (!file) return Promise.resolve(null);
     T.cancel();
     var job;
-    if (Editor.SvgImport && Editor.SvgImport.looksLikeSvg(file)) job = Editor.SvgImport.importFile(file);
+    if (looksLikeProject(file)) job = openProject(file);
+    else if (Editor.SvgImport && Editor.SvgImport.looksLikeSvg(file)) job = Editor.SvgImport.importFile(file);
     else if (Editor.Trace && Editor.Trace.accepts(file)) job = Editor.Trace.load(file);
-    else { toast('Use an SVG file, or a PNG, JPG, WebP or GIF picture.', { kind: 'bad', label: 'Open file' }); return Promise.resolve(null); }
+    else if (/\.(pes|pec|dst|exp|jef|vp3|xxx|hus)$/i.test(file.name || '')) { toast('A machine file holds stitches, not shapes, so it cannot be opened for editing. Open the design file you saved (File > Save) instead.', { kind: 'bad', label: 'Open file', timeout: 9000 }); return Promise.resolve(null); }
+    else { toast('Use a saved design (.embroidr), an SVG file, or a PNG, JPG, WebP or GIF picture.', { kind: 'bad', label: 'Open file' }); return Promise.resolve(null); }
     return Promise.resolve(job).then(function (r) {
       if (r && (r === true || r.added) && Editor.closeSheet) Editor.closeSheet();   /* phone: show what arrived */
       return r;
@@ -292,6 +391,17 @@
       b.addEventListener('click', function () { doExport(f.id); });
       menu.appendChild(b);
     });
+    /* last in the menu: see the stitches on a garment before (or instead of) sending them to a machine */
+    if (Editor.Mockup) {
+      var mk = document.createElement('button');
+      mk.type = 'button'; mk.setAttribute('role', 'menuitem'); mk.setAttribute('data-format', 'mockup'); mk.tabIndex = -1;
+      var mkName = document.createElement('span'); mkName.textContent = 'Preview on a garment';
+      var mkExt = document.createElement('span'); mkExt.className = 'num'; mkExt.textContent = '.png';
+      var mkNote = document.createElement('small'); mkNote.textContent = 'Realistic stitches on a hoodie or T-shirt, as a picture.';
+      mk.appendChild(mkName); mk.appendChild(mkExt); mk.appendChild(mkNote);
+      mk.addEventListener('click', function () { closeMenu(false); Editor.Mockup.open(); });
+      menu.appendChild(mk);
+    }
     on(btn, 'click', function () { doExport('pes'); });
     on(more, 'click', function () {
       if (menuOpen) return closeMenu(false);
@@ -430,6 +540,9 @@
     }, true);
     on(more.querySelector('[data-action="clear"]'), 'click', clearDesign);
     on(more.querySelector('[data-action="import"]'), 'click', browse);
+    on(more.querySelector('[data-action="new"]'), 'click', newDesign);
+    on(more.querySelector('[data-action="save"]'), 'click', saveProject);
+    on(more.querySelector('[data-action="mockup"]'), 'click', function () { if (Editor.Mockup) Editor.Mockup.open(); });
     on(more.querySelector('[data-action="example"]'), 'click', loadExample);
     /* the dock shows where the active tool is: on "More" when it lives in that menu */
     function renderMore() { moreBtn.setAttribute('aria-pressed', more.querySelector('[data-tool="' + T.current + '"]') ? 'true' : 'false'); }
@@ -478,6 +591,13 @@
     if (document.querySelector('dialog[open]')) return;
     if (isTyping(t)) return;
     var control = isControl(t);
+    /* in the mockup the hoop is out of sight: only the file shortcuts mean anything there */
+    if (Editor.Mockup && Editor.Mockup.isOpen()) {
+      if (mod && !e.altKey && !e.shiftKey && k === 'o') { e.preventDefault(); browse(); }
+      else if (mod && !e.altKey && !e.shiftKey && k === 's') { e.preventDefault(); saveProject(); }
+      else if (key === 'Escape' && !document.querySelector('.menu:not([hidden])')) { e.preventDefault(); Editor.Mockup.close(); }
+      return;
+    }
 
     if (key === 'Escape') {
       if (menuOpen) { closeMenu(true); e.preventDefault(); return; }
@@ -492,6 +612,8 @@
       if (k === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
       if (k === 'y' && !e.shiftKey) { e.preventDefault(); redo(); return; }
       if (k === 'e' && !e.shiftKey) { e.preventDefault(); doExport('pes'); return; }
+      if (k === 'o' && !e.shiftKey) { e.preventDefault(); browse(); return; }
+      if (k === 's' && !e.shiftKey) { e.preventDefault(); saveProject(); return; }
       if (k === 'd' && !e.shiftKey) {
         e.preventDefault();
         var d = M.duplicate(); if (d) Editor.say(d === 1 ? 'Shape duplicated' : d + ' shapes duplicated');
@@ -597,8 +719,12 @@
     if (Editor.Trace) step('picture', Editor.Trace.init);    /* before the saved tag: a stored picture gives way to the design first */
     step('name', initName); step('saved', initSaved); step('history', initHistory); step('view mode', initViewMode); step('pixel density', initDpr);
     step('zoom', initZoom); step('drawer', initDrawer); step('phone', initPhone); step('rail', initRail); step('key names', initKeyNames);
-    step('playback', initPlayback); step('files', initFiles);
+    step('playback', initPlayback); step('files', initFiles); step('file menu', initFileMenu);
     var info = step('storage and engine', IO.init) || {};
+    /* nothing stored (a first visit): start on the hoop that is picked for new designs, not the engine's 4 x 4 */
+    if (!info.restored && !info.damaged && !M.doc.objects.length) step('first hoop', function () { M.load(M.blank()); V.fit(); });
+    if (Editor.Tabs) step('tabs', Editor.Tabs.init);
+    if (Editor.Mockup) step('mockup', Editor.Mockup.init);
     step('export', initExport); step('empty hoop', initEmpty);
     step('render', P.render);
     document.addEventListener('keydown', onKeyDown);

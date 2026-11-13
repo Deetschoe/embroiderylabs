@@ -78,6 +78,29 @@ module.exports = {
         assert.ok(st.travelOverSewnMm <= 2.0, name + '@' + angle + ': ' + st.travelOverSewnMm.toFixed(1) + ' mm of travel over sewn fill');
       }
     });
+    t.test('fill patterns: the default is unchanged, every pattern is sound and stays in the shape, an unknown one is refused politely', () => {
+      const rect = { id: 'a', type: 'rect', x: 20, y: 20, width: 40, height: 30, color: '#336699', paint: 'fill' };
+      const make = pattern => Engine.generate({ hoop: { width: 100, height: 100 }, objects: [Object.assign({}, rect, { fill: pattern === undefined ? { spacing: 0.4 } : { spacing: 0.4, pattern } })] });
+      const plain = make(undefined), smooth = make('smooth');
+      assert.deepStrictEqual(Array.from(smooth.ir.commands), Array.from(plain.ir.commands), 'pattern "smooth" must give exactly the fill made without a pattern');
+      assert.deepStrictEqual(Object.keys(Engine.FILL_PATTERNS), ['smooth', 'brick', 'ribbed', 'diagonal', 'crosshatch']);
+      const seen = {};
+      for (const key of Object.keys(Engine.FILL_PATTERNS)) {
+        const r = make(key);
+        assertSound(r, 'pattern ' + key);
+        assert.ok(r.canExport && !codes(r).length, key + ': warnings ' + codes(r));
+        assert.ok(typeof Engine.FILL_PATTERNS[key].label === 'string' && Engine.FILL_PATTERNS[key].label, key + ': label');
+        const b = r.bounds;
+        assert.ok(b.minX >= 19 && b.minY >= 19 && b.maxX <= 61 && b.maxY <= 51, key + ': stitches left the rectangle ' + JSON.stringify(b));
+        for (const f of ['pes', 'dst']) { const file = Engine.exportFile(r, f); assert.ok(file && file.bytes && file.bytes.length > 100, key + ': no ' + f + ' file'); }
+        seen[key] = Array.from(r.ir.commands).join(',');
+      }
+      assert.strictEqual(new Set(Object.values(seen)).size, Object.keys(seen).length, 'every pattern must sew differently');
+      assert.ok(make('crosshatch').totals.stitches < plain.totals.stitches, 'crosshatch is an open lattice, lighter than a full fill');
+      const odd = make('no-such-pattern');
+      assert.deepStrictEqual(codes(odd), ['PARAM_CLAMPED']);
+      assert.deepStrictEqual(Array.from(odd.ir.commands), Array.from(plain.ir.commands), 'an unknown pattern falls back to the smooth fill');
+    });
     t.test('fill: holes stay empty (donut, both fill rules)', () => {
       for (const key of ['donut', 'donutEvenOdd']) {
         const r = Engine.generate(C.fillDesign(C.FILL_SHAPES[key]));

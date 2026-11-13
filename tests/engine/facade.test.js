@@ -102,7 +102,7 @@ module.exports = {
     for (const k of D.compare) ref[k] = Engine.generate(D.designs[k]);
 
     t.test('the documented API is all there, and nothing else', () => {
-      assert.deepStrictEqual(Object.keys(Engine).sort(), ['DEFAULTS', 'Digitizer', 'FORMATS', 'LIMITS', 'OP', 'Writer', 'createClient', 'export', 'exportFile', 'generate', 'preview', 'validate', 'version']);
+      assert.deepStrictEqual(Object.keys(Engine).sort(), ['DEFAULTS', 'Digitizer', 'FILL_PATTERNS', 'FORMATS', 'LIMITS', 'OP', 'Writer', 'createClient', 'export', 'exportFile', 'generate', 'preview', 'validate', 'version']);
       assert.strictEqual(Engine.version, '1.0.0'); assert.strictEqual(Engine.export, Engine.exportFile);
       assert.deepStrictEqual(Engine.OP, { STITCH: 0, JUMP: 1, TRIM: 2, COLOR_CHANGE: 3, END: 4 });
       assert.deepStrictEqual(Engine.FORMATS, [

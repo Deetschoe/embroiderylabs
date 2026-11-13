@@ -8,7 +8,8 @@
      line / rect / ellipse    press, drag, release (Shift constrains)
      polygon  click points; click the first point, double-click or Enter closes;
               Backspace removes the last point; Esc cancels
-     eraser   press or drag over shapes to delete them (one undo step)
+     eraser   rub over a line, a stroke or an outline to remove just that part; press a filled shape to
+              delete it (one undo step per rub)
      pan      drag; also Space-drag and the middle mouse button with any tool
    Wheel: mouse wheel and pinch zoom to the cursor, two-finger scroll pans.
 
@@ -229,13 +230,55 @@
     say(closed ? 'Closed stroke added' : 'Stroke added');
   }
 
-  function eraseAt(g, p) {
-    var o = V.hit(p.x, p.y); if (!o) return;
+  /* The eraser is a disc. Lines, strokes and outlines lose only the part under it; what is left
+     becomes strokes of the same thread. A filled shape cannot lose a bite (that needs the fill to be
+     cut), so pressing one without rubbing removes it whole, as before. */
+  var MIN_PIECE_MM = 0.8;
+  function eraserRadius() { return Math.max(0.8, (V.coarse ? 14 : 9) / V.ppm()); }
+  function canRub(o) { return !G.isClosed(o) || M.paintOf(o) === 'line'; }
+  function rubOnce(g, x, y, r) {
+    var objs = M.doc.objects, out = null, i;
+    for (i = 0; i < objs.length; i++) {
+      var o = objs[i], b;
+      if (canRub(o)) {
+        b = G.bbox(o);
+        if (x >= b.x0 - r && x <= b.x1 + r && y >= b.y0 - r && y <= b.y1 + r) {
+          var left = [], hit = false;
+          G.outlines(o).forEach(function (line) {
+            var res = G.eraseLine(line.pts, line.closed, x, y, r, MIN_PIECE_MM);
+            if (res === null) { left.push(line.closed && line.pts.length > 2 ? line.pts.concat([line.pts[0]]) : line.pts); return; }
+            hit = true; res.forEach(function (piece) { left.push(piece); });
+          });
+          if (hit) {
+            if (!out) out = objs.slice(0, i);
+            left.forEach(function (pts) { if (pts.length > 1 && out.length < M.MAX_OBJECTS) out.push(M.strokePiece(o, pts)); });
+            g.n++;
+            continue;
+          }
+        }
+      }
+      if (out) out.push(o);
+    }
+    if (!out) return false;
     if (!g.moved) { g.moved = true; M.begin(); }
-    g.n++;
-    M.doc.objects = M.doc.objects.filter(function (x) { return x.id !== o.id; });
-    M.selection = M.selection.filter(function (id) { return id !== o.id; });
-    M.touch();
+    M.doc.objects = out;
+    var ids = {}; out.forEach(function (o) { ids[o.id] = 1; });
+    M.selection = M.selection.filter(function (id) { return ids[id]; });
+    return true;
+  }
+  function eraseAt(g, p) {
+    var r = eraserRadius(), from = g.last || p, d = G.dist(from.x, from.y, p.x, p.y), steps = Math.max(1, Math.ceil(d / (r * 0.5))), any = false, i;
+    g.travel = (g.travel || 0) + Math.abs(p.px - (g.lastPx || p.px)) + Math.abs(p.py - (g.lastPy || p.py));
+    for (i = 1; i <= steps; i++) if (rubOnce(g, from.x + (p.x - from.x) * i / steps, from.y + (p.y - from.y) * i / steps, r)) any = true;
+    g.last = { x: p.x, y: p.y }; g.lastPx = p.px; g.lastPy = p.py;
+    V.eraser = { x: p.x, y: p.y, r: r };
+    if (any) M.touch(); else V.invalidate();
+  }
+  /* A press that did not rub anything away: a filled shape under it is removed whole. */
+  function eraseTap(g) {
+    if (g.moved || (g.travel || 0) > 6 || !g.last) return false;
+    var o = V.hit(g.last.x, g.last.y); if (!o) return false;
+    return M.remove([o.id], 'Erase');
   }
 
   /* End the gesture. cancel = true puts the document back as it was. */
@@ -261,9 +304,10 @@
       case 'shape': if (cancel) setDraft(null); else shapeEnd(g); break;
       case 'pen': if (cancel) setDraft(null); else penEnd(g); break;
       case 'erase':
-        if (!g.moved) break;
+        V.eraser = null; V.invalidate();
+        if (!g.moved) { if (!cancel && eraseTap(g)) say('Shape erased'); break; }
         if (cancel) M.cancel();
-        else if (M.end(g.n > 1 ? 'Erase ' + g.n + ' shapes' : 'Erase')) say(g.n > 1 ? g.n + ' shapes erased' : 'Shape erased');
+        else if (M.end('Erase')) say('Erased');
         break;
       case 'polypoint':
         if (cancel && g.added && poly) { poly.pts.pop(); if (!poly.pts.length) { poly = null; setDraft(null); } else polyDraft(null); }
@@ -344,7 +388,7 @@
     } else if (tool === 'polygon') {
       polygonDown(p, e);
     } else if (tool === 'eraser') {
-      gesture = { type: 'erase', pid: e.pointerId, moved: false, n: 0 };
+      gesture = { type: 'erase', pid: e.pointerId, moved: false, n: 0, last: null };
       eraseAt(gesture, p);
     }
     if (gesture && gesture.pid != null) { try { el.canvas.setPointerCapture(e.pointerId); } catch (x) { /* synthetic pointer */ } }

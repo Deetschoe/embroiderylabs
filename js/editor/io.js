@@ -180,6 +180,21 @@
   function payload() {
     return { v: 1, app: 'embroidr', savedAt: Date.now(), doc: M.serialize(), view: { fabric: { mode: V.fabric.mode, color: V.fabric.color } } };
   }
+  /* The design as a file the visitor keeps: the same shape as the autosave, so File > Open reads both. */
+  IO.PROJECT_EXT = '.embroidr';
+  IO.projectFile = function () {
+    var name = String(M.doc.name || 'untitled').replace(/[\\/:*?"<>|\u0000-\u001f]/g, '-').replace(/^\.+/, '').trim() || 'untitled';
+    return { filename: name + IO.PROJECT_EXT, text: JSON.stringify(payload()), mime: 'application/json' };
+  };
+  IO.payload = payload;
+  /* Put a stored payload (a tab, a design file) on the hoop. Returns how many shapes could not be read. */
+  IO.applyPayload = function (data) {
+    var doc = data && typeof data === 'object' ? (data.doc && typeof data.doc === 'object' ? data.doc : data) : null;
+    var dropped = M.load(doc);
+    var f = data && data.view && data.view.fabric;
+    if (f && typeof f === 'object') { V.setFabric(f.mode, f.color); Editor.emit('fabric'); }
+    return dropped;
+  };
   IO.saveNow = function () {
     if (saveTimer) { clearTimeout(saveTimer); saveTimer = 0; }
     if (M.inTransaction()) { IO.saveSoon(); return false; }         /* never store a half-finished drag */

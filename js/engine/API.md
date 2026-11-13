@@ -41,6 +41,7 @@ Engine.validate(resultOrIr)          // -> string[] (empty = stitch data is well
 Engine.createClient(options?)        // -> client: the same generate/export as Promises, in a Web Worker
 Engine.FORMATS                       // [{ id, ext, mime, label }]
 Engine.DEFAULTS, Engine.LIMITS       // numbers used when a setting is missing / out of range
+Engine.FILL_PATTERNS                 // { smooth, brick, ribbed, diagonal, crosshatch }: values of fill.pattern, each { label }
 Engine.OP                            // { STITCH: 0, JUMP: 1, TRIM: 2, COLOR_CHANGE: 3, END: 4 }
 ```
 
@@ -134,6 +135,7 @@ Curves must be flattened to points by the caller (a point every 0.5 to 1 mm is p
 | `spacing` | 0.4 | 0.2 to 2.0 | distance between rows, mm. Below 0.3 raises `TOO_DENSE`. |
 | `stitchLength` | 3.0 | 1.0 to 7.0 | stitch length along a row, mm |
 | `angle` | 0 | any | direction of the rows in degrees: 0 = horizontal, 90 = vertical |
+| `pattern` | `'smooth'` | `smooth`, `brick`, `ribbed`, `diagonal`, `crosshatch` | where the needle lands row to row (`Engine.FILL_PATTERNS`). `crosshatch` is an open lattice: two passes at right angles, rows at 3 x `spacing` (at least 1.2 mm), no underlay. An unknown value gives `PARAM_CLAMPED` and the smooth fill. |
 | `underlay` | `true` | boolean | edge run plus a loose cross layer under the fill |
 | `pullComp` | 0.2 | 0 to 1.0 | each row end is lengthened by this much, mm, to make up for the fabric pulling in |
 

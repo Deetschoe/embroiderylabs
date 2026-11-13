@@ -79,6 +79,47 @@ Rules that keep undo honest:
   This is the door for other code that makes shapes (SVG import uses it; the js/trace engineer can pass
   `{ type: 'path', rings, fillRule, color, paint: 'fill' }` for regions with holes, no keyhole needed).
 
+## File menu and design files
+
+`File` (top left; in the More menu on phones) has New, Open, Save and Export .PES. Save downloads
+`<name>.embroidr`: the autosave payload as JSON (`IO.projectFile()`), which Open reads back through
+`Model.load`, so every field is checked and a hand-edited or hostile file can only give valid shapes.
+New and Open ask before replacing a design that has shapes. A machine file (.pes, .dst) holds stitches,
+not shapes, so it cannot be opened for editing; the toast says so. Shortcuts: Cmd/Ctrl+O, Cmd/Ctrl+S.
+
+## Tabs (`tabs.js`)
+
+Several designs are open at once, one tab each (up to 12). The design on the hoop is still the single
+document in `Model` and is autosaved by `io.js` as before; `Editor.Tabs` keeps a copy of every open design in
+`localStorage['el-editor-tabs-v1']` and swaps them through `IO.applyPayload` / `Model.load`. File > New and
+opening a design file make a new tab, so nothing is replaced without asking; closing a tab that has shapes
+asks. Undo history belongs to the design on the hoop and starts fresh when another tab is picked. The trace
+picture is shared by all tabs. `Editor.Tabs.designs()` lists every open design (the mockup uses it), event `tabs`.
+
+## Mockup (`mockup.js`, `mockups/`)
+
+The Mockup button (right of the tabs, also in File and in the export menu) swaps the editor for a garment
+view: hoodie or T-shirt, front or back, any colour (chips, picker, hue / saturation / lightness), a light,
+dark or clear background. Each open design is stitched with `Engine.generate` and drawn once by `js/realistic`
+(thread only, up to 8 px per mm; the two scripts are loaded the first time the view opens), then placed on the
+garment at true size from `pxPerMm` in `GARMENTS`. Drag to move, Size to scale, front and back keep their own
+placements, everything is stored in `localStorage['el-editor-mockup-v1']`. Downloads: the mockup as a
+2000 x 2000 PNG, and the stitching alone on a clear background. The garment pictures are white blanks tinted
+per pixel; see `mockups/README.md` for where they come from and the licence question.
+
+## Eraser
+
+The eraser is a disc (`eraserRadius()` in `tools.js`, about 9 px on screen). Rubbing over a line, a stroke or
+an outline-only shape removes just the part under it (`Geom.eraseLine`); what is left becomes open strokes with
+the same thread (`Model.strokePiece`), one undo step per rub. A filled shape cannot lose a bite (that needs the
+fill outline to be cut, which is not built), so pressing one without rubbing removes it whole.
+
+## Fill patterns
+
+Each filled shape has `pattern` (`smooth`, `brick`, `ribbed`, `diagonal`, `crosshatch`), shown as Pattern in
+the Stitch section. The list comes from `Engine.FILL_PATTERNS`; the engine does the work (`fill.pattern`, see
+js/engine/API.md). Designs saved before this have no `pattern` and load as `smooth`.
+
 ## Units
 
 The document, the engine and the stitch settings (density, stitch length, line width) are always millimetres.

@@ -2,6 +2,7 @@
 .backup-*/
 venv/
 tests/
+archive/
 __pycache__/
 Dockerfile
 .dockerignore

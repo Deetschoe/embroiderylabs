@@ -98,13 +98,14 @@ picture is shared by all tabs. `Editor.Tabs.designs()` lists every open design (
 
 ## Mockup (`mockup.js`, `mockups/`)
 
-The Mockup button (right of the tabs, also in File and in the export menu) swaps the editor for a garment
-view: hoodie or T-shirt, front or back, any colour (chips, picker, hue / saturation / lightness), a light,
-dark or clear background. Each open design is stitched with `Engine.generate` and drawn once by `js/realistic`
+Mockup is the third choice of the view switch in the top bar (Design, Stitch-out, Mockup; on phones a button
+in the tab row; also in File and in the export menu). It swaps the editor for a garment view: hoodie or
+T-shirt, front or back, any colour (chips, picker, hue / saturation / lightness), on a white stage. Each open design is stitched with `Engine.generate` and drawn once by `js/realistic`
 (thread only, up to 8 px per mm; the two scripts are loaded the first time the view opens), then placed on the
 garment at true size from `pxPerMm` in `GARMENTS`. Drag to move, Size to scale, front and back keep their own
-placements, everything is stored in `localStorage['el-editor-mockup-v1']`. Downloads: the mockup as a
-2000 x 2000 PNG, and the stitching alone on a clear background. The garment pictures are white blanks tinted
+placements, everything is stored in `localStorage['el-editor-mockup-v1']`. Downloads: "Download picture" is the
+mockup on white as a 2000 x 2000 PNG; the arrow beside it offers the same with a transparent background, and
+the stitching alone on a clear background. The garment pictures are white blanks tinted
 per pixel; see `mockups/README.md` for where they come from and the licence question.
 
 ## Eraser

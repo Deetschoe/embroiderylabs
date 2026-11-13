@@ -403,14 +403,12 @@ button.warn:focus-visible { outline-offset: -2px; }
 .mock { grid-column: 1 / -1; grid-row: 3 / -1; display: grid; grid-template-columns: 272px minmax(0, 1fr) 264px; min-height: 0; background: var(--bg); }
 .mock[hidden] { display: none; }
 .ed.is-mock > .rail, .ed.is-mock > .sheet, .ed.is-mock > .stage, .ed.is-mock > .status, .ed.is-mock > .dock { display: none; }
-.ed.is-mock .ed-bar .seg, .ed.is-mock #btn-undo, .ed.is-mock #btn-redo, .ed.is-mock #btn-drawer { visibility: hidden; }
+.ed.is-mock #btn-undo, .ed.is-mock #btn-redo, .ed.is-mock #btn-drawer { visibility: hidden; }
 .mock__left { border-right: 1px solid var(--line-1); }
 .mock__right { border-left: 1px solid var(--line-1); }
 .mock .pane > .sec__head, .mock .pane > .sec, .mock .pane > .mock__foot { flex: none; }
-.mock__stage { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: var(--bg); touch-action: none; }
-.mock__stage[data-backdrop="light"] { background: #F3F1EC; }
-.mock__stage[data-backdrop="dark"] { background: #1E1F22; }
-.mock__stage[data-backdrop="none"] { background-color: var(--raised); background-image: linear-gradient(45deg, var(--sunken) 25%, transparent 25% 75%, var(--sunken) 75%), linear-gradient(45deg, var(--sunken) 25%, transparent 25% 75%, var(--sunken) 75%); background-size: 20px 20px; background-position: 0 0, 10px 10px; }
+/* the stage is the picture: white in both themes, like the file that is downloaded */
+.mock__stage { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: #FFFFFF; touch-action: none; }
 .mock__stage > canvas { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; cursor: grab; }
 .mock__stage > canvas:focus, .mock__stage > canvas:focus-visible { outline: none; }   /* the dashed box round the picked design shows where the keys go */
 .mock__busy { position: absolute; left: 50%; top: var(--s-3); transform: translateX(-50%); padding: 6px var(--s-3); border-radius: var(--r-round); background: var(--ink-1); color: var(--ink-inv); font-size: var(--fs-2); white-space: nowrap; pointer-events: none; }
@@ -433,6 +431,10 @@ button.warn:focus-visible { outline-offset: -2px; }
 .mock__add[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
 .mock__add[aria-disabled="true"] > small { color: var(--ink-3); }
 .mock__foot { display: grid; gap: var(--s-2); margin-top: auto; padding: var(--s-3); border-top: 1px solid var(--line-1); }
+.mock__dl { display: flex; }
+.mock__dl > .btn:first-child { flex: 1; }
+.mock__dl > .split__more { width: var(--ctl-h); min-width: var(--ctl-h); }
+.mock__menu { position: absolute; top: auto; bottom: calc(100% + 4px); left: 0; right: 0; min-width: 0; }   /* opens upward: it sits at the foot of the panel */
 @media screen and (max-width: 1100px) { .mock { grid-template-columns: 240px minmax(0, 1fr) 232px; } }
 @media screen and (max-width: 720px) {
   /* one column: the garment first, the controls under it; the whole view scrolls */
@@ -442,5 +444,6 @@ button.warn:focus-visible { outline-offset: -2px; }
   .mock__left, .mock__right { flex: none; min-height: auto; overflow: visible; border: 0; border-top: 1px solid var(--line-1); }
   .mock .sec__head { position: static; }
   .mock__foot { margin-top: 0; padding-bottom: calc(var(--s-3) + env(safe-area-inset-bottom, 0px)); }
+  .mock__menu { position: absolute; top: auto; bottom: calc(100% + 4px); left: 0; right: 0; }
   .dtab-mock > span { display: none; }
 }

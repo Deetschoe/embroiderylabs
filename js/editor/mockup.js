@@ -30,10 +30,10 @@
   var COLORS = [['White', '#F4F3F0'], ['Cream', '#EFE6D2'], ['Sand', '#D9C7A8'], ['Heather grey', '#B9BABD'], ['Charcoal', '#4A4D52'], ['Black', '#1B1B1D'],
     ['Navy', '#1F2A44'], ['Royal blue', '#2F56B0'], ['Sky blue', '#9CC3E6'], ['Forest green', '#24462F'], ['Mint', '#A9DCC3'], ['Maroon', '#6B1F2A'],
     ['Red', '#C8262E'], ['Orange', '#E8792B'], ['Gold', '#E9B93A'], ['Pink', '#F2B6C6'], ['Purple', '#5B3A8C'], ['Brown', '#5A3E2B']];
-  var BACKDROPS = { light: '#F3F1EC', dark: '#1E1F22', none: null };
+  var WHITE = '#FFFFFF';
 
   var Mock = Editor.Mockup = { GARMENTS: GARMENTS };
-  var el = {}, open = false, state = { garment: 'hoodie', side: 'front', color: '#4A4D52', backdrop: 'light', placements: { front: [], back: [] } };
+  var el = {}, open = false, state = { garment: 'hoodie', side: 'front', color: '#4A4D52', placements: { front: [], back: [] } };
   var selected = null, view = { scale: 1, ox: 0, oy: 0, auto: true }, raf = 0, recolorRaf = 0;
   var blank = { key: '', grey: null, alpha: null, canvas: null, loading: null };     /* the garment picture in use */
   var designs = {};                                                                  /* tab id -> { sig, canvas, ppm, w, h, name, busy, empty, result } */
@@ -171,13 +171,13 @@
     var g = garment(), a = sideInfo().anchor, w = d.w * g.pxPerMm * p.scale, h = d.h * g.pxPerMm * p.scale;
     return { x: a[0] + p.dx * g.pxPerMm - w / 2, y: a[1] + p.dy * g.pxPerMm - h / 2, w: w, h: h, d: d };
   }
-  function paint(c, scale, ox, oy, forFile) {
-    var bg = BACKDROPS[state.backdrop];
-    if (forFile) { if (bg) { c.fillStyle = bg; c.fillRect(0, 0, SIZE * scale, SIZE * scale); } }
+  /* bg: a colour to fill behind the garment in a file, or null for nothing (the screen and the transparent file) */
+  function paint(c, scale, ox, oy, forFile, bg) {
+    if (forFile && bg) { c.fillStyle = bg; c.fillRect(0, 0, SIZE * scale, SIZE * scale); }
     c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
     if (blank.canvas && blank.grey) {
       c.save();
-      if (bg || !forFile) { c.shadowColor = state.backdrop === 'dark' ? 'rgba(0,0,0,.55)' : 'rgba(40,35,25,.22)'; c.shadowBlur = 36 * scale; c.shadowOffsetY = 14 * scale; }
+      if (bg || !forFile) { c.shadowColor = 'rgba(40,35,25,.20)'; c.shadowBlur = 36 * scale; c.shadowOffsetY = 14 * scale; }   /* a soft shadow on white; none in the transparent file */
       c.drawImage(blank.canvas, ox, oy, SIZE * scale, SIZE * scale);
       c.restore();
     }
@@ -195,7 +195,7 @@
     var c = cv.getContext('2d');
     c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height);
     c.setTransform(dpr, 0, 0, dpr, 0, 0);
-    paint(c, view.scale, view.ox, view.oy, false);
+    paint(c, view.scale, view.ox, view.oy, false, null);
     var sel = selectedItem(), r = sel && place(sel);
     if (r) {
       var accent = (window.EL && window.EL.token && window.EL.token('--signal')) || '#4E7396';
@@ -214,7 +214,7 @@
 
   /* ---------- placements ------------------------------------------------------------------ */
   function selectedItem() { var list = items(); for (var i = 0; i < list.length; i++) if (list[i].id === selected) return list[i]; return null; }
-  function save() { if (window.EL) window.EL.store.set(KEY, { v: 1, garment: state.garment, side: state.side, color: state.color, backdrop: state.backdrop, placements: state.placements }); }
+  function save() { if (window.EL) window.EL.store.set(KEY, { v: 1, garment: state.garment, side: state.side, color: state.color, placements: state.placements }); }
   function hit(px, py) {
     var list = items(), x = (px - view.ox) / view.scale, y = (py - view.oy) / view.scale;
     for (var i = list.length - 1; i >= 0; i--) { var r = place(list[i]); if (r && x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return list[i]; }
@@ -244,7 +244,7 @@
   function setBusy(text) { if (el.busy) { el.busy.textContent = text; el.busy.hidden = !text; } }
   function pressed(nodes, attr, value) { nodes.forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute(attr) === value ? 'true' : 'false'); }); }
   function renderControls() {
-    pressed(el.garmentBtns, 'data-garment', state.garment); pressed(el.sideBtns, 'data-side', state.side); pressed(el.backdropBtns, 'data-backdrop', state.backdrop);
+    pressed(el.garmentBtns, 'data-garment', state.garment); pressed(el.sideBtns, 'data-side', state.side);
     var rgb = hexToRgb(state.color), hsl = rgbToHsl(rgb[0], rgb[1], rgb[2]);
     el.color.value = state.color; el.hex.textContent = state.color.toUpperCase(); el.swatch.style.setProperty('--c', state.color);
     if (document.activeElement !== el.hue) el.hue.value = hsl[0];
@@ -287,25 +287,26 @@
     el.scale.value = sel ? Math.round(sel.scale * 100) : 100; if (window.EL && window.EL.syncSlider) window.EL.syncSlider(el.scale);
     el.scaleVal.textContent = el.scale.value + '%';
     var can = list.some(function (p) { return designs[p.tab] && designs[p.tab].canvas; });
-    el.dlThread.disabled = !can;
+    if (el.dlThread) el.dlThread.setAttribute('aria-disabled', can ? 'false' : 'true');
   }
 
   /* ---------- files ------------------------------------------------------------------------- */
   function fileBase() { var sel = selectedItem() || items()[0], d = sel && designs[sel.tab]; return String((d && d.name) || M.doc.name || 'design').replace(/[\\/:*?"<>|\u0000-\u001f]/g, '-').trim() || 'design'; }
   function settle() { return Promise.all(Object.keys(designs).map(function (k) { return designs[k].promise || null; })); }
-  Mock.downloadImage = function () {
+  /* transparent = false: the garment on white (the usual picture). true: nothing behind the garment. */
+  Mock.downloadImage = function (transparent) {
     if (!blank.grey) { toast('The garment is still loading.', { kind: 'bad', label: 'Mockup' }); return Promise.resolve(false); }
     setBusy('Making the picture...');
     return settle().then(function () {
       var c = document.createElement('canvas'); c.width = SIZE; c.height = SIZE;
-      paint(c.getContext('2d'), 1, 0, 0, true);
+      paint(c.getContext('2d'), 1, 0, 0, true, transparent ? null : WHITE);
       return new Promise(function (resolve) {
         c.toBlob(function (blob) {
           setBusy('');
           if (!blob) { toast('The picture could not be made.', { kind: 'bad', label: 'Mockup' }); resolve(false); return; }
-          var name = fileBase() + '-' + state.garment + '-' + state.side + '.png';
+          var name = fileBase() + '-' + state.garment + '-' + state.side + (transparent ? '-transparent' : '') + '.png';
           window.EL.download(name, blob, 'image/png');
-          toast(name + ' downloaded (' + SIZE + ' x ' + SIZE + ' px).', { kind: 'ok', label: 'Mockup', timeout: 6000 });
+          toast(name + ' downloaded, ' + (transparent ? 'with a transparent background' : 'on a white background') + ' (' + SIZE + ' x ' + SIZE + ' px).', { kind: 'ok', label: 'Mockup', timeout: 6000 });
           resolve(true);
         }, 'image/png');
       });
@@ -379,12 +380,12 @@
     el.stage = $('mock-stage'); el.canvas = $('mock-canvas'); el.busy = $('mock-busy'); el.zoom = $('mock-zoom'); el.toggle = $('btn-mockup');
     el.garmentBtns = Array.prototype.slice.call(el.root.querySelectorAll('[data-garment]'));
     el.sideBtns = Array.prototype.slice.call(el.root.querySelectorAll('[data-side]'));
-    el.backdropBtns = Array.prototype.slice.call(el.root.querySelectorAll('[data-backdrop]'));
     el.color = $('mock-color'); el.hex = $('mock-hex'); el.swatch = $('mock-swatch'); el.chips = $('mock-chips');
     el.hue = $('mock-hue'); el.sat = $('mock-sat'); el.light = $('mock-light'); el.hueVal = $('mock-hue-value'); el.satVal = $('mock-sat-value'); el.lightVal = $('mock-light-value');
     el.placed = $('mock-placed'); el.placedEmpty = $('mock-placed-empty'); el.sideName = $('mock-side-name'); el.adds = $('mock-adds');
     el.scaleRow = $('mock-scale-row'); el.scale = $('mock-scale'); el.scaleVal = $('mock-scale-value'); el.trueSize = $('mock-true-size');
-    el.dlImage = $('mock-download'); el.dlThread = $('mock-download-thread');
+    el.dlImage = $('mock-download'); el.dlMore = $('mock-download-more'); el.dlMenu = $('mock-download-menu'); el.dlGroup = $('mock-dl-group');
+    el.dlThread = el.dlMenu ? el.dlMenu.querySelector('[data-dl="thread"]') : null;
 
     var stored = null;
     try { stored = window.EL.store.get(KEY, null); } catch (e) { stored = null; }
@@ -392,7 +393,6 @@
       if (GARMENTS[stored.garment]) state.garment = stored.garment;
       if (stored.side === 'front' || stored.side === 'back') state.side = stored.side;
       if (/^#[0-9a-f]{6}$/i.test(stored.color)) state.color = stored.color;
-      if (stored.backdrop in BACKDROPS) state.backdrop = stored.backdrop;
       ['front', 'back'].forEach(function (s) {
         var list = stored.placements && Array.isArray(stored.placements[s]) ? stored.placements[s] : [];
         state.placements[s] = list.slice(0, 24).filter(function (p) { return p && typeof p.tab === 'string' && isFinite(p.dx) && isFinite(p.dy) && isFinite(p.scale); })
@@ -410,8 +410,6 @@
     [el.hue, el.sat, el.light].forEach(function (s) { s.addEventListener('input', fromSliders); });
     el.garmentBtns.forEach(function (b) { b.addEventListener('click', function () { setGarmentSide(b.getAttribute('data-garment'), null); }); });
     el.sideBtns.forEach(function (b) { b.addEventListener('click', function () { setGarmentSide(null, b.getAttribute('data-side')); }); });
-    el.backdropBtns.forEach(function (b) { b.addEventListener('click', function () { state.backdrop = b.getAttribute('data-backdrop'); el.stage.setAttribute('data-backdrop', state.backdrop); save(); renderControls(); invalidate(); }); });
-    el.stage.setAttribute('data-backdrop', state.backdrop);
 
     el.placed.addEventListener('click', function (e) {
       var x = e.target.closest ? e.target.closest('[data-remove]') : null;
@@ -422,8 +420,29 @@
     el.adds.addEventListener('click', function (e) { var b = e.target.closest ? e.target.closest('[data-add]') : null; if (b) Mock.add(b.getAttribute('data-add')); });
     el.scale.addEventListener('input', function () { var s = selectedItem(); if (!s) return; s.scale = clamp(+el.scale.value / 100, 0.25, 4); el.scaleVal.textContent = el.scale.value + '%'; el.trueSize.disabled = s.scale === 1; save(); invalidate(); var row = el.placed.querySelector('[data-item="' + s.id + '"] .num'); if (row) row.textContent = sizeText(s); });
     el.trueSize.addEventListener('click', function () { var s = selectedItem(); if (!s) return; s.scale = 1; save(); renderLists(); invalidate(); });
-    el.dlImage.addEventListener('click', function () { Mock.downloadImage(); });
-    el.dlThread.addEventListener('click', function () { Mock.downloadStitching(); });
+    el.dlImage.addEventListener('click', function () { Mock.downloadImage(false); });
+    /* the arrow beside it: the same picture without a background, or the thread alone */
+    var menuOpen = false;
+    function closeMenu(focusBack) { if (!menuOpen) return; menuOpen = false; el.dlMenu.hidden = true; el.dlMore.setAttribute('aria-expanded', 'false'); if (focusBack) el.dlMore.focus(); }
+    el.dlMore.addEventListener('click', function () {
+      if (menuOpen) { closeMenu(false); return; }
+      menuOpen = true; el.dlMenu.hidden = false; el.dlMore.setAttribute('aria-expanded', 'true');
+      var first = el.dlMenu.querySelector('button'); if (first) first.focus();
+    });
+    el.dlMenu.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('[data-dl]') : null; if (!b) return;
+      var kind = b.getAttribute('data-dl');
+      if (kind === 'thread' && b.getAttribute('aria-disabled') === 'true') { toast('Place a design on the garment first.', { kind: 'bad', label: 'Mockup' }); return; }
+      closeMenu(false);
+      if (kind === 'thread') Mock.downloadStitching(); else Mock.downloadImage(kind === 'transparent');
+    });
+    el.dlMenu.addEventListener('keydown', function (e) {
+      var list = Array.prototype.slice.call(el.dlMenu.querySelectorAll('button')), i = list.indexOf(document.activeElement), k = e.key;
+      if (k === 'ArrowDown' || k === 'ArrowUp') { e.preventDefault(); e.stopPropagation(); list[(i + (k === 'ArrowDown' ? 1 : list.length - 1)) % list.length].focus(); }
+      else if (k === 'Escape') { e.preventDefault(); e.stopPropagation(); closeMenu(true); }
+      else if (k === 'Tab') closeMenu(false);
+    });
+    document.addEventListener('pointerdown', function (e) { if (menuOpen && !el.dlGroup.contains(e.target)) closeMenu(false); }, true);
     if (el.toggle) el.toggle.addEventListener('click', Mock.toggle);
     Array.prototype.forEach.call(document.querySelectorAll('[data-mock-zoom]'), function (b) {
       b.addEventListener('click', function () {

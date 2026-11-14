@@ -3,13 +3,13 @@
  * Tests for the embroidery engine (js/engine). Plain node, no packages to install.
  *
  *   node tests/run.js                  everything a machine with only node can run (geometry, digitizer, writer,
- *                                      facade), then the pyembroidery comparison if venv/bin/python has
+ *                                      facade, lineart), then the pyembroidery comparison if venv/bin/python has
  *                                      pyembroidery (skipped with a message if not)
  *   node tests/run.js --browser        the same plus headless Chrome over http://127.0.0.1:8106
  *   node tests/run.js --all            everything (same as --browser)
  *
  *   --no-oracle          never start python
- *   --only=a,b           only these suites: geometry, digitizer, writer, facade, oracle, browser
+ *   --only=a,b           only these suites: geometry, digitizer, writer, facade, lineart, oracle, browser
  *   --fuzz=N             random patterns for the oracle (default 300)
  *   --port=N             port for the browser suite (default 8106)
  *   --verbose            list every test
@@ -26,6 +26,7 @@ const SUITES = [
   { key: 'digitizer', file: 'digitizer.test.js', needs: 'node' },
   { key: 'writer', file: 'writer.test.js', needs: 'node' },
   { key: 'facade', file: 'facade.test.js', needs: 'node' },
+  { key: 'lineart', file: 'lineart.test.js', needs: 'node' },
   { key: 'oracle', file: 'oracle.test.js', needs: 'python + pyembroidery' },
   { key: 'browser', file: 'browser.test.js', needs: 'Google Chrome' },
 ];

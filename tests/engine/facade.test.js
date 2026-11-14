@@ -19,7 +19,7 @@ const Engine = require(path.join(ENGINE_DIR, 'engine.js'));
 const D = require('./designs.js');
 
 const SRC = {};
-for (const f of ['embwriter.js', 'digitize.js', 'engine.js', 'worker.js']) SRC[f] = fs.readFileSync(path.join(ENGINE_DIR, f), 'utf8');
+for (const f of ['lineart.js', 'embwriter.js', 'digitize.js', 'engine.js', 'worker.js']) SRC[f] = fs.readFileSync(path.join(ENGINE_DIR, f), 'utf8');
 const load = (ctx, f) => vm.runInContext(SRC[f], ctx, { filename: f });
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -102,7 +102,7 @@ module.exports = {
     for (const k of D.compare) ref[k] = Engine.generate(D.designs[k]);
 
     t.test('the documented API is all there, and nothing else', () => {
-      assert.deepStrictEqual(Object.keys(Engine).sort(), ['DEFAULTS', 'Digitizer', 'FILL_PATTERNS', 'FORMATS', 'LIMITS', 'OP', 'Writer', 'createClient', 'export', 'exportFile', 'generate', 'preview', 'validate', 'version']);
+      assert.deepStrictEqual(Object.keys(Engine).sort(), ['DEFAULTS', 'Digitizer', 'FILL_PATTERNS', 'FILL_STYLES', 'FORMATS', 'LIMITS', 'OP', 'Writer', 'createClient', 'export', 'exportFile', 'generate', 'preview', 'validate', 'version']);
       assert.strictEqual(Engine.version, '1.0.0'); assert.strictEqual(Engine.export, Engine.exportFile);
       assert.deepStrictEqual(Engine.OP, { STITCH: 0, JUMP: 1, TRIM: 2, COLOR_CHANGE: 3, END: 4 });
       assert.deepStrictEqual(Engine.FORMATS, [

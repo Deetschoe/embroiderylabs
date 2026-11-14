@@ -19,6 +19,7 @@ window.addEventListener('unhandledrejection', function (e) { window.__errors.pus
   console[k] = function () { window.__errors.push('console.' + k + ': ' + Array.prototype.join.call(arguments, ' ')); return orig.apply(console, arguments); };
 });
 </script>
+<script src="../../../js/engine/lineart.js"></script>
 <script src="../../../js/engine/embwriter.js"></script>
 <script src="../../../js/engine/digitize.js"></script>
 <script src="../../../js/engine/engine.js"></script>

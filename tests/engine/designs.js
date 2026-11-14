@@ -60,6 +60,26 @@
   designs.heavy ={ name: 'Heavy', hoop: { width: 300, height: 300 }, objects: Array.from({ length: 30 }, (_, i) => (
     { id: 'h' + i, type: 'ellipse', cx: 150, cy: 150, rx: 140 - i, ry: 140 - i, color: i % 2 ? '#123456' : '#654321', fill: { angle: i * 6, spacing: 0.3 } })) };
 
+  // line art sewn with fill.style 'lineart' (js/engine/lineart.js): hatching, lines of four widths, a disc and a
+  // frame that runs into it. Not in `compare` (and so not in the golden files): it has its own suite, lineart.test.js.
+  // band(): a polygon around a polyline, `w` mm wide (mitred, fine for gentle curves).
+  const band = (pts, w) => {
+    const L = [], R = [];
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)], l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, nx = -(b[1] - a[1]) / l * w / 2, ny = (b[0] - a[0]) / l * w / 2;
+      L.push([+(pts[i][0] + nx).toFixed(4), +(pts[i][1] + ny).toFixed(4)]); R.push([+(pts[i][0] - nx).toFixed(4), +(pts[i][1] - ny).toFixed(4)]);
+    }
+    return L.concat(R.reverse());
+  };
+  const arc = (cx, cy, r, a0, a1, n) => Array.from({ length: n + 1 }, (_, i) => { const a = a0 + (a1 - a0) * i / n; return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; });
+  designs.lineart = { name: 'Line art', hoop: { width: 100, height: 100 }, objects: [
+    { id: 'art', type: 'path', fillRule: 'nonzero', color: '#111111', fill: { style: 'lineart' }, rings: [].concat(
+      Array.from({ length: 12 }, (_, i) => band([[12 + i * 1.3, 12], [20 + i * 1.3, 32]], 0.55)),        // hatching: 0.55 mm lines, 0.75 mm apart
+      [band([[12, 40], [45, 40]], 0.3), band([[12, 46], [45, 46]], 0.6), band([[12, 53], [45, 53]], 1.4)], // a hairline, a 0.6 mm and a 1.4 mm line
+      [band(arc(30, 75, 12, Math.PI * 0.1, Math.PI * 0.9, 24), 1.0)],                               // a 1 mm curve
+      [ring(72, 30, 8, 8, 64)],                                                                     // a 16 mm disc
+      [band([[60, 45], [88, 45], [88, 88], [60, 88], [60, 45.5]], 1.2), band([[72, 38], [72, 45]], 1.2)]) } ] };
+
   // names used for the exported files (label handling: accents, emoji, long, path-like)
   const exportNames = { patch: 'Patch', badge: 'Café Badge №1', blocks: 'A very long design name that keeps going', letters: '../U&O', full: '', testsew: 'Test sew' };
 

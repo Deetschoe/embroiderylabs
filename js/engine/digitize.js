@@ -11,9 +11,9 @@
  * the writer. NOT sewn on a physical machine.
  */
 (function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory();
-  else { root.Engine = root.Engine || {}; root.Engine.Digitizer = factory(); }
-})(typeof self !== 'undefined' ? self : this, function () {
+  if (typeof module === 'object' && module.exports) module.exports = factory(root);
+  else { root.Engine = root.Engine || {}; root.Engine.Digitizer = factory(root); }
+})(typeof self !== 'undefined' ? self : this, function (rootScope) {
   'use strict';
 
   const OP = { STITCH: 0, JUMP: 1, TRIM: 2, COLOR_CHANGE: 3, END: 4 };
@@ -401,6 +401,22 @@
     diagonal:   { label: 'Diagonal', staggers: 8 },
     crosshatch: { label: 'Crosshatch', cross: true },
   };
+
+  // How a filled shape is sewn (fill.style). 'tatami' is the default and is exactly the fill the engine has always
+  // made; 'lineart' is js/engine/lineart.js (thin lines along their centre, wide areas as an edge ring + tatami).
+  const FILL_STYLES = {
+    tatami:  { label: 'Fill' },
+    lineart: { label: 'Auto (line art)' },
+  };
+  const LINEART_DETAIL = ['fine', 'normal', 'bold'];
+  // lineart.js, wherever it was loaded: a script tag / importScripts before this file, or next to it in node
+  let lineArtModule;
+  function lineArt() {
+    if (lineArtModule !== undefined) return lineArtModule;
+    if (rootScope && rootScope.Engine && rootScope.Engine.LineArt) return (lineArtModule = rootScope.Engine.LineArt);
+    if (typeof module === 'object' && module.exports && typeof require === 'function') { try { return (lineArtModule = require('./lineart.js')); } catch (e) { /* not there */ } }
+    return null; // not cached: a page may still load it later
+  }
 
   // ------------------------------------------------------------------ tatami fill
   function tatamiRow(span, L, staggers, dir, out) {
@@ -793,6 +809,7 @@
         const c = normColor(part.color);
         if (color === null) { threads.push({ color: c }); perThread.push({ color: c, stitches: 0, lengthMm: 0 }); color = c; }
         else if (c !== color) { tieOffAndTrim(); cmds.push(OP.COLOR_CHANGE, cx, cy); threads.push({ color: c }); perThread.push({ color: c, stitches: 0, lengthMm: 0 }); color = c; }
+        else if (part.trimBefore && open) tieOffAndTrim(); // only line-art parts set this: never a thread across bare fabric
         else if (open && Math.hypot(qx(run[0].x) - cx, qy(run[0].y) - cy) / 10 > connectMax) tieOffAndTrim();
         owner = part.objectIndex === undefined ? -1 : part.objectIndex; kind = part.kind === 'line' ? 1 : 0;
         if (!open) { const ux = qx(run[0].x), uy = qy(run[0].y); cmds.push(OP.JUMP, ux, uy); cx = ux; cy = uy; stitchTo(run[0]); lockAt(run[0], run[1]); }
@@ -936,8 +953,9 @@
     INTERNAL_ERROR: 'A shape could not be stitched and was skipped.',
     TOO_MANY_STITCHES: 'The design has too many stitches for an embroidery machine. Make it smaller or less dense.',
     LARGE_DESIGN: 'This is a large design: it takes a long time to sew, and small home machines may not load it.',
+    LINEART_REDUCED: 'This line art is very large, so it was traced on a coarser grid; the finest lines may be lost.',
   };
-  const SEVERITY = { EMPTY_DESIGN: 'error', OUTSIDE_HOOP: 'error', EXCEEDS_HOOP: 'error', TOO_MANY_STITCHES: 'error', SATIN_TOO_NARROW: 'info', PARAM_CLAMPED: 'info', THIN_FILL: 'info', INVALID_COLOR: 'info' };
+  const SEVERITY = { EMPTY_DESIGN: 'error', OUTSIDE_HOOP: 'error', EXCEEDS_HOOP: 'error', TOO_MANY_STITCHES: 'error', SATIN_TOO_NARROW: 'info', PARAM_CLAMPED: 'info', LINEART_REDUCED: 'info', THIN_FILL: 'info', INVALID_COLOR: 'info' };
 
   // one object -> stitch parts. warn(code, extra) records a warning for this object.
   // budget (optional) = { left, need }: left is how many stitches the design may still take. A piece whose lower
@@ -992,6 +1010,27 @@
       if (pat.staggers) fopt.staggers = pat.staggers;
       // crosshatch: an open lattice, two passes at right angles with the rows well apart and nothing underneath
       if (pat.cross) { fopt.spacing = Math.min(LIMITS.fillSpacing[1], Math.max(1.2, spacing * 3)); fopt.underlay = false; }
+      let style = 'tatami';
+      if (f.style !== undefined && f.style !== null) {
+        style = String(f.style).toLowerCase();
+        if (!Object.prototype.hasOwnProperty.call(FILL_STYLES, style)) { warn('PARAM_CLAMPED', { param: 'Fill style', value: 'tatami', message: 'Unknown fill style; the normal fill was used.' }); style = 'tatami'; }
+        else if (style === 'lineart' && !lineArt()) { warn('PARAM_CLAMPED', { param: 'Fill style', value: 'tatami', message: 'Line art stitching is not loaded; the normal fill was used.' }); style = 'tatami'; }
+      }
+      if (style === 'lineart') {
+        const la = f.lineart && typeof f.lineart === 'object' ? f.lineart : {};
+        let detail = la.detail === undefined || la.detail === null ? 'normal' : String(la.detail).toLowerCase();
+        if (LINEART_DETAIL.indexOf(detail) < 0) { warn('PARAM_CLAMPED', { param: 'Line art detail', value: 'normal', message: 'Unknown line art detail; normal was used.' }); detail = 'normal'; }
+        const lopt = { detail, spacing: fopt.spacing, stitchLen, angleDeg: fopt.angleDeg, pullComp, underlay: fopt.underlay, cross: !!pat.cross, maxStitches: budget ? budget.left : undefined };
+        if (pat.staggers) lopt.staggers = pat.staggers;
+        const num = (key, range, name) => { if (la[key] !== undefined && la[key] !== null) { const v = param(la, key, undefined, range, name); if (v !== undefined) lopt[key] = v; } };
+        num('thin', [0.5, 5], 'Line art wide-area width'); num('satinMin', [0.5, 3], 'Line art satin width'); num('beanMin', [0.2, 2], 'Line art triple-run width'); num('res', [0.03, 0.5], 'Line art grid');
+        const res = lineArt().build(closedSubs, geo.rule, lopt, { fillShape, runStitch, bean });
+        if (res.skipped === 'OVER_LIMIT') { budget.need = res.lowerBound; return parts; }
+        if (budget && !res.skipped) budget.left -= res.lowerBound;
+        for (const w of res.warnings) warn(w.code, w.extra);
+        if (res.skipped) { if (!lineSubs.length) warn('TINY_OBJECT'); }
+        else for (const p of res.parts) { const part = { color, points: p.points, objectIndex: index, kind: p.kind }; if (p.trimBefore) part.trimBefore = true; parts.push(part); }
+      } else {
       const res = fillShape(closedSubs, fopt);
       if (res.skipped === 'OVER_LIMIT') { budget.need = res.lowerBound; return parts; }
       if (budget && !res.skipped) budget.left -= res.lowerBound;
@@ -1006,6 +1045,7 @@
           if (!res2.skipped) parts.push({ color, points: res2.points, objectIndex: index, kind: 'fill', stats: res2.stats });
         }
       }
+      } // end of the tatami style
     }
 
     if (lineSubs.length) {
@@ -1181,7 +1221,7 @@
   }
 
   return {
-    OP, OP_NAME, DEFAULTS, LIMITS, FILL_PATTERNS,
+    OP, OP_NAME, DEFAULTS, LIMITS, FILL_PATTERNS, FILL_STYLES,
     digitize, validateIR, normColor,
     // lower-level pieces, exported for tests and tools (not part of the stable API)
     fillShape, satinLine, runStitch, bean, assemble, EdgeIndex, buildRows, buildRegions, densityStats, simplify, _tuning: T,

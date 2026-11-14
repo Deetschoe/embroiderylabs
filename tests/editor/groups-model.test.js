@@ -233,6 +233,26 @@ test('hostile group data loads into valid groups', () => {
   assert.strictEqual(M.groups().length, 0);
 });
 
+test('group ids that are names of Object.prototype keys never lose shapes', () => {
+  const objs = [rect('a', 5), rect('b', 20), rect('c', 35), rect('d', 50)];
+  objs[0].group = 'constructor'; objs[1].group = 'g1'; objs[2].group = 'toString'; objs[3].group = '__proto__';
+  M.load({ hoop: { w: 130, h: 180 }, objects: objs, groups: [{ id: '__proto__', name: 'p' }, { id: 'constructor', name: 'c' }, { id: 'g1', name: 'One' }] });
+  assert.strictEqual(M.doc.objects.length, 4, 'no shape dropped: ' + order());
+  assert.deepStrictEqual(plain(M.groups().map(g => g.id)), ['g1']);
+  assert.ok(['a', 'c', 'd'].every(id => !M.get(id).group), 'shapes of a made-up group are loose');
+  assert.ok(M.groupShapes(['a']), 'a loose shape can be grouped');
+});
+
+test('a group of 1500 shapes stays quick to select', () => {
+  const objs = []; for (let i = 0; i < 1500; i++) objs.push(rect('r' + i, i % 100));
+  M.load({ hoop: { w: 130, h: 180 }, objects: objs });
+  const t0 = Date.now();
+  const g = M.groupShapes(objs.map(o => o.id));
+  M.select([]); M.select(M.members(g.id));
+  assert.ok(M.selectedGroup() === g);
+  assert.ok(Date.now() - t0 < 2000, 'took ' + (Date.now() - t0) + ' ms');
+});
+
 test('every design in designs/*.embroidr gives the same engine input with all shapes grouped', () => {
   const dir = process.env.EMB_DESIGNS_DIR || path.join(REPO, 'designs');
   const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => f.endsWith('.embroidr')) : [];

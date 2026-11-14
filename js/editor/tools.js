@@ -242,7 +242,13 @@
     var ids = V.inRect({ x0: Math.min(g.start.x, p.x), y0: Math.min(g.start.y, p.y), x1: Math.max(g.start.x, p.x), y1: Math.max(g.start.y, p.y) });
     var next = g.base.slice();
     /* a marquee that touches a grouped shape picks the whole group */
-    ids.forEach(function (id) { M.unitOf(id).forEach(function (u) { if (next.indexOf(u) === -1) next.push(u); }); });
+    var have = Object.create(null), groupsDone = Object.create(null);
+    next.forEach(function (id) { have[id] = true; });
+    ids.forEach(function (id) {
+      var o = M.get(id), gid = o && o.group && M.group(o.group) ? o.group : null;
+      if (gid) { if (groupsDone[gid]) return; groupsDone[gid] = true; }
+      (gid ? M.members(gid) : [id]).forEach(function (u) { if (!have[u]) { have[u] = true; next.push(u); } });
+    });
     M.select(next);
     V.invalidate();
   }

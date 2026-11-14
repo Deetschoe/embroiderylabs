@@ -411,24 +411,31 @@
   }
   function allSelected(ids) { return ids.length > 0 && ids.every(function (id) { return M.isSelected(id); }); }
   function syncSelection() {
-    var list = rows(), tab = null;
+    var list = rows(), tab = null, picked = Object.create(null), whole = Object.create(null);
+    M.selection.forEach(function (id) { picked[id] = true; });
+    /* per group: is every one of its shapes picked? (one pass, so a big group stays quick) */
+    M.doc.objects.forEach(function (o) {
+      if (!o.group) return;
+      if (!(o.group in whole)) whole[o.group] = true;
+      if (!picked[o.id]) whole[o.group] = false;
+    });
     list.forEach(function (row) {
-      var on = row._gid ? allSelected(M.members(row._gid)) : M.isSelected(row._id);
+      var on = row._gid ? !!whole[row._gid] : !!picked[row._id];
       row.setAttribute('aria-selected', on ? 'true' : 'false');
       row.tabIndex = -1;
       if (on && !tab) tab = row;
+      /* the shapes of a picked group are shown as part of it, a little lighter */
+      if (row._in) row.classList.toggle('is-in-picked', !!whole[row._in]);
     });
-    /* the shapes of a picked group are shown as part of it, a little lighter */
-    list.forEach(function (row) { if (row._in) row.classList.toggle('is-in-picked', allSelected(M.members(row._in))); });
     if (!tab) tab = list[0];
     if (tab) tab.tabIndex = 0;
-    var objs = M.doc.objects, sel = M.selection, n = sel.length;
+    var objs = M.doc.objects, n = M.selection.length;
     /* can the selection still move up / down? */
     var up = false, down = false;
     for (var i = 0; i < objs.length; i++) {
-      if (sel.indexOf(objs[i].id) === -1) continue;
-      if (i > 0 && sel.indexOf(objs[i - 1].id) === -1) up = true;
-      if (i < objs.length - 1 && sel.indexOf(objs[i + 1].id) === -1) down = true;
+      if (!picked[objs[i].id]) continue;
+      if (i > 0 && !picked[objs[i - 1].id]) up = true;
+      if (i < objs.length - 1 && !picked[objs[i + 1].id]) down = true;
     }
     el.up.disabled = !n || !up; el.down.disabled = !n || !down;
     renderGroupButton();

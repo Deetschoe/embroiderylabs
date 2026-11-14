@@ -366,7 +366,7 @@
   /* Copies of shapes: a group that was copied whole becomes a new group of the copies ("Logo copy");
      a copy of only some members of a group is a loose shape. */
   function copyGroups(list, groups) {
-    var whole = {}, made = {};
+    var whole = Object.create(null), made = Object.create(null);
     Object.keys(groups).forEach(function (gid) {
       var all = groups[gid].n, had = list.filter(function (o) { return o.group === gid; }).length;
       if (had && had === all) whole[gid] = true;
@@ -382,7 +382,7 @@
     };
   }
   function groupInfo(list) {
-    var out = {};
+    var out = Object.create(null);
     list.forEach(function (o) {
       var g = o.group && M.group(o.group);
       if (g && !out[g.id]) out[g.id] = { name: g.name, n: M.members(g.id).length };
@@ -444,8 +444,11 @@
   M.selectedGroup = function () {
     var sel = M.selection; if (!sel.length) return null;
     var g = M.groupOf(sel[0]); if (!g) return null;
-    var m = M.members(g.id);
-    return m.length === sel.length && sel.every(function (id) { return m.indexOf(id) !== -1; }) ? g : null;
+    var n = 0, inSel = Object.create(null), i;
+    for (i = 0; i < sel.length; i++) inSel[sel[i]] = true;
+    var objs = M.doc.objects;
+    for (i = 0; i < objs.length; i++) if (objs[i].group === g.id) { if (!inSel[objs[i].id]) return null; n++; }
+    return n === sel.length ? g : null;
   };
   /* Every selected shape belongs to group g, but not all of g is selected (inside the group, like a
      double-click in Figma). */
@@ -464,7 +467,7 @@
      shapes of a group next to each other (gathered at the first one). A list that already follows
      the rules is left exactly as it is, so the sewing order never moves on its own. */
   function normalizeGroups() {
-    var groups = M.doc.groups, objs = M.doc.objects, known = {}, used = {}, i;
+    var groups = M.doc.groups, objs = M.doc.objects, known = Object.create(null), used = Object.create(null), i;
     if (!Array.isArray(groups)) groups = M.doc.groups = [];
     for (i = 0; i < groups.length; i++) known[groups[i].id] = true;
     for (i = 0; i < objs.length; i++) {
@@ -474,7 +477,7 @@
     }
     if (groups.some(function (gr) { return !used[gr.id]; })) M.doc.groups = groups.filter(function (gr) { return used[gr.id]; });
     /* contiguous? */
-    var seen = {}, prev = null, split = false;
+    var seen = Object.create(null), prev = null, split = false;
     for (i = 0; i < objs.length && !split; i++) {
       var k = objs[i].group || null;
       if (k && k !== prev && seen[k]) split = true;
@@ -482,7 +485,7 @@
       prev = k;
     }
     if (!split) return;
-    var out = [], done = {};
+    var out = [], done = Object.create(null);
     objs.forEach(function (o) {
       if (!o.group) { out.push(o); return; }
       if (done[o.group]) return;
@@ -520,7 +523,7 @@
   /* Ungroup every group that holds one of `ids`; its shapes stay where they are and become the
      selection. Returns how many groups were taken apart. */
   M.ungroup = function (ids) {
-    var gone = {}, n = 0, freed = [];
+    var gone = Object.create(null), n = 0, freed = [];
     (ids || []).forEach(function (id) { var g = M.groupOf(id); if (g && !gone[g.id]) { gone[g.id] = true; n++; } });
     if (!n) return 0;
     M.commit(n === 1 ? 'Ungroup' : 'Ungroup ' + n + ' groups', function () {
@@ -564,7 +567,7 @@
   }
   M.reorder = function (ids, dir) {
     return M.commit(dir > 0 ? 'Sew later' : 'Sew earlier', function () {
-      var units = [], byGroup = {};
+      var units = [], byGroup = Object.create(null);
       M.doc.objects.forEach(function (o) {
         if (o.group && byGroup[o.group]) { byGroup[o.group].list.push(o); return; }
         var u = { list: [o], group: o.group || null };
@@ -720,7 +723,7 @@
   /* Replace the document with stored data. Never throws; anything that does not
      make sense is dropped. Returns the number of objects dropped. Clears history. */
   M.load = function (data) {
-    var dropped = 0, objects = [], seen = {}, groups = [], known = {};
+    var dropped = 0, objects = [], seen = {}, groups = [], known = Object.create(null);
     var base = { color: '#3157e0', paint: 'fill', lineType: 'running', lineWidth: D.line.width || 3, spacing: D.fill.spacing, stitchLen: D.fill.stitchLength, angle: 0 };
     var hoop = { w: 100, h: 100 }, name = 'untitled', defaults = {};
     try {
@@ -734,7 +737,7 @@
         /* groups came with file version 2; a file without them simply has none */
         if (Array.isArray(data.groups)) {
           data.groups.slice(0, MAX_OBJECTS).forEach(function (g) {
-            if (!g || typeof g !== 'object' || typeof g.id !== 'string' || !/^[\w-]{1,40}$/.test(g.id) || known[g.id]) return;
+            if (!g || typeof g !== 'object' || typeof g.id !== 'string' || !/^[\w-]{1,40}$/.test(g.id) || (g.id in {}) || known[g.id]) return;   /* not '__proto__', 'constructor', ... */
             known[g.id] = true;
             groups.push({ id: g.id, name: cleanName(g.name, 'Group') });
           });

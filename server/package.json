@@ -1,0 +1,11 @@
+{
+  "name": "embroiderylabs-api",
+  "private": true,
+  "type": "module",
+  "description": "Accounts, plans and server-checked exports for EmbroideryLabs. No dependencies; wrangler is only needed to deploy.",
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "dev": "npx wrangler@3 dev",
+    "deploy": "npx wrangler@3 deploy"
+  }
+}

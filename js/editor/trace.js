@@ -47,7 +47,7 @@
   var MAX_SIDE = 1600;               /* px kept in memory */
   var MIN_W = 10;                    /* mm */
   var KEEP = 8;                      /* mm of the picture that must stay on the hoop */
-  var stored = false, saveTimer = 0, told = false, lastHoop = null, picSeq = 0;
+  var stored = false, saveTimer = 0, told = false, lastHoop = null, picSeq = 0, addedToast = null, noteTimer = 0;
 
   function $(id) { return document.getElementById(id); }
   function toast(msg, opts) { return Editor.toast ? Editor.toast(msg, opts) : null; }
@@ -147,7 +147,7 @@
         V.trace = t; told = false;
         if (V.mode !== 'design') V.setMode('design');
         changed(); Tr.save();
-        toast('Picture added. Trace over it, or turn it into stitches.', { kind: 'ok', label: 'Picture', timeout: 7000, action: { label: 'Turn into stitches', onClick: function () { Tr.stitch(); } } });
+        addedToast = toast('Picture added. Trace over it, or turn it into stitches.', { kind: 'ok', label: 'Picture', timeout: 7000, action: { label: 'Turn into stitches', onClick: function () { Tr.stitch(); } } });
         say('Picture added under the drawing');
         resolve(true);
       };
@@ -157,6 +157,7 @@
   Tr.moveTo = function (x, y) {
     var t = V.trace; if (!t || !isFinite(x) || !isFinite(y)) return;
     t.x = x; t.y = y; clampIn(t); V.invalidate();
+    clearTimeout(noteTimer); noteTimer = setTimeout(renderStitch, 150);   /* the "off the hoop" note follows a drag */
   };
   Tr.setWidth = function (w) {
     var t = V.trace; w = Number(w); if (!t || !isFinite(w)) return;
@@ -217,7 +218,8 @@
     key: '',           /* what the current result (or running job) is for */
     job: false, progress: 0, result: null, stitches: 0, names: null, error: '', cancelled: false,
     waiters: [],       /* stitch() calls waiting for the running job */
-    timer: 0
+    timer: 0,
+    applied: null      /* { key, ids }: the result last added, so a second press (or a double click) adds no copy */
   };
   var colours = { auto: true, n: 6 };
   (function () {
@@ -335,7 +337,7 @@
   function reset() {
     clearTimeout(S.timer); S.timer = 0;
     if (S.job && S.client) { S.seq++; S.client.cancel(); }
-    S.seq++; S.key = ''; S.job = false; S.result = null; S.error = ''; S.cancelled = false; S.pixels = null; S.pixelsOf = null;
+    S.seq++; S.key = ''; S.job = false; S.result = null; S.error = ''; S.cancelled = false; S.pixels = null; S.pixelsOf = null; S.applied = null;
     settle(false); renderStitch();
   }
   Tr.cancel = function () {
@@ -370,15 +372,24 @@
       else renderStitch();
     });
   };
+  /* The shapes of this very result are still in the design (not undone or deleted). */
+  function onHoop() {
+    var a = S.applied; if (!a || !V.trace || a.key !== keyOf(V.trace)) return false;
+    var have = {}; M.doc.objects.forEach(function (o) { have[o.id] = 1; });
+    return a.ids.some(function (id) { return have[id]; });
+  }
   function apply() {
     var t = V.trace, res = S.result;
     if (!t || !res || !res.ok) return null;
+    if (onHoop()) { toast('These stitches are already in your design.', { label: 'Stitches' }); renderStitch(); return null; }
     var list = editorList(res, t);
     var made = M.addMany(list, 'Turn picture into stitches');
     if (!made.length) {
       toast('That would be more than ' + M.MAX_OBJECTS + ' shapes in one design. Try fewer colours, or start a new design.', { kind: 'bad', label: 'Stitches', timeout: 8000 });
       return null;
     }
+    S.applied = { key: S.key, ids: made.map(function (o) { return o.id; }) };
+    if (addedToast && addedToast.dismiss) { addedToast.dismiss(); addedToast = null; }
     if (V.mode !== 'design' && V.setMode) V.setMode('design');
     Tr.setHidden(true);
     var n = res.colors.length;
@@ -442,10 +453,13 @@
       note.textContent = msg; note.hidden = !msg;
       note.classList.toggle('is-bad', !!S.error);
     }
-    if (btn) {
-      btn.disabled = !t || !!S.error;
-      btn.textContent = S.waiters.length && S.job ? 'Adding when ready…' : 'Turn into stitches';
-    }
+    renderButton();
+  }
+  function renderButton() {
+    var t = V.trace, btn = $('trace-stitch'); if (!btn) return;
+    var done = !S.job && onHoop();
+    btn.disabled = !t || !!S.error || done;
+    btn.textContent = done ? 'Added to your design' : (S.waiters.length && S.job ? 'Adding when ready…' : 'Turn into stitches');
   }
   /* One short sentence from the tracer's warnings, the ones a visitor can act on. */
   function shortWarning(r) {
@@ -481,6 +495,8 @@
     /* a new picture, a new size: trace again (a move or a new opacity needs nothing) */
     Editor.on('trace', function () { if (!V.trace) reset(); else { schedule(); renderStitch(); } });
     Editor.on('units', renderStitch);
+    /* undo / delete of the added shapes lets the button add them again */
+    Editor.on('change', function () { if (S.applied) renderButton(); });
     /* the design could not be saved while a picture takes up storage: the picture gives way */
     Editor.on('saved', function () {
       if (!Editor.IO || Editor.IO.saveState !== 'failed' || !stored) return;

@@ -143,7 +143,9 @@ will list (`Engine.Writer.buildUniquePalette`, so two close shades get two names
 engine's count for the shapes as the editor will send them (`Model.toEngine` + `Engine.generate`).
 The button adds the shapes with ONE `Model.addMany(list, 'Turn picture into stitches')`, named after their
 thread ("Khaki", "Pewter 2", "Black line 3"), then hides the picture: `V.trace.hidden`, `img` = null, `pic` kept;
-"Show picture" brings it back, and the flag is stored with the picture. The colour setting is a per-visitor
+"Show picture" brings it back, and the flag is stored with the picture. While the shapes of that same result are
+still in the design (`S.applied`), the button reads "Added to your design" and a second press, a double click or
+the toast's action adds no copy; Undo or deleting them makes it available again. The colour setting is a per-visitor
 convenience in `localStorage['el-editor-stitchify-v1']`. In the page: `Editor.Trace.stitch()`, `.setColors()`,
 `.cancel()`, `.preview()`.
 

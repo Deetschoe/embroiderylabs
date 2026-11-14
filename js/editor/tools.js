@@ -3,7 +3,9 @@
    Pointer tools on the main canvas, with Pointer Events so mouse, pen and
    touch behave the same:
      select   click (real geometry, topmost first), Shift-click, drag to move,
-              handles to resize (Shift keeps proportion), marquee on empty space
+              handles to resize (Shift keeps proportion), marquee on empty space.
+              A click on a grouped shape picks its whole group; a double-click enters the
+              group and picks that one shape (then clicks pick its other shapes), like Figma
      pen      freehand stroke; ends near its start = closed (can be filled)
      line / rect / ellipse    press, drag, release (Shift constrains)
      polygon  click points; click the first point, double-click or Enter closes;
@@ -155,6 +157,18 @@
     cutWith(pts);
   }
 
+  /* ---------- groups --------------------------------------------------------------------- */
+  /* What a click on shape o picks: its whole group, unless the selection is already inside that
+     group (a double-click entered it), then just o. A loose shape is itself. */
+  function pickUnit(o) {
+    var g = o.group ? M.group(o.group) : null;
+    if (!g) return [o.id];
+    var inside = M.insideGroup();
+    if (inside && inside.id === g.id) return [o.id];
+    return M.members(g.id);
+  }
+  T.pickUnit = pickUnit;
+
   /* ---------- gestures ------------------------------------------------------------------ */
   function originals() { return M.selected().map(function (o) { return { id: o.id, geom: G.geomOf(o) }; }); }
   function putBack(list, fn) {
@@ -227,7 +241,14 @@
     V.marquee = { x0: g.start.x, y0: g.start.y, x1: p.x, y1: p.y };
     var ids = V.inRect({ x0: Math.min(g.start.x, p.x), y0: Math.min(g.start.y, p.y), x1: Math.max(g.start.x, p.x), y1: Math.max(g.start.y, p.y) });
     var next = g.base.slice();
-    ids.forEach(function (id) { if (next.indexOf(id) === -1) next.push(id); });
+    /* a marquee that touches a grouped shape picks the whole group */
+    var have = Object.create(null), groupsDone = Object.create(null);
+    next.forEach(function (id) { have[id] = true; });
+    ids.forEach(function (id) {
+      var o = M.get(id), gid = o && o.group && M.group(o.group) ? o.group : null;
+      if (gid) { if (groupsDone[gid]) return; groupsDone[gid] = true; }
+      (gid ? M.members(gid) : [id]).forEach(function (u) { if (!have[u]) { have[u] = true; next.push(u); } });
+    });
     M.select(next);
     V.invalidate();
   }
@@ -348,7 +369,7 @@
     el.view.classList.remove('is-panning');
     switch (g.type) {
       case 'move': case 'resize':
-        if (!g.moved) { if (!cancel && g.collapse) M.select([g.collapse]); break; }
+        if (!g.moved) { if (!cancel && g.collapse) M.select(g.collapse); break; }
         if (cancel) M.cancel(); else M.end(g.type === 'move' ? 'Move' : (g.end ? 'Reshape line' : 'Resize'));
         break;
       case 'marquee':
@@ -426,11 +447,14 @@
       var h = V.handleAt(p.px, p.py), o = h ? null : V.hit(p.x, p.y);
       if (h) startResize(h, p, e);
       else if (o) {
-        var was = M.isSelected(o.id);
-        if (e.shiftKey) { M.toggle(o.id); gesture = { type: 'idle', pid: e.pointerId }; }
-        else {
-          if (!was) M.select([o.id]);
-          gesture = { type: 'move', pid: e.pointerId, start: p, moved: false, orig: originals(), collapse: was && M.selection.length > 1 ? o.id : null };
+        var unit = pickUnit(o), was = unit.every(function (id) { return M.isSelected(id); });
+        if (e.shiftKey) {
+          var rest = M.selection.filter(function (id) { return unit.indexOf(id) === -1; });
+          M.select(was ? rest : rest.concat(unit));
+          gesture = { type: 'idle', pid: e.pointerId };
+        } else {
+          if (!was) M.select(unit);
+          gesture = { type: 'move', pid: e.pointerId, start: p, moved: false, orig: originals(), collapse: was && M.selection.length > unit.length ? unit : null };
         }
       } else if (movesTrace(p) && !e.shiftKey) {
         /* the picture to trace is moved like a shape until it is locked */
@@ -527,6 +551,16 @@
   }
 
   function onDblClick(e) {
+    if (T.current === 'select' && !gesture) {
+      /* double-click a grouped shape: enter the group and pick just that shape */
+      var p = V.toMm(e.clientX, e.clientY), o = V.hit(p.x, p.y);
+      if (o && o.group && M.group(o.group)) {
+        e.preventDefault();
+        M.select([o.id]);
+        say(o.name + ' selected in ' + M.group(o.group).name);
+        return;
+      }
+    }
     if (T.current === 'cut' && lasso) {
       e.preventDefault();
       if (lasso.pts.length >= 3) finishLasso(true); else say('An outline needs at least 3 points');
@@ -566,6 +600,8 @@
       if (gesture) { endGesture(true); return true; }
       if (poly) { finishPolygon(false); say('Polygon cancelled'); return true; }
       if (lasso) { finishLasso(false); say('Cut out cancelled'); return true; }
+      var inside = M.insideGroup();                       /* inside a group: Esc steps out to the whole group */
+      if (inside) { M.select(M.members(inside.id)); say(inside.name + ' selected'); return true; }
       if (M.selection.length) { M.select([]); return true; }
       return false;
     }

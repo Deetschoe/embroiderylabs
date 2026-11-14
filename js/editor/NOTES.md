@@ -122,6 +122,34 @@ an outline-only shape removes just the part under it (`Geom.eraseLine`); what is
 the same thread (`Model.strokePiece`), one undo step per rub. A filled shape cannot lose a bite, so pressing one
 without rubbing removes it whole; to take a piece out of a fill, use Cut out (K) and delete the inside part.
 
+## Groups (Figma-like, one level)
+
+`Model.doc.groups = [{ id, name }]`; a member carries `group: id`, and the members of a group always sit next to
+each other in `objects` (`normalizeGroups()` runs in every commit and in `load`: it drops unknown group ids and
+empty groups and gathers scattered members at the first one; a list that already follows the rules is never
+reordered). Groups are editor-only: `M.toEngine()` copies named fields, so the engine sees the same flat list and
+an ungrouped or grouped design gives byte-identical stitches (tests/editor/groups-model.test.js checks every
+design in designs/). API: `M.groupShapes(ids)` (Cmd/Ctrl+G; the block goes where the last picked shape was
+sewn, never inside another group), `M.ungroup(ids)` (Shift+Cmd/Ctrl+G), `M.renameGroup`, `M.place(ids, beforeId,
+groupId | null | undefined)` (sewing-order drags: into a group, out of it, or a whole group as a block),
+`M.reorder` (`[` `]`: a whole group steps as one block, a shape inside steps within its group), `M.members`,
+`M.groupOf`, `M.unitOf`, `M.selectedGroup()`, `M.insideGroup()`. All are single undo steps. Cut and eraser
+pieces keep their group; duplicate / paste of a whole group makes a new group "<name> copy", a copy of part of
+a group is loose. On the canvas (tools.js) a click on a grouped shape picks the whole group, a double-click
+picks just that shape ("inside"; further clicks pick siblings), Esc steps out to the group; a marquee takes
+whole groups. Move / resize act on the selection, so on the whole group (there is no rotate tool yet). In the
+sewing order (panels.js) a group is a row with a caret (fold, view only), its name (double-click to rename), the
+stitch total and an Ungroup button; its shapes are indented under it. The Group / Ungroup button sits in the
+sewing-order header; a right-click on the canvas or a row opens a small menu (Group / Ungroup, Export selection
+.pes / .dst, Delete). Files: `IO.payload()` writes `v: 2` and `doc.groups` only when the design has groups (a
+design without them is written exactly as before, `v: 1`); `IO.restore` accepts any `v >= 1`.
+
+Export selection only: the export menu starts with a "Selection only" switch (off each time the menu opens);
+with it on, the formats below export `IO.selectionDesign()` (the selected shapes in sewing order, named after the
+group), stitched on a second engine client so the live stitches are not superseded. The engine centres every
+file on its own stitches, so the part is centred the way the whole design is. Shift+Cmd/Ctrl+E does the same as
+.pes. `IO.exportFile(format, { selection: true })`; the accounts hook gets the part's design.
+
 ## Fill patterns
 
 Each filled shape has `pattern` (`smooth`, `brick`, `ribbed`, `diagonal`, `crosshatch`), shown as Pattern in
@@ -229,7 +257,7 @@ convenience in `localStorage['el-editor-stitchify-v1']`. In the page: `Editor.Tr
 The tracer's `underlay: false` (photo fills, and fills set into a fill sewn before them) is kept on the object.
 It is only ever stored as false (a missing key means the engine default), survives save/load and is copied into
 cut pieces; `Model.toEngine()` passes it on as `fill.underlay: false`. There is no control for it in the panel.
-Editor tests: `node tests/editor/run.js` runs model.test.js, svgimport.test.js, cut.test.js and tutorial.test.js.
+Editor tests: `node tests/editor/run.js` runs model.test.js, svgimport.test.js, cut.test.js, tutorial.test.js, groups-model.test.js and groups.test.js.
 
 ## How things flow
 

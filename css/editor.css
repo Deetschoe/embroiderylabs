@@ -280,6 +280,24 @@ div.sec__head { cursor: default; }
 .flag--error { background: var(--bad); }
 .layers__empty[hidden] { display: none; }
 
+/* ---------- Groups in the sewing order: a row with a caret, its shapes indented under it ---------- */
+.layer--group { grid-template-columns: 18px 14px minmax(0, 1fr) auto auto; }
+.layer--group > .name { font-weight: var(--w-semi); }
+.layer--group > .glyph--group { color: var(--ink-3); }
+.layer__caret { display: grid; place-items: center; width: 18px; height: 22px; padding: 0; border: 0; border-radius: var(--r-2); background: transparent; color: var(--ink-3); cursor: pointer; }
+.layer__caret:hover { background: var(--hover); color: var(--ink-1); }
+.layer__caret svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.layer__ungroup:hover { color: var(--ink-1); background: var(--hover); }
+.layer__ungroup svg { stroke-dasharray: 2 1.5; }
+.layer--child { padding-left: calc(var(--s-3) + 14px); background-image: linear-gradient(var(--line-3), var(--line-3)); background-size: 1px 100%; background-position: calc(var(--s-3) + 5px) 0; background-repeat: no-repeat; }
+.layer--child.is-in-picked { background: color-mix(in srgb, var(--signal) 7%, var(--raised)); }
+.layer--child.is-in-picked:hover { background: var(--hover); }
+.layer--group[aria-selected="true"] .layer__del { opacity: 1; }
+.layer--group .layer__rename { left: 44px; }
+.layer--child .layer__rename { left: 82px; }
+.layer.is-drop-in::before, .layer.is-drop-in.is-drop-after::after { left: calc(var(--s-3) + 14px); }
+@media (pointer: coarse) { .layer__caret { width: 18px; height: 44px; } }
+
 /* ---------- Engine warnings under the stats ---------------------------------- */
 .warns { display: grid; border-top: 1px solid var(--line-1); }
 .warn { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--s-2); align-items: start; width: 100%; padding: var(--s-2) var(--s-3); border: 0; border-bottom: 1px solid var(--line-1); background: transparent; color: var(--ink-2); text-align: left; font-size: var(--fs-1); line-height: 1.35; }

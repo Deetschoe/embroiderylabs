@@ -405,26 +405,42 @@
     pec: 'The stitch block of a PES on its own.'
   };
   var menuOpen = false;
+  var onlySelection = false;              /* "Selection only" in the export menu; off again each time the menu closes */
   function closeMenu(focusBack) {
     if (!menuOpen) return;
     menuOpen = false;
+    setOnlySelection(false);
     $('export-menu').hidden = true;
     $('btn-export-menu').setAttribute('aria-expanded', 'false');
     if (focusBack) $('btn-export-menu').focus();
   }
+  function setOnlySelection(on) {
+    var b = $('export-only-sel'); onlySelection = !!on;
+    if (!b) return;
+    var can = M.selection.length > 0;
+    if (!can) onlySelection = false;
+    b.setAttribute('aria-checked', onlySelection ? 'true' : 'false');
+    b.setAttribute('aria-disabled', can ? 'false' : 'true');
+    b.querySelector('.num').textContent = onlySelection ? 'On' : 'Off';
+    var g = M.selectedGroup(), n = M.selection.length;
+    b.querySelector('small').textContent = !can ? 'Select shapes or a group first.'
+      : 'Just ' + (g ? g.name : n === 1 ? 'the selected shape' : 'the ' + n + ' selected shapes') + ', centred like the full design.';
+  }
   function openMenu() {
     var menu = $('export-menu');
+    setOnlySelection(false);
     menuOpen = true; menu.hidden = false;
     $('btn-export-menu').setAttribute('aria-expanded', 'true');
     var first = menu.querySelector('button'); if (first) first.focus();
   }
-  function doExport(format) {
+  function doExport(format, selection) {
     closeMenu(false);
-    return IO.exportFile(format).then(function (ok) {
-      if (ok && IO.lastExport) Editor.say('Exported ' + IO.lastExport.filename + ', ' + IO.lastExport.stitches + ' stitches');
+    return IO.exportFile(format, selection ? { selection: true } : null).then(function (ok) {
+      if (ok && IO.lastExport) Editor.say('Exported ' + (selection ? 'the selection as ' : '') + IO.lastExport.filename + ', ' + IO.lastExport.stitches + ' stitches');
       return ok;
     });
   }
+  Editor.exportSelection = function (format) { return doExport(format || 'pes', true); };
   function initExport() {
     var btn = $('btn-export'), more = $('btn-export-menu'), menu = $('export-menu');
     function render() {
@@ -433,6 +449,19 @@
       more.setAttribute('aria-disabled', off ? 'true' : 'false');
       if (off) { btn.title = why; more.title = why; } else { btn.removeAttribute('title'); more.removeAttribute('title'); }
     }
+    /* first: export only the selected shapes / group (the formats below then make just that part) */
+    var only = document.createElement('button');
+    only.type = 'button'; only.id = 'export-only-sel'; only.setAttribute('role', 'menuitemcheckbox'); only.tabIndex = -1;
+    only.setAttribute('aria-checked', 'false');
+    var onlyName = document.createElement('span'); onlyName.textContent = 'Selection only';
+    var onlyState = document.createElement('span'); onlyState.className = 'num'; onlyState.textContent = 'Off';
+    only.appendChild(onlyName); only.appendChild(onlyState); only.appendChild(document.createElement('small'));
+    only.addEventListener('click', function () {
+      if (!M.selection.length) { toast('Select the shapes or the group to export first.', { label: 'Export' }); return; }
+      setOnlySelection(!onlySelection);
+      Editor.say(onlySelection ? 'Only the selection is exported' : 'The whole design is exported');
+    });
+    menu.appendChild(only);
     /* format menu, from the engine's own list */
     var all = IO.formats(), byId = {};
     all.forEach(function (f) { byId[f.id] = f; });
@@ -444,7 +473,7 @@
       var ext = document.createElement('span'); ext.className = 'num'; ext.textContent = '.' + String(f.ext || f.id).replace(/^\./, '');
       var note = document.createElement('small'); note.textContent = FORMAT_NOTES[f.id] || '';
       b.appendChild(name); b.appendChild(ext); b.appendChild(note);
-      b.addEventListener('click', function () { doExport(f.id); });
+      b.addEventListener('click', function () { doExport(f.id, onlySelection); });
       menu.appendChild(b);
     });
     /* last in the menu: see the stitches on a garment before (or instead of) sending them to a machine */
@@ -475,7 +504,77 @@
     });
     document.addEventListener('pointerdown', function (e) { if (menuOpen && !$('export-group').contains(e.target)) closeMenu(false); }, true);
     Editor.on('stitch', render); Editor.on('change', render); Editor.on('busy', render);
+    Editor.on('selection', function () { if (menuOpen) setOnlySelection(onlySelection); });
     render();
+  }
+
+  /* ---------- right-click menu: group, ungroup, export the selection ---------------------------
+     A right click on a shape (or a sewing-order row) that is not picked yet picks it first, as in Figma. */
+  var ctx = null;
+  function closeContext(focusBack) {
+    if (!ctx) return;
+    var m = ctx; ctx = null;
+    if (m.el.parentNode) m.el.parentNode.removeChild(m.el);
+    if (focusBack && m.back && m.back.focus) { try { m.back.focus({ preventScroll: true }); } catch (e) { /* gone */ } }
+  }
+  function contextItems() {
+    var mode = P.groupMode ? P.groupMode() : null, n = M.selection.length, mod = isMac ? '\u2318' : 'Ctrl+', smod = isMac ? '\u21e7\u2318' : 'Ctrl+Shift+';
+    var list = [];
+    if (mode === 'ungroup') list.push({ label: 'Ungroup', key: smod + 'G', run: function () { P.ungroupSelection(); } });
+    else list.push({ label: n > 1 ? 'Group ' + n + ' shapes' : 'Group', key: mod + 'G', run: function () { P.groupSelection(); } });
+    list.push({ label: 'Export selection', key: '.pes', run: function () { doExport('pes', true); } });
+    list.push({ label: 'Export selection', key: '.dst', run: function () { doExport('dst', true); } });
+    list.push({ label: 'Delete', key: '', run: function () { var k = M.selection.length; if (M.remove(M.selection.slice())) Editor.say(k === 1 ? 'Shape deleted' : k + ' shapes deleted'); } });
+    return list;
+  }
+  function openContext(x, y, back) {
+    closeContext(false); closeMenu(false); closeFileMenu(false);
+    if (!M.selection.length) return;
+    var menu = document.createElement('div');
+    menu.className = 'menu'; menu.id = 'context-menu'; menu.setAttribute('role', 'menu'); menu.setAttribute('aria-label', 'Selection');
+    contextItems().forEach(function (it) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.setAttribute('role', 'menuitem'); b.tabIndex = -1;
+      var a = document.createElement('span'); a.textContent = it.label;
+      var k = document.createElement('span'); k.className = 'num'; k.textContent = it.key;
+      b.appendChild(a); b.appendChild(k);
+      b.addEventListener('click', function () { closeContext(false); it.run(); });
+      menu.appendChild(b);
+    });
+    menu.style.position = 'fixed'; menu.style.right = 'auto'; menu.style.minWidth = '200px';
+    menu.style.left = '0px'; menu.style.top = '0px'; menu.style.visibility = 'hidden';
+    document.body.appendChild(menu);
+    var w = menu.offsetWidth, h = menu.offsetHeight, vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    menu.style.left = Math.max(8, Math.min(x, vw - w - 8)) + 'px';
+    menu.style.top = Math.max(8, Math.min(y, vh - h - 8)) + 'px';
+    menu.style.visibility = '';
+    menu.addEventListener('keydown', function (e) {
+      var items = Array.prototype.slice.call(menu.querySelectorAll('button')), i = items.indexOf(document.activeElement), k = e.key;
+      if (k === 'ArrowDown' || k === 'ArrowUp') { e.preventDefault(); e.stopPropagation(); items[(i + (k === 'ArrowDown' ? 1 : items.length - 1)) % items.length].focus(); }
+      else if (k === 'Escape') { e.preventDefault(); e.stopPropagation(); closeContext(true); }
+      else if (k === 'Tab') { e.preventDefault(); closeContext(true); }
+    });
+    ctx = { el: menu, back: back };
+    var first = menu.querySelector('button'); if (first) first.focus({ preventScroll: true });
+  }
+  function initContext() {
+    on(V.el.canvas, 'contextmenu', function (e) {
+      if (T.current !== 'select' || T.busy() || V.mode !== 'design') return;
+      e.preventDefault();
+      var p = V.toMm(e.clientX, e.clientY), o = V.hit(p.x, p.y);
+      if (o && !M.isSelected(o.id)) M.select(T.pickUnit ? T.pickUnit(o) : [o.id]);
+      openContext(e.clientX, e.clientY, V.el.canvas);
+    });
+    on($('layers-list'), 'contextmenu', function (e) {
+      var row = e.target.closest ? e.target.closest('.layer') : null; if (!row) return;
+      e.preventDefault();
+      var ids = row._gid ? M.members(row._gid) : row._id ? [row._id] : [];
+      if (ids.length && !ids.every(function (id) { return M.isSelected(id); })) M.select(ids);
+      openContext(e.clientX, e.clientY, row);
+    });
+    document.addEventListener('pointerdown', function (e) { if (ctx && !ctx.el.contains(e.target)) closeContext(false); }, true);
+    window.addEventListener('resize', function () { closeContext(false); });
+    window.addEventListener('blur', function () { closeContext(false); });
   }
 
   /* ---------- clear -------------------------------------------------------------------------- */
@@ -656,6 +755,7 @@
     }
 
     if (key === 'Escape') {
+      if (ctx) { closeContext(true); e.preventDefault(); return; }
       if (menuOpen) { closeMenu(true); e.preventDefault(); return; }
       /* an open drawer lies on top of the stage, so it goes first (unless a shape is being drawn) */
       if (!T.busy() && Editor.closeDrawer && Editor.closeDrawer()) { e.preventDefault(); return; }
@@ -668,6 +768,18 @@
       if (k === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
       if (k === 'y' && !e.shiftKey) { e.preventDefault(); redo(); return; }
       if (k === 'e' && !e.shiftKey) { e.preventDefault(); doExport('pes'); return; }
+      if (k === 'e' && e.shiftKey) {
+        e.preventDefault();
+        if (M.selection.length) doExport('pes', true); else toast('Select the shapes or the group to export first.', { label: 'Export' });
+        return;
+      }
+      if (k === 'g') {
+        e.preventDefault();                                   /* not the browser's "find next" */
+        if (T.busy()) return;
+        if (e.shiftKey) { if (!P.ungroupSelection()) Editor.say('Nothing to ungroup'); }
+        else if (!P.groupSelection()) Editor.say(M.selection.length ? 'Already a group' : 'Select shapes to group');
+        return;
+      }
       if (k === 'o' && !e.shiftKey) { e.preventDefault(); browse(); return; }
       if (k === 's' && !e.shiftKey) { e.preventDefault(); saveProject(); return; }
       if (k === 'd' && !e.shiftKey) {
@@ -737,6 +849,26 @@
   }
   function onKeyUp(e) { if (e.key === ' ' || e.code === 'Space') T.space(false); }
 
+  /* ---------- the group shortcuts in the help table (added here, so the page markup stays as it is) */
+  function initHelpRows() {
+    var cells = document.querySelectorAll('dialog td'), i, dup = null, exp = null;
+    for (i = 0; i < cells.length; i++) {
+      var t = cells[i].textContent.replace(/\s+/g, ' ').trim();
+      if (t === '\u2318D \u2318A') dup = cells[i].parentNode;
+      if (t === '\u2318E') exp = cells[i].parentNode;
+    }
+    function row(after, keys, text) {
+      if (!after || !after.parentNode) return;
+      var tr = document.createElement('tr'), a = document.createElement('td'), b = document.createElement('td');
+      keys.forEach(function (k, j) { if (j) a.appendChild(document.createTextNode(' ')); var kb = document.createElement('kbd'); kb.textContent = k; a.appendChild(kb); });
+      b.textContent = text;
+      tr.appendChild(a); tr.appendChild(b);
+      after.parentNode.insertBefore(tr, after.nextSibling);
+    }
+    row(dup, ['\u2318G', '\u21e7\u2318G'], 'Group, ungroup. Double-click a grouped shape to pick just it');
+    row(exp, ['\u21e7\u2318E'], 'Export just the selection as .PES');
+  }
+
   /* ---------- key names for this platform --------------------------------------------------------- */
   function initKeyNames() {
     if (isMac) return;
@@ -774,7 +906,7 @@
     step('tools', T.init);
     if (Editor.Trace) step('picture', Editor.Trace.init);    /* before the saved tag: a stored picture gives way to the design first */
     step('name', initName); step('saved', initSaved); step('history', initHistory); step('view mode', initViewMode); step('pixel density', initDpr);
-    step('zoom', initZoom); step('drawer', initDrawer); step('phone', initPhone); step('rail', initRail); step('key names', initKeyNames);
+    step('zoom', initZoom); step('drawer', initDrawer); step('phone', initPhone); step('rail', initRail); step('help rows', initHelpRows); step('key names', initKeyNames);
     step('playback', initPlayback); step('files', initFiles); step('file menu', initFileMenu);
     var info = step('storage and engine', IO.init) || {};
     /* nothing stored (a first visit): start on the hoop that is picked for new designs, not the engine's 4 x 4 */
@@ -782,7 +914,7 @@
     if (Editor.Tabs) step('tabs', Editor.Tabs.init);
     if (Editor.Mockup) step('mockup', Editor.Mockup.init);
     var linked = step('design link', openFromLink);
-    step('export', initExport); step('empty hoop', initEmpty);
+    step('export', initExport); step('right-click menu', initContext); step('empty hoop', initEmpty);
     /* first visit (and not arriving with a design link): the tutorial opens in a tab of its own */
     if (Editor.Tutorial) step('tutorial', function () { Editor.Tutorial.boot({ linked: !!linked }); });
     step('render', P.render);

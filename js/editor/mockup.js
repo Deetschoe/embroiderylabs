@@ -24,7 +24,7 @@
   var Editor = window.Editor = window.Editor || {};
   var M = Editor.Model, V = Editor.View;
   var KEY = 'el-editor-mockup-v1', SIZE = 2000, MARGIN_MM = 3, MAX_DESIGN_PX = 2400, MAX_PPM = 8;
-  var MIN_SCALE = 0.1, MAX_SCALE = 4, MAX_LAYERS = 24, MAX_IMG = 2048, IMG_MM = 100, ROT_STEP = 15;
+  var MIN_SCALE = 0.1, MAX_SCALE = 4, MAX_LAYERS = 24, MAX_IMG = 2048, IMG_MM = 100, ROT_STEP = 15, STORE_BUDGET = 1500000;
   var BLENDS = { normal: 'source-over', multiply: 'multiply', screen: 'screen' };
 
   /* anchor = the middle of the chest in picture pixels; pxPerMm from the body width of the blank */
@@ -485,10 +485,17 @@
   function saveNow() {
     clearTimeout(saveTimer); saveTimer = 0;
     if (!window.EL) return;
-    if (window.EL.store.set(KEY, stored())) return;
-    var lite = stored(); lite.placements = {};
-    ['front', 'back'].forEach(function (s) { lite.placements[s] = (state.placements[s] || []).filter(function (p) { return !isImage(p); }); });
-    window.EL.store.set(KEY, lite);
+    /* the open designs share this browser's storage: pictures may use at most STORE_BUDGET characters of it */
+    var full = stored(), size = 0;
+    try { size = JSON.stringify(full).length; } catch (e) { size = Infinity; }
+    if (size <= STORE_BUDGET && window.EL.store.set(KEY, full)) return;
+    /* keep the pictures that still fit in the budget (in order), the rest stay in memory */
+    var lite = stored(), room = STORE_BUDGET - 4096; lite.placements = {};
+    ['front', 'back'].forEach(function (s) { lite.placements[s] = (state.placements[s] || []).filter(function (p) { if (!isImage(p)) return true; if (p.src.length > room) return false; room -= p.src.length; return true; }); });
+    if (!window.EL.store.set(KEY, lite)) {
+      ['front', 'back'].forEach(function (s) { lite.placements[s] = lite.placements[s].filter(function (p) { return !isImage(p); }); });
+      window.EL.store.set(KEY, lite);
+    }
     if (!quotaWarned && ['front', 'back'].some(function (s) { return (state.placements[s] || []).some(isImage); })) {
       quotaWarned = true;
       toast('The pictures are too big to keep in this browser. They stay until you close the page.', { label: 'Mockup', timeout: 7000 });
@@ -796,7 +803,9 @@
   /* a stored layer -> a clean one, or null. Older states have no kind, rotation or visibility. */
   function cleanLayer(p) {
     if (!p || !isFinite(p.dx) || !isFinite(p.dy) || !isFinite(p.scale)) return null;
-    var o = { id: String(p.id || newId()).slice(0, 40), dx: clamp(+p.dx, -600, 600), dy: clamp(+p.dy, -700, 900), scale: clamp(+p.scale, MIN_SCALE, MAX_SCALE), rot: normRot(isFinite(p.rot) ? +p.rot : 0), hidden: !!p.hidden };
+    /* ids go into attribute selectors: keep them to plain characters */
+    var id = String(p.id || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40) || newId();
+    var o = { id: id, dx: clamp(+p.dx, -600, 600), dy: clamp(+p.dy, -700, 900), scale: clamp(+p.scale, MIN_SCALE, MAX_SCALE), rot: normRot(isFinite(p.rot) ? +p.rot : 0), hidden: !!p.hidden };
     if (p.kind === 'image') {
       if (typeof p.src !== 'string' || !/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(p.src)) return null;
       o.kind = 'image'; o.src = p.src; o.name = String(p.name || 'Picture').slice(0, 60);

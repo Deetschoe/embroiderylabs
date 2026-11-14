@@ -343,6 +343,21 @@ const PIX = `
     await ev('Editor.Mockup.select("old1"); return 1;'); await wait(300);
     shots.push(await c.shot('mock-4-tee-desktop.png'));
 
+    /* ---- 8b. pictures never crowd out the designs: a noisy picture over the budget stays in memory only */
+    const big = await ev(`var n = 1200, cv = document.createElement('canvas'); cv.width = n; cv.height = n; var x = cv.getContext('2d'), im = x.createImageData(n, n);
+      for (var i = 0; i < im.data.length; i++) im.data[i] = Math.random() * 255 | 0; x.putImageData(im, 0, 0);
+      var b = await new Promise(function (r) { cv.toBlob(r, 'image/png'); });
+      var p = await Editor.Mockup.addImage(new File([b], 'noise.png', { type: 'image/png' })); Editor.Mockup.saveNow();
+      var s = localStorage.getItem('el-editor-mockup-v1');
+      return { src: p ? p.src.length : 0, stored: s.length, kinds: JSON.parse(s).placements.front.map(function (q) { return q.kind; }).join() };`);
+    ok(big.src > 1500000 && big.stored < 1500000 && big.kinds === 'design', 'a picture too big for the storage budget is not stored (' + big.src + ' chars, stored ' + big.stored + ': ' + big.kinds + ')');
+    /* a stored id with quotes cannot break the Layers list */
+    await ev('localStorage.setItem("el-editor-mockup-v1", JSON.stringify({ v: 1, garment: "tee", side: "front", color: "#F4F3F0", scene: "studio", placements: { front: [{ id: "a\\"]x", tab: ' + JSON.stringify(tabId) + ', dx: 0, dy: 0, scale: 1 }], back: [] } })); return 1;');
+    await c.reload(); await ready();
+    await ev('document.getElementById("view-mockup").click(); return 1;');
+    for (let i = 0; i < 80; i++) { const ll = await layers(); if (ll.length && ll[0].ready) break; await wait(150); }
+    ok(await ev('var r = document.querySelector("#mock-layers [data-item]"); if (!r) return false; r.click(); return Editor.Mockup.selected() === r.getAttribute("data-item") && /^[A-Za-z0-9_-]+$/.test(r.getAttribute("data-item"));'), 'a stored id with quotes is cleaned and its row still picks the layer');
+
     /* ---- 9. phone width */
     await c.viewport(390, 844, true); await wait(700);
     const sw = await ev('return { sw: document.documentElement.scrollWidth, mock: document.getElementById("mock").scrollWidth, cw: document.documentElement.clientWidth };');

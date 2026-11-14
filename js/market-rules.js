@@ -133,11 +133,59 @@
     return out;
   }
 
+  /* ---- for the pages (market.js, profile.js, publish.js, the demo backend in market-api.js) ---- */
+
+  /* what each badge is for, shown in the profile's tooltips */
+  var BADGE_WHAT = Object.freeze({
+    'first-design': 'Published a design',
+    'first-star': 'Got a star from someone',
+    'stars-100': '100 stars received',
+    'stars-1000': '1,000 stars received',
+    'stars-10000': '10,000 stars received',
+    'streak-7': 'Active 7 days in a row',
+    'first-unlock': 'Unlocked a design with keys',
+    'popular': 'A design with 50 stars',
+    'early-member': 'One of the first 100 members',
+    'free-sewout': 'One of the first 5 to 10,000 stars'
+  });
+  function badge(id) {
+    for (var i = 0; i < BADGES.length; i++) {
+      if (BADGES[i].id === id) return { id: id, label: BADGES[i].label, what: BADGE_WHAT[id] || BADGES[i].label };
+    }
+    return null;
+  }
+  function validMode(m) { return MODES.indexOf(m) !== -1; }
+  /* the same rule as server/src/users.js validHandle (3..24, no edge or double dashes, not reserved) */
+  var RESERVED = ['you', 'me', 'embroidr', 'embroiderylabs', 'admin', 'api', 'help', 'support',
+    'market', 'designs', 'new', 'top', 'settings', 'account', 'login', 'logout', 'signin', 'null', 'undefined'];
+  function validHandle(h) {
+    return typeof h === 'string' && /^[a-z0-9](?:[a-z0-9-]{1,22})[a-z0-9]$/.test(h) && !/--/.test(h) && RESERVED.indexOf(h) === -1;
+  }
+
   var api = Object.freeze({
     RULES: RULES, MODES: MODES, VISIBILITIES: VISIBILITIES, EVENT_KINDS: EVENT_KINDS, BADGES: BADGES,
     keysEarned: keysEarned, keysLeft: keysLeft, discountPct: discountPct, progressTo10k: progressTo10k,
     validPrice: validPrice, wallet: wallet, dayKey: dayKey, streakDay: streakDay,
-    activitySeries: activitySeries, badges: badges
+    activitySeries: activitySeries, badges: badges,
+
+    /* the page-side names (the same numbers as RULES) */
+    STARS_PER_KEY: RULES.starsPerKey,
+    KEYS_PER_DISCOUNT_STEP: RULES.discountStepKeys,
+    DISCOUNT_STEP_PCT: RULES.discountStepPct,
+    DISCOUNT_MAX_PCT: RULES.discountMaxPct,
+    SEWOUT_STARS: RULES.sewoutStars,
+    SEWOUT_WINNERS: RULES.sewoutSlots,
+    PRICE_KEYS_MIN: RULES.priceKeysMin,
+    PRICE_KEYS_MAX: RULES.priceKeysMax,
+    POPULAR_STARS: RULES.popularStars,
+    EARLY_MEMBERS: RULES.earlyMembers,
+    STREAK_DAYS: RULES.streakDays,
+    ACTIVITY_DAYS: RULES.activityDays,
+    ACTIVITY_KINDS: EVENT_KINDS,
+    MAX_PAYLOAD_BYTES: 1000000,        /* server/src/market.js MAX_PAYLOAD_BYTES */
+    MAX_THUMB_BYTES: 200 * 1024,       /* server/src/market.js MAX_THUMB_BYTES */
+    MAX_TAGS: 5,                       /* the share dialog's limit (the server takes up to 8) */
+    keys: keysLeft, badge: badge, validMode: validMode, validHandle: validHandle
   });
   root.MarketRules = api;
   if (typeof module === 'object' && module.exports) module.exports = api;

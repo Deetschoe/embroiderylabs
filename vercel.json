@@ -4,6 +4,10 @@
   "buildCommand": null,
   "installCommand": null,
   "outputDirectory": ".",
+  "rewrites": [
+    { "source": "/market", "destination": "/market.html" },
+    { "source": "/u/:handle", "destination": "/profile.html?u=:handle" }
+  ],
   "redirects": [
     { "source": "/home.html", "destination": "/", "permanent": true },
     { "source": "/home", "destination": "/", "permanent": true },

@@ -267,7 +267,7 @@ convenience in `localStorage['el-editor-stitchify-v1']`. In the page: `Editor.Tr
 The tracer's `underlay: false` (photo fills, and fills set into a fill sewn before them) is kept on the object.
 It is only ever stored as false (a missing key means the engine default), survives save/load and is copied into
 cut pieces; `Model.toEngine()` passes it on as `fill.underlay: false`. There is no control for it in the panel.
-Editor tests: `node tests/editor/run.js` runs model.test.js, svgimport.test.js, cut.test.js, tutorial.test.js, groups-model.test.js, groups.test.js and mockup.test.js.
+Editor tests: `node tests/editor/run.js` runs model.test.js, svgimport.test.js, cut.test.js, tutorial.test.js, groups-model.test.js, groups.test.js, mockup.test.js and market.test.js.
 
 ## How things flow
 

@@ -9,6 +9,7 @@
  *   groups-model.test.js  groups in the model (order, undo, save / load, engine input unchanged), in node
  *   groups.test.js     groups and "export selection only" in headless Chrome
  *   mockup.test.js     Mockup layers: rotation, handles, pictures, reorder, downloads, in headless Chrome
+ *   market.test.js     the marketplace on its demo backend: list, stars, keys, publish, profile, in headless Chrome
  *
  * Each file prints its own checks; this exits non-zero if any of them fails.
  */
@@ -16,7 +17,7 @@
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const FILES = ['model.test.js', 'svgimport.test.js', 'cut.test.js', 'tutorial.test.js', 'groups-model.test.js', 'groups.test.js', 'mockup.test.js'];
+const FILES = ['model.test.js', 'svgimport.test.js', 'cut.test.js', 'tutorial.test.js', 'groups-model.test.js', 'groups.test.js', 'mockup.test.js', 'market.test.js'];
 let failed = 0;
 for (const f of FILES) {
   console.log('\n== ' + f);

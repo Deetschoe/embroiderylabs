@@ -28,7 +28,8 @@ class Stmt {
     return col ? plain[col] : plain;
   }
   async all() { return { success: true, results: this._prep().all(...this.args).map(r => Object.assign({}, r)), meta: {} }; }
-  async run() {
+  async run() { return this._runSync(); }
+  _runSync() {
     const r = this._prep().run(...this.args);
     return { success: true, meta: { changes: Number(r.changes), last_row_id: Number(r.lastInsertRowid) } };
   }
@@ -43,8 +44,10 @@ export class FakeD1 {
   }
   prepare(sql) { return new Stmt(this.db, sql); }
   async batch(stmts) {
+    // Like D1: one transaction, and nothing else runs in between (no await inside), so batches
+    // started at the same moment by concurrent requests are serialized.
     this.db.exec('BEGIN');
-    try { const out = []; for (const s of stmts) out.push(await s.run()); this.db.exec('COMMIT'); return out; }
+    try { const out = []; for (const s of stmts) out.push(s._runSync()); this.db.exec('COMMIT'); return out; }
     catch (e) { this.db.exec('ROLLBACK'); throw e; }
   }
   async exec(sql) { this.db.exec(sql); return { count: 1 }; }

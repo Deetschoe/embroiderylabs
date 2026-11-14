@@ -129,6 +129,27 @@ position, export and import messages. Inches are the default; the choice and the
 `localStorage['el-editor-prefs-v1']`. Use `Editor.Units.num(mm)` / `.short(mm)` / `.size(w, h)` for anything new
 that shows a length, never `toFixed` plus a hard-coded "mm".
 
+## Turn a picture into stitches (`trace.js` + js/trace)
+
+With a picture loaded, the "SVG or picture" section shows a card on top of the picture controls: Colours (a
+slider 2 to 30 and "Pick the colours for me (up to 10)", on by default), thread swatches, the stitch count and
+size, one short note, and the primary button "Turn into stitches" (also offered in the toast after a picture is
+opened). The picture is traced by the global `Trace` (js/trace/trace.js + client.js, loaded before
+js/editor/trace.js) in a Web Worker, or on the main thread in slices from `file://`: at the picture's width on
+the hoop (10 to 400 mm; wider is traced at 400 and scaled), at x = y = 0, so moving the picture or changing its
+opacity needs no new trace. A new picture, width or colour setting starts a new trace after 300 ms (an older answer
+is dropped); progress and Cancel show while it works. The swatch names are the Brother threads the .pes writer
+will list (`Engine.Writer.buildUniquePalette`, so two close shades get two names); the stitch count is the real
+engine's count for the shapes as the editor will send them (`Model.toEngine` + `Engine.generate`).
+The button adds the shapes with ONE `Model.addMany(list, 'Turn picture into stitches')`, named after their
+thread ("Khaki", "Pewter 2", "Black line 3"), then hides the picture: `V.trace.hidden`, `img` = null, `pic` kept;
+"Show picture" brings it back, and the flag is stored with the picture. The colour setting is a per-visitor
+convenience in `localStorage['el-editor-stitchify-v1']`. In the page: `Editor.Trace.stitch()`, `.setColors()`,
+`.cancel()`, `.preview()`.
+
+Known gap: `Model.toEngine()` does not pass the tracer's `underlay: false` (model.js is not this package's), so
+photographs are sewn with underlay: about a third more stitches and the engine's TOO_DENSE note on some seams.
+
 ## How things flow
 
 `tools.js` or `panels.js` change the model -> `change` -> `view.js` redraws, `io.js` asks the engine

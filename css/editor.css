@@ -335,6 +335,28 @@ button.warn:focus-visible { outline-offset: -2px; }
 .trace { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-1); }
 .trace[hidden] { display: none; }
 .trace__row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2); }
+/* turn the picture into stitches: a soft card on top of the picture controls */
+.stitchify { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-2); margin-bottom: var(--s-2); padding: var(--s-3); border: 1px solid var(--line-1); border-radius: var(--r-0); background: var(--raised); }
+.stitchify > .prop { min-height: 0; }
+.stitchify__count { display: grid; grid-template-columns: minmax(0, 1fr) 7ch; align-items: center; gap: var(--s-2); }
+.stitchify__count > .num { text-align: right; white-space: nowrap; font-size: var(--fs-1); color: var(--ink-2); }
+.stitchify .slider.is-auto { opacity: .6; }
+.stitchify__auto { min-height: 0; font-size: var(--fs-2); color: var(--ink-2); }
+.stitchify__swatches { display: flex; flex-wrap: wrap; gap: var(--s-1); }
+.stitchify__swatches[hidden] { display: none; }
+.stitchify__swatch { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; height: 24px; padding: 0 var(--s-2) 0 6px; border-radius: var(--r-round); background: var(--sunken); font-size: var(--fs-1); color: var(--ink-2); }
+.stitchify__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stitchify__meta { font-size: var(--fs-1); color: var(--ink-2); }
+.stitchify__meta[hidden], .stitchify > .field__hint[hidden] { display: none; }
+.stitchify > .field__hint.is-bad { color: var(--bad); }
+.stitchify__busy { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--s-2); }
+.stitchify__busy[hidden] { display: none; }
+.stitchify__busy > .num { font-size: var(--fs-1); color: var(--ink-2); white-space: nowrap; }
+.stitchify__busy > .btn { height: 24px; padding: 0 var(--s-2); }
+.stitchify__bar { display: block; height: 4px; border-radius: var(--r-round); background: var(--sunken); overflow: hidden; }
+.stitchify__bar > span { display: block; width: 4%; height: 100%; border-radius: inherit; background: var(--signal); transition: width var(--t-2) var(--ease); }
+@media (prefers-reduced-motion: reduce) { .stitchify__bar > span { transition: none; } }
+@media (pointer: coarse) { .stitchify__busy > .btn { height: 44px; } }
 .prop__pair > .num { text-align: right; white-space: nowrap; font-size: var(--fs-1); }
 
 /* ---------- Help ------------------------------------------------------------------ */

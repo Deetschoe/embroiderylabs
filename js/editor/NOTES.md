@@ -194,8 +194,10 @@ the toast's action adds no copy; Undo or deleting them makes it available again.
 convenience in `localStorage['el-editor-stitchify-v1']`. In the page: `Editor.Trace.stitch()`, `.setColors()`,
 `.cancel()`, `.preview()`.
 
-Known gap: `Model.toEngine()` does not pass the tracer's `underlay: false` (model.js is not this package's), so
-photographs are sewn with underlay: about a third more stitches and the engine's TOO_DENSE note on some seams.
+The tracer's `underlay: false` (photo fills, and fills set into a fill sewn before them) is kept on the object.
+It is only ever stored as false (a missing key means the engine default), survives save/load and is copied into
+cut pieces; `Model.toEngine()` passes it on as `fill.underlay: false`. There is no control for it in the panel.
+Editor tests: `node tests/editor/run.js` runs model.test.js, svgimport.test.js and cut.test.js.
 
 ## How things flow
 

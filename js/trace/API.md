@@ -225,9 +225,8 @@ const made = Editor.Model.addMany(list, 'Trace picture');   // [] when the docum
 - `Trace.toEditorObjects(result, { holes: 'polygon' })` gives single keyhole polygons instead of paths
   (`Trace.toPolygon(rings)` does one), for code that has no ring type
 - coordinates are mm in the same frame as the editor's hoop when you passed `hoop` (or `x` / `y`) to the trace
-- one gap: `Editor.Model.toEngine()` does not pass a per-object `underlay`, so shapes brought in this way are
-  sewn WITH underlay. For photographs that brings back the engine's `TOO_DENSE` warning and about a third more
-  stitches. Carrying `style.underlay` through to `fill.underlay` in the editor would close it
+- the editor keeps `underlay: false` on the object (saved, copied into cut pieces) and `Editor.Model.toEngine()`
+  passes it on as `fill.underlay: false`, so photographs are sewn without underlay as the tracer intends
 
 Checked by tests/trace/run.js against the real js/editor/model.js: every object is taken, and the editor's own
 `toEngine()` output sews to within 1% of the direct result (2091 against 2099 stitches).
@@ -257,7 +256,6 @@ about 300 ms at a time; progress still arrives and cancel still works. The large
 - Edges are found on a 0.18 to 0.28 mm grid, so a straight edge can sit about 0.1 mm off.
 - A smooth gradient in a logo becomes a few bands, with no special warning.
 - With few colours, similar colours merge (brown into red, cream into a white background). More colours fixes it.
-- The engine's `TOO_DENSE` warning comes back for photographs sewn with underlay (see the editor gap above), and
-  its `THIN_FILL` warning appears on some photographs (3 of the 9 samples) for slivers too narrow to fill well.
+- The engine's `THIN_FILL` warning appears on some photographs (3 of the 9 samples) for slivers too narrow to fill well.
 - Nothing made by this has been sewn on a real machine. The files were read back with pyembroidery and drawn,
   which shows where the needle goes, not how cloth and thread behave. Every result needs a test sew.

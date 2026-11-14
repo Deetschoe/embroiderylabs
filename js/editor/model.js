@@ -248,7 +248,8 @@
     return o;
   };
   /* Every style key an object carries (what a piece of it inherits). */
-  var STYLE_KEYS = ['color', 'paint', 'lineType', 'lineWidth', 'spacing', 'stitchLen', 'angle', 'pattern', 'fillStyle', 'lineDetail'];
+  /* `underlay` is only ever stored as false (set by Turn into stitches for photo fills); missing means the engine default. */
+  var STYLE_KEYS = ['color', 'paint', 'lineType', 'lineWidth', 'spacing', 'stitchLen', 'angle', 'pattern', 'fillStyle', 'lineDetail', 'underlay'];
   M.STYLE_KEYS = STYLE_KEYS;
   /* A new object with geometry `geom` and every style field of `o` (the pieces of a cut). */
   M.piece = function (o, geom, name) {
@@ -261,7 +262,7 @@
   /* A piece left over when part of a line was erased: an open stroke with the style of the original. */
   M.strokePiece = function (o, pts) {
     var n = { id: uid(), name: o.name, type: 'pen', pts: pts.map(function (p) { return [G.r2(p[0]), G.r2(p[1])]; }), closed: false };
-    ['color', 'lineType', 'lineWidth', 'spacing', 'stitchLen', 'angle', 'pattern', 'fillStyle', 'lineDetail'].forEach(function (k) { if (o[k] !== undefined) n[k] = o[k]; });
+    ['color', 'lineType', 'lineWidth', 'spacing', 'stitchLen', 'angle', 'pattern', 'fillStyle', 'lineDetail', 'underlay'].forEach(function (k) { if (o[k] !== undefined) n[k] = o[k]; });
     n.paint = 'line';
     return n;
   };
@@ -323,6 +324,7 @@
     if (key === 'pattern') return isPattern(value) ? value : null;
     if (key === 'fillStyle') return isFillStyle(value) ? value : null;
     if (key === 'lineDetail') return isDetail(value) ? value : null;
+    if (key === 'underlay') return value === false ? false : null;
     if (RANGES[key]) { var v = Number(value); if (!isFinite(v)) return null; return G.r2(G.clamp(v, RANGES[key][0], RANGES[key][1])); }
     return null;
   }
@@ -341,7 +343,7 @@
       });
     }, coalesce ? { key: 'prop:' + key + ':' + ids.join(',') } : null);
   };
-  var PROP_LABELS = { color: 'thread', paint: 'paint', lineType: 'line type', lineWidth: 'line width', spacing: 'density', stitchLen: 'stitch length', angle: 'fill angle', pattern: 'fill pattern', fillStyle: 'stitch style', lineDetail: 'line detail' };
+  var PROP_LABELS = { color: 'thread', paint: 'paint', lineType: 'line type', lineWidth: 'line width', spacing: 'density', stitchLen: 'stitch length', angle: 'fill angle', pattern: 'fill pattern', fillStyle: 'stitch style', lineDetail: 'line detail', underlay: 'underlay' };
   M.setDefault = function (key, value) {
     var v = validProp(key, value); if (v === null || M.defaults[key] === v) return false;
     M.defaults[key] = v;
@@ -447,6 +449,7 @@
           e.fill.style = 'lineart';
           e.fill.lineart = { detail: isDetail(o.lineDetail) ? o.lineDetail : 'normal' };
         }
+        if (o.underlay === false) e.fill.underlay = false;   /* photo fills from Turn into stitches */
         switch (o.type) {
           case 'rect': e.type = 'rect'; e.x = o.x; e.y = o.y; e.width = o.w; e.height = o.h; break;
           case 'ellipse': e.type = 'ellipse'; e.cx = o.cx; e.cy = o.cy; e.rx = o.rx; e.ry = o.ry; break;
@@ -474,6 +477,7 @@
     /* designs saved before stitch styles existed have neither key: plain fill, normal detail */
     o.fillStyle = isFillStyle(r.fillStyle) ? r.fillStyle : (isFillStyle(base.fillStyle) ? base.fillStyle : 'tatami');
     o.lineDetail = isDetail(r.lineDetail) ? r.lineDetail : (isDetail(base.lineDetail) ? base.lineDetail : 'normal');
+    if (r.underlay === false) o.underlay = false;
     ['lineWidth', 'spacing', 'stitchLen', 'angle'].forEach(function (k) {
       var v = typeof r[k] === 'number' ? validProp(k, r[k]) : null;
       o[k] = v === null ? base[k] : v;

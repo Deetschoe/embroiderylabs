@@ -152,6 +152,25 @@ test("the importer's style.fillStyle passes through M.addMany", () => {
   assert.strictEqual(made[1].fillStyle, 'tatami'); assert.strictEqual(made[1].lineDetail, 'fine');
 });
 
+test('underlay: false from Turn into stitches reaches the engine, survives save/load and a cut piece; nothing else changes', () => {
+  M.load({ name: 'x', hoop: { w: 100, h: 100 }, objects: [] });
+  const made = M.addMany([
+    { geom: { type: 'polygon', pts: [[1, 1], [9, 1], [9, 9]] }, style: { underlay: false } },
+    { geom: { type: 'polygon', pts: [[20, 20], [30, 20], [25, 30]] }, style: { underlay: true } }
+  ], 'Turn picture into stitches');
+  assert.strictEqual(made[0].underlay, false);
+  assert.ok(!('underlay' in made[1]));
+  let e = M.toEngine();
+  assert.strictEqual(e.objects[0].fill.underlay, false);
+  assert.ok(!('underlay' in e.objects[1].fill));
+  M.load(JSON.parse(JSON.stringify(M.serialize())));
+  e = M.toEngine();
+  assert.strictEqual(e.objects[0].fill.underlay, false);
+  assert.ok(!('underlay' in e.objects[1].fill));
+  assert.strictEqual(M.piece(M.doc.objects[0], { type: 'polygon', pts: [[1, 1], [5, 1], [5, 5]] }).underlay, false);
+  assert.strictEqual(M.validProp('underlay', true), null);
+});
+
 test('without Engine.FILL_STYLES the editor still knows tatami and lineart', () => {
   const eng = Object.assign({}, Engine); delete eng.FILL_STYLES;
   const M2 = loadEditor(eng).Model;

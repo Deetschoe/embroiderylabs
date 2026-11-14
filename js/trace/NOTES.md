@@ -64,7 +64,7 @@ Port for my own static server: 8203 only (stopped). Never touch 8000.
 
 ## Editor facts (js/editor/model.js, read only)
 - has a `path` type with rings; `Editor.Model.addMany([{ geom, style }], label)` adds a list as one undo step
-  (returns [] over 2000 objects); `toEngine()` does NOT pass per-object underlay (gap, see API.md)
+  (returns [] over 2000 objects); `toEngine()` passes `underlay: false` on as `fill.underlay: false`
 - js/editor/trace.js is `Editor.Trace`, a trace-over guide picture. Different thing from the global `Trace`.
 
 ## Measured

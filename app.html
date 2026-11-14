@@ -37,6 +37,9 @@
 <script src="js/editor/main.js" defer></script>
 <script src="js/config.js" defer></script>
 <script src="js/account.js" defer></script>
+<script src="js/market-rules.js" defer></script>
+<script src="js/market-api.js" defer></script>
+<script src="js/editor/publish.js" defer></script>
 </head>
 <body>
 <div class="ed" id="app">
@@ -49,11 +52,13 @@
         <button type="button" role="menuitem" tabindex="-1" data-file="new"><span>New</span><small>A new design in its own tab.</small></button>
         <button type="button" role="menuitem" tabindex="-1" data-file="open"><span>Open&hellip;</span><span class="num">&#8984;O</span><small>A saved design, a PES or DST file, an SVG, or a picture to trace.</small></button>
         <button type="button" role="menuitem" tabindex="-1" data-file="save"><span>Save</span><span class="num">&#8984;S</span><small>A design file you can open and edit again.</small></button>
+        <button type="button" role="menuitem" tabindex="-1" data-file="share"><span>Share to Marketplace&hellip;</span><small>Let others star it, open it or unlock it.</small></button>
         <button type="button" role="menuitem" tabindex="-1" data-file="export"><span>Export .PES</span><span class="num">&#8984;E</span><small>The file your machine sews.</small></button>
         <button type="button" role="menuitem" tabindex="-1" data-file="sound"><span>Sound wave&hellip;</span><small>Turn 10 seconds of a song into a waveform design.</small></button>
         <button type="button" role="menuitem" tabindex="-1" data-file="mockup"><span>Mockup</span><small>See it on a hoodie or T-shirt and download a picture.</small></button>
       </div>
     </div>
+    <a class="btn btn--ghost hide-phone" href="market.html" id="btn-market">Marketplace</a>
     <label class="ed-bar__file"><span class="visually-hidden">Design name</span><input id="design-name" value="untitled" maxlength="60" spellcheck="false" autocomplete="off"><span class="num">.pes</span></label>
     <span class="ed-bar__state"><span class="tag" id="save-state">Saved on this device</span></span>
     <span class="ed-bar__spacer"></span>
@@ -291,6 +296,8 @@
     <button type="button" data-action="import">Open a file</button>
     <button type="button" data-action="save">Save design</button>
     <button type="button" data-action="mockup">Mockup</button>
+    <button type="button" data-action="share">Share to Marketplace</button>
+    <button type="button" data-action="market">Marketplace</button>
     <button type="button" data-action="example">Load example</button>
     <button type="button" data-dialog-open="help">Help</button>
     <button type="button" data-theme-toggle>Switch theme</button>

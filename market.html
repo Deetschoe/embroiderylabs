@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Marketplace - Embroidr</title>
+<meta name="description" content="Embroidery designs people made in Embroidr. Star the ones you like, open the free ones and make them yours.">
+<meta name="theme-color" content="#FAF9F6">
+<meta name="color-scheme" content="light">
+<link rel="icon" href="emb.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/market.css">
+<script src="js/site.js" defer></script>
+<script src="js/config.js" defer></script>
+<script src="js/market-rules.js" defer></script>
+<script src="js/market-api.js" defer></script>
+<script src="js/market.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-head">
+  <div class="site-head__row">
+    <a class="brand" href="index.html" aria-label="Embroidr home"><img class="brand__mark" src="emb.png" alt="" width="24" height="24"><span>Embroidr</span></a>
+    <nav class="nav" aria-label="Main"><a href="market.html">Marketplace</a></nav>
+    <div class="site-head__tools">
+      <a class="btn btn--primary" href="app.html">Open Embroidr</a>
+      <a class="btn btn--ghost btn--gh" href="https://github.com/deetschoe/embroiderylabs" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<main id="main" class="wrap mk">
+  <div class="mk-head">
+    <div class="mk-head__text">
+      <h1 class="title">Marketplace</h1>
+      <p class="mk-sub">Designs people made. Star the ones you love.</p>
+    </div>
+    <label class="mk-search"><span class="visually-hidden">Search designs</span><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg><input class="input" type="search" id="mk-q" placeholder="Search" autocomplete="off" spellcheck="false" maxlength="60"></label>
+  </div>
+  <p class="mk-demo" id="mk-demo" hidden>Demo — saved on this device until sign-in is switched on.</p>
+
+  <section class="wallet" id="wallet" aria-label="Your stars and keys" hidden></section>
+
+  <div class="mk-bar">
+    <div class="seg" role="group" aria-label="Sort"><button type="button" data-sort="new" aria-pressed="true">New</button><button type="button" data-sort="top" aria-pressed="false">Top</button></div>
+    <div class="tag-chips" id="mk-tags" role="group" aria-label="Tags"></div>
+  </div>
+
+  <ul class="mk-grid" id="mk-grid" aria-live="polite"></ul>
+  <p class="mk-empty" id="mk-empty" hidden>Nothing here yet.</p>
+  <div class="mk-more"><button class="btn" type="button" id="mk-more" hidden>Show more</button></div>
+</main>
+
+<dialog class="dialog dialog--wide mk-sheet" id="mk-sheet" aria-labelledby="mk-sheet-title">
+  <div class="dialog__head"><span class="label" id="mk-sheet-label">Design</span><button class="btn btn--ghost btn--icon" type="button" data-dialog-close aria-label="Close"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8"/></svg></button></div>
+  <div class="dialog__body" id="mk-sheet-body"></div>
+</dialog>
+
+<footer class="site-foot">
+  <div class="wrap site-foot__row">
+    <span>Embroidr. Free, open-source embroidery.</span>
+    <nav aria-label="Footer">
+      <a class="link" href="app.html">Embroidr</a>
+      <a class="link" href="market.html">Marketplace</a>
+      <a class="link" href="https://github.com/deetschoe/embroiderylabs" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>

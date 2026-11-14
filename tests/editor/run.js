@@ -5,6 +5,7 @@
  *   model.test.js      Model fields (stitch style, line detail, underlay) and M.toEngine, in node
  *   svgimport.test.js  SVG import clean-up, in headless Chrome (skipped loudly without Chrome)
  *   cut.test.js        the Cut-out tool and the stitch-style panel, in headless Chrome
+ *   market.test.js     the marketplace on its demo backend: list, stars, keys, publish, profile, in headless Chrome
  *
  * Each file prints its own checks; this exits non-zero if any of them fails.
  */
@@ -12,7 +13,7 @@
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const FILES = ['model.test.js', 'svgimport.test.js', 'cut.test.js'];
+const FILES = ['model.test.js', 'svgimport.test.js', 'cut.test.js', 'market.test.js'];
 let failed = 0;
 for (const f of FILES) {
   console.log('\n== ' + f);

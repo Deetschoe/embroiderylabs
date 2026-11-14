@@ -247,20 +247,29 @@
       </div></section>
     </aside>
     <div class="mock__stage" id="mock-stage">
-      <canvas id="mock-canvas" tabindex="0" aria-label="Mockup. Drag a design to move it, drag the garment to pan, scroll to zoom."></canvas>
+      <canvas id="mock-canvas" tabindex="0" aria-label="Mockup. Drag a layer to move it, a corner to resize it, the round handle to turn it. Drag the garment to pan, scroll to zoom. R turns the picked layer."></canvas>
       <div class="mock__busy" id="mock-busy" role="status" hidden></div>
       <div class="hud"><button type="button" data-mock-zoom="out" aria-label="Zoom out"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 7h8"/></svg></button><span class="num" id="mock-zoom">100%</span><button type="button" data-mock-zoom="in" aria-label="Zoom in"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 7h8M7 3v8"/></svg></button><button type="button" data-mock-zoom="fit" aria-label="Fit the garment"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M2 5V2h3M12 5V2H9M2 9v3h3M12 9v3H9"/></svg></button></div>
     </div>
-    <aside class="pane mock__right" aria-label="Designs on the garment">
-      <div class="sec__head"><span class="label" id="mock-side-name">On the front</span></div>
-      <div id="mock-placed" role="listbox" aria-label="Designs on this side"></div>
-      <div class="mock__empty" id="mock-placed-empty">Nothing here yet. Add a design below, then drag it into place.</div>
-      <section class="sec"><div class="sec__body">
-        <div class="prop" id="mock-scale-row"><label class="label" for="mock-scale">Size</label><div class="prop__pair"><input class="slider" type="range" id="mock-scale" min="25" max="300" step="5" value="100"><span class="num" id="mock-scale-value">100%</span></div></div>
+    <aside class="pane mock__right" aria-label="Layers">
+      <div class="sec__head"><span class="label">Layers</span><span class="num mock__side" id="mock-side-name">Front</span></div>
+      <div class="mock__layers" id="mock-layers" role="listbox" aria-label="Layers on this side, top first"></div>
+      <div class="mock__empty" id="mock-layers-empty">Nothing here yet. Add a design or an image below.</div>
+      <section class="sec mock__props" id="mock-props"><div class="sec__body">
+        <div class="prop" id="mock-scale-row"><label class="label" for="mock-scale">Size</label><div class="prop__pair"><input class="slider" type="range" id="mock-scale" min="10" max="400" step="5" value="100"><span class="num" id="mock-scale-value">100%</span></div></div>
+        <div class="prop" id="mock-rot-row"><label class="label" for="mock-rot">Rotation</label><div class="mock__rot"><input class="slider" type="range" id="mock-rot" min="-180" max="180" step="1" value="0"><div class="input-unit"><input type="number" id="mock-rot-value" min="-180" max="180" step="1" value="0" inputmode="numeric" aria-label="Rotation in degrees"><span>°</span></div><button class="mini" type="button" id="mock-rot-reset" aria-label="Reset rotation" title="Reset rotation"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.5A3.6 3.6 0 1 0 3.6 3.4M2.3 1.8l1.3 1.6-1.9.8"/></svg></button></div></div>
+        <div class="mock__img-props" id="mock-img-props" hidden>
+          <div class="prop"><label class="label" for="mock-opacity">Opacity</label><div class="prop__pair"><input class="slider" type="range" id="mock-opacity" min="0" max="100" step="1" value="100"><span class="num" id="mock-opacity-value">100%</span></div></div>
+          <div class="prop"><span class="label">Blend</span><div class="seg" role="group" aria-label="Blend"><button type="button" data-blend="normal" aria-pressed="true">Normal</button><button type="button" data-blend="multiply" aria-pressed="false">Multiply</button><button type="button" data-blend="screen" aria-pressed="false">Screen</button></div></div>
+        </div>
         <button class="btn btn--block" type="button" id="mock-true-size">Back to true size</button>
       </div></section>
-      <div class="sec__head"><span class="label">Add a design</span></div>
-      <section class="sec"><div class="sec__body"><div class="mock__adds" id="mock-adds"></div></div></section>
+      <div class="sec__head"><span class="label">Add</span></div>
+      <section class="sec"><div class="sec__body">
+        <div class="mock__adds" id="mock-adds"></div>
+        <button class="btn btn--block mock__add mock__add-img" type="button" id="mock-add-image"><span>Add image</span><svg viewBox="0 0 14 14" aria-hidden="true"><rect x="1.5" y="2.5" width="11" height="9" rx="1.5"/><path d="m2 10 3.2-3.2 2.3 2.3 1.6-1.6L12 10.4"/><circle cx="9.5" cy="5.2" r="1"/></svg></button>
+        <input type="file" id="mock-image-file" accept="image/png,image/jpeg,image/webp,image/svg+xml,.png,.jpg,.jpeg,.webp,.svg" multiple hidden>
+      </div></section>
       <div class="mock__foot">
         <div class="split mock__dl" id="mock-dl-group">
           <button class="btn btn--primary" type="button" id="mock-download">Download picture</button>

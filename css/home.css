@@ -1,75 +1,208 @@
-/* EMBROIDERY LABS - css/home.css (index.html only). Loaded after css/base.css. */
+/* EMBROIDERY LABS - css/home.css (index.html only). Loaded after css/base.css. Light only.
+   Sections: header, hero (stitch-out show), how it works, collection, machine band, FAQ, footer. */
 
-/* BASE-CANDIDATE: a page shorter than the window left a strip of --bg under the footer
-   (98px at 1920x1080). Keep the footer on the bottom edge; the slack goes above it. */
-body { display: flex; flex-direction: column; }
-main { flex: 1 0 auto; }
-
-/* Header: with no tool nav, the GitHub link sits on the right */
-.site-head__tools { margin-left: auto; }
-
-/* Hero: copy left, figure right */
-.hero { border-bottom: 0; }
-.hero__grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); }
-.hero__copy { display: grid; align-content: center; justify-items: start; gap: var(--s-5); padding: var(--s-8) var(--s-6) var(--s-8) 0; }
-.hero__fig { display: grid; grid-template-columns: minmax(0, 1fr); align-content: center; min-width: 0; padding: var(--s-6); }
-.hero__art { display: grid; place-items: center; }
-.hero__art svg { width: min(100%, 420px); height: auto; overflow: visible; }
-
-/* Hero figure. viewBox units are 0.1 mm from the hoop centre; both thread paths are a real stitch
-   layout (tatami fill, then satin border), each one continuous run so .sew-line draws it in sewing order. */
-.fig-hoop__frame { fill: var(--sunken); stroke: var(--line-3); stroke-width: 1px; vector-effect: non-scaling-stroke; }
-.fig-hoop__cloth { fill: var(--fabric); stroke: var(--line-3); stroke-width: 1px; vector-effect: non-scaling-stroke; }
-.fig-hoop__field { fill: none; stroke: var(--fabric-ink); stroke-opacity: .28; stroke-width: 1px; stroke-dasharray: 1 5; vector-effect: non-scaling-stroke; }
-.fig-thread { fill: none; stroke-linejoin: round; stroke-linecap: butt; }
-.fig-thread--a { stroke: var(--thread-a); stroke-width: 3.9; }
-.fig-thread--b { stroke: var(--thread-b); stroke-width: 3.2; animation-duration: calc(var(--t-stitch) * .7); animation-delay: calc(var(--t-stitch) + .3s); }
-.fig-holes { fill: none; stroke: var(--fabric); stroke-opacity: .8; stroke-width: 1.1; stroke-linecap: butt; }
-.fig-vector path { fill: none; stroke: var(--fabric-ink); stroke-width: 1px; vector-effect: non-scaling-stroke; }
-.fig-nodes rect { fill: var(--fabric); stroke: var(--fabric-ink); stroke-width: 1px; vector-effect: non-scaling-stroke; }
-.fig-needle { fill: none; stroke: var(--fabric-signal); stroke-width: 1px; }
-.fig-needle path, .fig-needle circle { vector-effect: non-scaling-stroke; }
-.fig-needle circle { fill: var(--fabric); }
-
-.hero__actions { display: flex; flex-wrap: wrap; gap: var(--s-3); }
-
-/* How it works: three short steps */
-.steps { padding-top: var(--s-4); }
-.steps__list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-3); }
-.step { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; align-content: start; gap: 2px var(--s-3); padding: var(--s-5); border: 1px solid var(--line-1); border-radius: var(--r-0); background: var(--raised); }
-.step__no { grid-row: 1 / span 2; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--signal-wash); color: var(--signal-text); font: var(--w-semi) var(--fs-4)/1 var(--font-ui); }
-.step__name { font: var(--w-semi) var(--fs-5)/32px var(--font-ui); }
-.step__what { grid-column: 2; color: var(--ink-2); font-size: var(--fs-4); line-height: var(--lh-4); text-wrap: balance; }
-
-/* Design feed: starter designs to open and change */
-.feed { padding-top: var(--s-7); }
-.feed[hidden] { display: none; }
-.feed__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s-1) var(--s-4); margin-bottom: var(--s-4); }
-.feed__head > p { color: var(--ink-2); font-size: var(--fs-4); }
-.feed__list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-3); }
-.design { display: grid; gap: 2px; height: 100%; padding: var(--s-2) var(--s-2) var(--s-3); border: 1px solid var(--line-1); border-radius: var(--r-0); background: var(--raised); color: inherit; text-decoration: none; transition: border-color var(--t-1) var(--ease), transform var(--t-2) var(--ease); }
-.design:hover { border-color: var(--line-2); transform: translateY(-2px); }
-.design:focus-visible { outline-offset: 2px; border-radius: var(--r-0); }
-.design__pic { display: block; aspect-ratio: 1; margin-bottom: var(--s-2); border-radius: calc(var(--r-0) - 5px); background: #f4f1ea; overflow: hidden; }
-.design__pic > img { width: 100%; height: 100%; object-fit: cover; }
-.design__name { padding: 0 var(--s-1); font: var(--w-semi) var(--fs-4)/var(--lh-4) var(--font-ui); }
-.design__meta { padding: 0 var(--s-1); color: var(--ink-3); font-size: var(--fs-2); line-height: var(--lh-3); }
-.design__go { padding: var(--s-1) var(--s-1) 0; color: var(--signal-text); font: var(--w-semi) var(--fs-2)/1 var(--font-ui); }
-@media (prefers-reduced-motion: reduce) { .design:hover { transform: none; } }
-
-@media screen and (max-width: 1100px) {
-  .steps__list { grid-template-columns: minmax(0, 1fr); }
-  .feed__list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+body.home { display: flex; flex-direction: column; overflow-x: hidden; }
+.home main { flex: 1 0 auto; }
+.home {
+  --home-cloth: #FCFBF8;      /* fabric in the hero hoop */
+  --home-wood: #E7D9C0;       /* the hoop ring */
+  --home-wood-2: #D9C7A6;
+  --home-sky: #DCE8F3;        /* soft wash behind the hoodie */
+  --home-gold: #E2B84E;       /* thread colours for the little drawings */
+  --home-card-shadow: 0 1px 2px rgb(43 45 49 / .05), 0 12px 32px rgb(43 45 49 / .07);
 }
+
+/* ---------- header ---------- */
+.home-head { background: color-mix(in srgb, var(--panel) 88%, transparent); -webkit-backdrop-filter: saturate(1.4) blur(10px); backdrop-filter: saturate(1.4) blur(10px); }
+.home-head__row { display: flex; align-items: center; gap: var(--s-4); height: 56px; }
+.home-head .brand { font-size: 16px; }
+.home-head__nav { display: flex; align-items: center; gap: 2px; margin-left: auto; }
+.home-head__nav a { display: inline-flex; align-items: center; height: 32px; padding: 0 var(--s-3); border-radius: var(--r-1); color: var(--ink-2); text-decoration: none; font: var(--w-medium) var(--fs-3)/1 var(--font-ui); transition: background var(--t-1) var(--ease), color var(--t-1) var(--ease); }
+.home-head__nav a:hover { background: var(--hover); color: var(--ink-1); }
+.home-head__cta { height: 36px; padding: 0 var(--s-4); border-radius: 10px; }
+
+/* ---------- shared bits ---------- */
+.sec-title { font: var(--w-bold) clamp(22px, 2.4vw, 28px)/1.15 var(--font-ui); letter-spacing: -.02em; }
+.sec-sub { margin-top: var(--s-1); color: var(--ink-2); font-size: var(--fs-4); line-height: var(--lh-4); }
+.btn--soft { background: var(--raised); border-color: var(--line-1); box-shadow: var(--shadow-soft); }
+.btn--soft:hover { border-color: var(--line-3); background: var(--raised); }
+.btn--lg svg { transition: transform var(--t-2) var(--ease); }
+.btn--lg:hover svg { transform: translateX(2px); }
+
+/* ---------- 1. hero ---------- */
+.hero { padding: var(--s-8) 0 var(--s-7); }
+.hero__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); align-items: center; gap: var(--s-7); }
+.hero__copy { display: grid; justify-items: start; gap: var(--s-5); }
+.hero__title { font: var(--w-bold) clamp(40px, 5.4vw, 72px)/1.02 var(--font-ui); letter-spacing: -.035em; text-wrap: balance; }
+.hero__lead { max-width: 34ch; color: var(--ink-2); font-size: var(--fs-5); line-height: var(--lh-5); text-wrap: pretty; }
+.hero__actions { display: flex; flex-wrap: wrap; gap: var(--s-3); padding-top: var(--s-1); }
+
+/* The show: a hoop where a bee draws itself and sews, then the hoodie it ends up on. */
+.show { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; width: 100%; max-width: 560px; margin-inline: auto; padding-bottom: 72px; }
+.show__hoop { position: relative; width: min(100%, 420px); justify-self: start; }
+.hoop { position: relative; aspect-ratio: 1; border-radius: 50%; padding: 14px;
+  background: radial-gradient(circle at 30% 25%, #F2E8D6, var(--home-wood) 55%, var(--home-wood-2));
+  box-shadow: inset 0 0 0 1px rgb(120 96 60 / .14), 0 2px 4px rgb(43 45 49 / .06), 0 22px 48px rgb(43 45 49 / .10); }
+.hoop__screw { position: absolute; top: -10px; left: 50%; width: 26px; height: 18px; margin-left: -13px; border-radius: 6px; background: linear-gradient(#EADFCB, var(--home-wood-2)); box-shadow: inset 0 0 0 1px rgb(120 96 60 / .16); }
+.hoop__cloth { position: relative; height: 100%; border-radius: 50%; overflow: hidden;
+  background: radial-gradient(circle at 50% 40%, #FFFFFF, var(--home-cloth) 60%, #F1EEE7);
+  box-shadow: inset 0 0 0 1px rgb(120 96 60 / .16), inset 0 2px 10px rgb(43 45 49 / .07); }
+.hoop__still, .hoop__canvas { position: absolute; inset: 14%; width: 72%; height: 72%; object-fit: contain; }
+.hoop__still { transition: opacity .7s var(--ease); }
+.hoop__canvas { transition: opacity .7s var(--ease); pointer-events: none; }
+.show.is-anim:not(.is-done) .hoop__still { opacity: 0; }   /* only while the stitch-out plays; the picture shows until then */
+.show.is-done .hoop__canvas { opacity: 0; }
+
+.show__count { position: absolute; left: 50%; bottom: -14px; transform: translateX(-50%); display: inline-flex; align-items: baseline; gap: 5px; height: 28px; align-items: center; padding: 0 12px; border-radius: var(--r-round); background: var(--raised); box-shadow: var(--home-card-shadow); color: var(--ink-2); font-size: var(--fs-2); white-space: nowrap; }
+.show__count .num { color: var(--ink-1); font-weight: var(--w-semi); }
+.show__replay { position: absolute; right: 4%; top: 4%; display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 50%; background: var(--raised); color: var(--ink-2); box-shadow: var(--home-card-shadow); transition: color var(--t-1) var(--ease), transform var(--t-2) var(--ease); }
+.show__replay:hover { color: var(--signal-text); transform: rotate(-20deg); }
+.show__replay svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+.show__wear { position: absolute; right: 0; bottom: 0; width: 46%; aspect-ratio: 1; border-radius: 22px; overflow: hidden; background: linear-gradient(160deg, #FFFFFF, var(--home-sky)); box-shadow: 0 0 0 1px var(--line-1), var(--home-card-shadow); transform: rotate(3deg); transition: transform .5s var(--ease), box-shadow .5s var(--ease); }
+.show__wear img { width: 100%; height: 100%; object-fit: cover; }
+.show[data-phase="wear"] .show__wear { transform: rotate(3deg) translateY(-6px) scale(1.03); box-shadow: 0 0 0 1px var(--line-1), 0 24px 48px rgb(43 45 49 / .14); }
+
+.show__steps { position: absolute; left: 0; bottom: 6px; display: flex; gap: 6px; }
+.show__steps li { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: var(--r-round); background: var(--raised); color: var(--ink-3); box-shadow: 0 0 0 1px var(--line-1); font: var(--w-semi) var(--fs-2)/1 var(--font-ui); transition: color var(--t-3) var(--ease), background var(--t-3) var(--ease), box-shadow var(--t-3) var(--ease); }
+.show__steps li::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--line-3); transition: background var(--t-3) var(--ease); }
+.show[data-phase="draw"] [data-step="draw"], .show[data-phase="stitch"] [data-step="stitch"], .show[data-phase="wear"] [data-step="wear"],
+.show:not(.is-anim) .show__steps li { color: var(--ink-1); }
+.show[data-phase="draw"] [data-step="draw"], .show[data-phase="stitch"] [data-step="stitch"], .show[data-phase="wear"] [data-step="wear"] { background: var(--signal-wash); box-shadow: 0 0 0 1px color-mix(in srgb, var(--signal) 35%, transparent); }
+.show[data-phase="draw"] [data-step="draw"]::before, .show[data-phase="stitch"] [data-step="stitch"]::before, .show[data-phase="wear"] [data-step="wear"]::before { background: var(--signal); }
+
+/* ---------- 2. how it works ---------- */
+.how { padding-top: var(--s-7); }
+.how__list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-4); margin-top: var(--s-5); counter-reset: how; }
+.how__item { display: grid; align-content: start; gap: var(--s-1); padding: var(--s-5); border-radius: 20px; background: var(--raised); box-shadow: 0 0 0 1px var(--line-1); counter-increment: how; }
+.how__pic { width: 96px; height: 72px; margin-bottom: var(--s-3); overflow: visible; }
+.how__name { font: var(--w-semi) var(--fs-5)/var(--lh-4) var(--font-ui); letter-spacing: -.01em; }
+.how__name::before { content: counter(how) "  "; color: var(--signal-text); white-space: pre; }
+.how__what { color: var(--ink-2); font-size: var(--fs-4); line-height: var(--lh-4); text-wrap: pretty; }
+.how__pic * { vector-effect: non-scaling-stroke; }
+.p-card { fill: var(--bg); stroke: var(--line-3); }
+.p-ink { fill: none; stroke: var(--ink-1); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.p-blue { fill: var(--signal); }
+.p-dot { fill: var(--ink-1); }
+.p-hoop { fill: var(--home-wood); stroke: var(--home-wood-2); }
+.p-cloth { fill: var(--home-cloth); stroke: rgb(120 96 60 / .2); }
+.p-thread { fill: none; stroke: var(--signal); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.p-gold { fill: none; stroke: var(--home-gold); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 3 3; }
+.p-hoodie { fill: var(--home-sky); stroke: color-mix(in srgb, var(--signal) 45%, var(--home-sky)); stroke-linejoin: round; }
+.p-gold-fill { fill: var(--home-gold); }
+.p-tag { fill: var(--raised); stroke: var(--line-3); }
+.p-tag-ink { stroke: var(--ink-1); stroke-width: 2; stroke-linecap: round; }
+
+/* ---------- 3. collection ---------- */
+.coll { padding-top: var(--s-8); }
+.coll__head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: var(--s-4); margin-bottom: var(--s-5); }
+.chips { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 var(--s-4); border: 0; border-radius: var(--r-round); background: var(--raised); color: var(--ink-2); box-shadow: 0 0 0 1px var(--line-1); font: var(--w-semi) var(--fs-3)/1 var(--font-ui); transition: background var(--t-1) var(--ease), color var(--t-1) var(--ease), box-shadow var(--t-1) var(--ease); }
+.chip:hover { color: var(--ink-1); box-shadow: 0 0 0 1px var(--line-3); }
+.chip[aria-pressed="true"] { background: var(--ink-1); color: var(--ink-inv); box-shadow: none; }
+.chip__n { color: inherit; opacity: .55; font-weight: var(--w-medium); }
+.coll__grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--s-4); }
+.coll__grid > li[hidden] { display: none; }
+.card { position: relative; display: grid; gap: 2px; padding: var(--s-2) var(--s-2) var(--s-3); border-radius: 20px; background: var(--raised); box-shadow: 0 0 0 1px var(--line-1); color: inherit; text-decoration: none; transition: transform var(--t-3) var(--ease), box-shadow var(--t-3) var(--ease); }
+.card:hover, .card:focus-visible { transform: translateY(-4px) rotate(-.6deg); box-shadow: 0 0 0 1px var(--line-1), 0 18px 36px rgb(43 45 49 / .10); }
+.coll__grid > li:nth-child(even) .card:hover, .coll__grid > li:nth-child(even) .card:focus-visible { transform: translateY(-4px) rotate(.6deg); }
+.card:focus-visible { outline-offset: 3px; border-radius: 20px; }
+.card__pic { position: relative; display: block; aspect-ratio: 1; margin-bottom: var(--s-2); border-radius: 14px; background: #F4F1EA; overflow: hidden; }
+.card__pic > img { width: 100%; height: 100%; object-fit: cover; transition: transform .4s var(--ease); }
+.card:hover .card__pic > img { transform: scale(1.04); }
+.card__open { position: absolute; left: 50%; bottom: 10px; display: inline-flex; align-items: center; height: 32px; padding: 0 14px; border-radius: var(--r-round); background: var(--ink-1); color: var(--ink-inv); font: var(--w-semi) var(--fs-2)/1 var(--font-ui); white-space: nowrap; opacity: 0; transform: translate(-50%, 6px); transition: opacity var(--t-2) var(--ease), transform var(--t-2) var(--ease); }
+.card:hover .card__open, .card:focus-visible .card__open { opacity: 1; transform: translate(-50%, 0); }
+.card__name { padding: 0 var(--s-1); font: var(--w-semi) var(--fs-4)/var(--lh-4) var(--font-ui); }
+.card__meta { padding: 0 var(--s-1); color: var(--ink-3); font-size: var(--fs-2); line-height: var(--lh-2); }
+.coll__empty { padding: var(--s-5); border-radius: 20px; background: var(--raised); color: var(--ink-2); box-shadow: 0 0 0 1px var(--line-1); }
+.coll__more { margin-top: var(--s-5); text-align: center; }
+.more { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 var(--s-4); border-radius: var(--r-round); color: var(--signal-text); text-decoration: none; font: var(--w-semi) var(--fs-3)/1 var(--font-ui); transition: background var(--t-1) var(--ease); }
+.more:hover { background: var(--signal-wash); }
+.more span { transition: transform var(--t-2) var(--ease); }
+.more:hover span { transform: translateX(3px); }
+
+/* ---------- 4. machine band ---------- */
+.machine { padding-top: var(--s-8); }
+.machine__band { display: grid; grid-template-columns: minmax(0, 1.2fr) auto auto; align-items: center; gap: var(--s-6); padding: var(--s-6) var(--s-7); border-radius: 28px; background: linear-gradient(120deg, var(--raised), var(--home-sky)); box-shadow: 0 0 0 1px var(--line-1); }
+.machine__hoops { display: flex; align-items: end; gap: var(--s-5); }
+.machine__hoops li { display: grid; justify-items: center; gap: var(--s-2); color: var(--ink-1); font-size: var(--fs-3); }
+.machine__hoops b { font-weight: var(--w-semi); }
+.mhoop { display: block; border-radius: 14px; background: var(--home-cloth); box-shadow: 0 0 0 5px var(--home-wood), 0 0 0 6px var(--home-wood-2), 0 10px 20px rgb(43 45 49 / .08); }
+.mhoop--57 { width: 50px; height: 70px; }
+.mhoop--610 { width: 60px; height: 100px; }
+.machine__facts { display: grid; gap: var(--s-3); justify-items: start; }
+.machine__facts > li:first-child { display: flex; gap: var(--s-2); }
+.fmt { display: inline-flex; align-items: center; height: 32px; padding: 0 var(--s-3); border-radius: 10px; background: var(--raised); box-shadow: 0 0 0 1px var(--line-1); font: var(--w-bold) var(--fs-3)/1 var(--font-ui); letter-spacing: .02em; }
+.machine__safe { display: flex; align-items: center; gap: var(--s-2); color: var(--ink-2); font-size: var(--fs-3); }
+.machine__safe svg { width: 18px; height: 18px; flex: none; fill: none; stroke: var(--ok); stroke-width: 1.5; stroke-linejoin: round; }
+
+/* ---------- 5. FAQ ---------- */
+.faq { padding-top: var(--s-8); }
+.faq__list { display: grid; gap: var(--s-2); max-width: 760px; margin-top: var(--s-5); }
+.faq__item { border-radius: 16px; background: var(--raised); box-shadow: 0 0 0 1px var(--line-1); }
+.faq__item summary { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); min-height: 56px; padding: var(--s-3) var(--s-5); cursor: pointer; list-style: none; font: var(--w-semi) var(--fs-4)/var(--lh-4) var(--font-ui); border-radius: 16px; }
+.faq__item summary::-webkit-details-marker { display: none; }
+.faq__item summary::after { content: ""; flex: none; width: 10px; height: 10px; margin-right: 2px; border: solid var(--ink-3); border-width: 0 1.6px 1.6px 0; transform: translateY(-2px) rotate(45deg); transition: transform var(--t-2) var(--ease); }
+.faq__item[open] summary::after { transform: translateY(2px) rotate(-135deg); }
+.faq__item summary:focus-visible { outline-offset: -2px; }
+.faq__item p { padding: 0 var(--s-5) var(--s-4); color: var(--ink-2); font-size: var(--fs-4); line-height: var(--lh-4); }
+
+/* ---------- footer ---------- */
+.home-foot { margin-top: var(--s-9); }
+.home-foot .site-foot__row { padding-block: var(--s-5); }
+
+/* ---------- motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .card:hover, .card:focus-visible, .coll__grid > li:nth-child(even) .card:hover { transform: none; }
+  .card:hover .card__pic > img { transform: none; }
+  .show[data-phase="wear"] .show__wear { transform: rotate(3deg); }
+}
+
+/* ---------- tablet ---------- */
+@media screen and (max-width: 1100px) {
+  .hero { padding-top: var(--s-7); }
+  .hero__grid { gap: var(--s-5); }
+  .coll__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .machine__band { grid-template-columns: minmax(0, 1fr) auto; padding: var(--s-6); }
+  .machine__facts { grid-column: 1 / -1; grid-auto-flow: column; align-items: center; justify-content: start; gap: var(--s-5); }
+}
+
+/* ---------- phone ---------- */
 @media screen and (max-width: 720px) {
-  .hero__grid { grid-template-columns: minmax(0, 1fr); }
-  .hero__copy { padding: var(--s-5) 0; border-right: 0; gap: var(--s-4); }
+  .home { --gutter: 16px; }
+  .home-head__row { height: 52px; gap: var(--s-2); }
+  .home-head__nav a { padding: 0 var(--s-2); }
+  .home-head__nav a[href^="https://github"] { display: none; }
+  .home-head__cta { height: 34px; padding: 0 var(--s-3); }
+  .hero { padding: var(--s-6) 0 var(--s-5); }
+  .hero__grid { grid-template-columns: minmax(0, 1fr); gap: var(--s-6); }
+  .hero__copy { gap: var(--s-4); }
+  .hero__title { font-size: 40px; }
+  .hero__lead { font-size: 16px; line-height: 24px; }
   .hero__actions { width: 100%; }
   .hero__actions > .btn { flex: 1 1 auto; }
-  .hero__fig { padding: 0 0 var(--s-5); }
-  .hero__art svg { width: min(100%, 240px); }
-  .feed { padding-top: var(--s-6); }
-  .feed__list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2); }
-  .steps { padding-top: 0; }
-  .step { padding: var(--s-4); }
+  .show { max-width: 390px; padding-bottom: 64px; }
+  .show__hoop { width: 78%; }
+  .show__wear { width: 44%; border-radius: 18px; }
+  .show__steps li { height: 26px; padding: 0 10px; }
+  .how { padding-top: var(--s-6); }
+  .how__list { grid-template-columns: minmax(0, 1fr); gap: var(--s-3); margin-top: var(--s-4); }
+  .how__item { grid-template-columns: auto minmax(0, 1fr); column-gap: var(--s-4); padding: var(--s-4); }
+  .how__pic { grid-row: 1 / span 2; width: 72px; height: 54px; margin: 0; align-self: center; }
+  .coll { padding-top: var(--s-7); }
+  .coll__head { margin-bottom: var(--s-4); }
+  .chips { flex-wrap: nowrap; overflow-x: auto; width: calc(100% + 2 * var(--gutter)); margin-inline: calc(-1 * var(--gutter)); padding: 2px var(--gutter); scrollbar-width: none; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip { flex: none; }
+  .coll__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); }
+  .card { border-radius: 16px; }
+  .card__pic { border-radius: 11px; }
+  .card__open { display: none; }
+  .machine { padding-top: var(--s-7); }
+  .machine__band { grid-template-columns: minmax(0, 1fr); gap: var(--s-5); padding: var(--s-5); border-radius: 22px; }
+  .machine__facts { grid-column: auto; grid-auto-flow: row; justify-items: start; gap: var(--s-3); }
+  .faq { padding-top: var(--s-7); }
+  .faq__item summary { padding: var(--s-3) var(--s-4); }
+  .faq__item p { padding: 0 var(--s-4) var(--s-4); }
+  .home-foot { margin-top: var(--s-8); }
 }

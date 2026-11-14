@@ -196,7 +196,6 @@
       io.observe(show);
     });
   }
-  show.classList.add('is-anim');
   if (replay) replay.addEventListener('click', function () { if (data) play(); });
   if (document.readyState === 'complete') arm(); else window.addEventListener('load', arm);
   /* if nothing has started within a few seconds of load (slow device, tab hidden), keep the still picture visible */

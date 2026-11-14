@@ -50,7 +50,7 @@ body.home { display: flex; flex-direction: column; overflow-x: hidden; }
 .hoop__still, .hoop__canvas { position: absolute; inset: 14%; width: 72%; height: 72%; object-fit: contain; }
 .hoop__still { transition: opacity .7s var(--ease); }
 .hoop__canvas { transition: opacity .7s var(--ease); pointer-events: none; }
-.motion .show:not(.is-still):not(.is-done) .hoop__still { opacity: 0; }
+.show.is-anim:not(.is-done) .hoop__still { opacity: 0; }   /* only while the stitch-out plays; the picture shows until then */
 .show.is-done .hoop__canvas { opacity: 0; }
 
 .show__count { position: absolute; left: 50%; bottom: -14px; transform: translateX(-50%); display: inline-flex; align-items: baseline; gap: 5px; height: 28px; align-items: center; padding: 0 12px; border-radius: var(--r-round); background: var(--raised); box-shadow: var(--home-card-shadow); color: var(--ink-2); font-size: var(--fs-2); white-space: nowrap; }

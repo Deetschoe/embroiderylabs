@@ -1,7 +1,8 @@
 /* EMBROIDERY LABS - css/tutorial.css (app.html only): the first-visit tips card and its pulsing ring.
    Placed by js/editor/tutorial.js (position: fixed, bottom left of the canvas). Uses css/base.css tokens. */
 
-.tut { position: fixed; z-index: 80; display: grid; gap: var(--s-2); padding: var(--s-3) var(--s-4) var(--s-3);
+/* z: over the canvas, under every menu, drawer, sheet, tooltip and toast (the phone More menu holds Save) */
+.tut { position: fixed; z-index: calc(var(--z-drawer) - 1); display: grid; gap: var(--s-2); padding: var(--s-3) var(--s-4) var(--s-3);
   background: var(--raised); border-radius: var(--r-0); box-shadow: var(--shadow-pop); color: var(--ink-1); }
 .tut[hidden] { display: none; }
 .tut__head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); min-height: 24px; }

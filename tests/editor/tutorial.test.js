@@ -213,6 +213,13 @@ const LOOK = 'var bad = 0; for (var i = 0; i < document.styleSheets.length; i++)
     ok(s.open && s.shown, 'phone: a first visit shows it too');
     ok(fit.sw <= 390 && fit.left >= 0 && fit.right <= 390 && fit.bottom <= fit.dockTop && !fit.overlapHud, 'phone: the card fits, stays above the dock and the zoom buttons, no sideways scroll (' + JSON.stringify(fit) + ')');
     await c.shot('tutorial-phone.png');
+    ok(/^Pick the pen and draw/.test(await ev('return document.getElementById("tut-text").textContent')), 'phone: step 1 leaves out the key hint');
+    /* step 7 points at More, and the More menu (it holds Save) must open over the card, not under it */
+    await ev('for (var i = 0; i < 6; i++) Editor.Tutorial.next(); document.getElementById("btn-more").click(); return 1'); await wait(300);
+    const menu = await ev('var m = document.getElementById("more"), s = m.querySelector("[data-action=save], [data-file=save]") || m.firstElementChild, b = s.getBoundingClientRect(), t = document.getElementById("tutorial").getBoundingClientRect(); ' +
+      'var x = Math.max(b.left, t.left) + 4, y = Math.min(Math.max(b.top + b.height / 2, t.top + 4), t.bottom - 4), hit = document.elementFromPoint(x, y); return { open: !m.hidden, onTop: !!(hit && hit.closest("#more")) };');
+    ok(menu.open && menu.onTop, 'phone: the More menu opens over the card (' + JSON.stringify(menu) + ')');
+    await ev('document.getElementById("btn-more").click(); return 1');
 
     ok(c.errors.length === 0, 'no errors in the console' + (c.errors.length ? ': ' + c.errors.slice(0, 5).join(' | ') : ''));
   } catch (err) {

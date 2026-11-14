@@ -95,7 +95,7 @@
   }
 
   var STEPS = [
-    { text: 'Pick the pen (P) and draw on the hoop.',
+    { text: 'Pick the pen (P) and draw on the hoop.', phone: 'Pick the pen and draw on the hoop.',
       target: function () { return first(['.rail [data-tool="pen"]', '.dock [data-tool="pen"]']); },
       done: function (ev, d) { return ev === 'change' && d && /^Draw /.test(d.reason || ''); } },
     { text: 'Select a petal, then pick a new thread colour.',
@@ -108,7 +108,7 @@
       target: function () { return V().mode === 'stitch' && !mockOpen() ? first(['#play-toggle']) : first(['#view-stitch', '.view__mode [data-view="stitch"]']); },
       done: function (ev) { return ev === 'play' && Editor.playback && Editor.playback.playing(); } },
     { text: 'Open Mockup and drag your design into place.',
-      target: function () { return mockOpen() ? first(['#mock-stage']) : first(['#view-mockup', '#btn-mockup']); },
+      target: function () { return mockOpen() ? first(['#mock-stage']) : first(['#view-mockup', '.view__mode [data-view="mockup"]', '#btn-mockup']); },
       done: function (ev) { return ev === 'mockdrag'; } },
     { text: 'Export .PES for your machine. It fits Brother hoops.',
       target: function () { return first(['#btn-export']); },
@@ -120,7 +120,7 @@
   Tut.STEPS = STEPS.length;
 
   /* ---------- card + ring ---------------------------------------------------------------------- */
-  var el = {}, isOpen = false, index = 0, raf = 0, lastTarget = null;
+  var el = {}, isOpen = false, index = 0, raf = 0, lastTarget = null, finishing = false;
 
   function build() {
     if (el.card) return;
@@ -151,10 +151,14 @@
     host.appendChild(el.ring); host.appendChild(card);
   }
 
+  /* a phone has no keyboard: its copy leaves out the key hints */
+  function text(i) { var s = STEPS[i]; return s.phone && V().isPhone && V().isPhone() ? s.phone : s.text; }
+  /* place() runs every frame: only touch the DOM when a value really changed */
+  function put(style, prop, value) { if (style[prop] !== value) style[prop] = value; }
   function render() {
     if (!el.card) return;
     el.count.textContent = (index + 1) + ' of ' + STEPS.length;
-    el.text.textContent = STEPS[index].text;
+    el.text.textContent = text(index);
     el.back.disabled = index === 0;
     el.next.textContent = index === STEPS.length - 1 ? 'Done' : 'Next';
     for (var i = 0; i < el.dots.length; i++) el.dots[i].className = i < index ? 'is-done' : i === index ? 'is-now' : '';
@@ -162,10 +166,11 @@
     place();
   }
   function go(i) {
+    finishing = false;
     index = Math.max(0, Math.min(STEPS.length - 1, i));
     el.card.classList.remove('is-step'); void el.card.offsetWidth; el.card.classList.add('is-step');
     render();
-    if (Editor.say) Editor.say('Tutorial step ' + (index + 1) + ' of ' + STEPS.length + ': ' + STEPS[index].text);
+    if (Editor.say) Editor.say('Tutorial step ' + (index + 1) + ' of ' + STEPS.length + ': ' + text(index));
   }
 
   /* bottom left of whatever is showing (the hoop view or the mockup stage), above the phone sheet */
@@ -189,18 +194,20 @@
       var h = huds[i].getBoundingClientRect();
       if (h.left < left + w + 8 && h.right > left && h.bottom > a.bottom - 160 && h.top < a.bottom) bottom = Math.min(bottom, h.top - 4);
     }
-    s.left = left + 'px';
-    s.width = w + 'px';
-    s.bottom = Math.max(8, window.innerHeight - bottom + gap) + 'px';
-    var app = $('app'); if (app) app.style.setProperty('--tut-h', el.card.offsetHeight + 'px');
-    var t = STEPS[index].target();
+    put(s, 'left', left + 'px');
+    put(s, 'width', w + 'px');
+    put(s, 'bottom', Math.max(8, window.innerHeight - bottom + gap) + 'px');
+    var app = $('app'), h = el.card.offsetHeight + 'px';
+    if (app && app.style.getPropertyValue('--tut-h') !== h) app.style.setProperty('--tut-h', h);
+    if (!finishing && el.text.textContent !== text(index)) el.text.textContent = text(index);
+    var t = finishing ? null : STEPS[index].target();
     if (t && t !== el.card && !el.card.contains(t)) {
       var r = t.getBoundingClientRect(), pad = t.id === 'mock-stage' ? -10 : 3, ring = el.ring.style;
-      ring.left = (r.left - pad) + 'px'; ring.top = (r.top - pad) + 'px';
-      ring.width = (r.width + 2 * pad) + 'px'; ring.height = (r.height + 2 * pad) + 'px';
-      el.ring.hidden = false;
-      el.ring.classList.toggle('tut-ring--wide', r.width > 200);
-    } else el.ring.hidden = true;
+      put(ring, 'left', (r.left - pad) + 'px'); put(ring, 'top', (r.top - pad) + 'px');
+      put(ring, 'width', (r.width + 2 * pad) + 'px'); put(ring, 'height', (r.height + 2 * pad) + 'px');
+      if (el.ring.hidden) el.ring.hidden = false;
+      if (el.ring.classList.contains('tut-ring--wide') !== r.width > 200) el.ring.classList.toggle('tut-ring--wide', r.width > 200);
+    } else if (!el.ring.hidden) el.ring.hidden = true;
     lastTarget = t;
   }
   function loop() { raf = 0; if (!isOpen) return; place(); raf = requestAnimationFrame(loop); }
@@ -209,7 +216,7 @@
   function heard(ev, data) {
     if (!isOpen || !STEPS[index].done(ev, data)) return;
     if (index >= STEPS.length - 1) {
-      markSeen();
+      markSeen(); finishing = true;
       el.text.textContent = 'All set. Have fun stitching!';
       el.ring.hidden = true;
       setTimeout(function () { if (isOpen && index === STEPS.length - 1) Tut.close(true); }, 1600);

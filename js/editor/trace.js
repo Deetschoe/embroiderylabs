@@ -280,6 +280,9 @@
     });
     return list;
   }
+  /* shared with the Picture to SVG studio (js/editor/vectorize.js) */
+  Tr.threadNames = threadNames;
+  Tr.editorList = editorList;
   /* Stitches as the editor will sew them: the shapes through Model.toEngine() and the real engine (a few
      milliseconds; the tracer's own estimate is 5 to 17% off). Falls back to that estimate. */
   function countStitches(res) {

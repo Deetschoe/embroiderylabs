@@ -21,6 +21,7 @@ js/editor/view.js     Editor.View    pan/zoom transform, DPR canvas, rulers, hoo
 js/editor/io.js       Editor.IO      engine client (live stitches), export, autosave / restore, Editor.toast
 js/editor/svgimport.js Editor.SvgImport  SVG file -> shapes (own parser, reads a DOMParser tree, never inserts it)
 js/editor/trace.js    Editor.Trace   picture to draw over: decode, move / scale / opacity / lock, optional storage
+js/editor/vectorize.js Editor.Vectorize  Picture to SVG studio: paste a picture, pick colours, erase, add / download .svg
 js/editor/panels.js   Editor.Panels  properties panel, sewing-order list, stats, warnings, hoop + fabric controls
 js/vendor/polygon-clipping.min.js   polygon booleans (MIT, pinned 0.15.7; version + sha256 in cut.js)
 js/editor/cut.js      Editor.Cut     Cut out: split shapes along a drawn outline (polygon booleans, line splits)
@@ -267,7 +268,49 @@ convenience in `localStorage['el-editor-stitchify-v1']`. In the page: `Editor.Tr
 The tracer's `underlay: false` (photo fills, and fills set into a fill sewn before them) is kept on the object.
 It is only ever stored as false (a missing key means the engine default), survives save/load and is copied into
 cut pieces; `Model.toEngine()` passes it on as `fill.underlay: false`. There is no control for it in the panel.
-Editor tests: `node tests/editor/run.js` runs model.test.js, svgimport.test.js, cut.test.js, tutorial.test.js, groups-model.test.js, groups.test.js, mockup.test.js and market.test.js.
+Editor tests: `node tests/editor/run.js` runs model.test.js, svgimport.test.js, cut.test.js, tutorial.test.js, groups-model.test.js, groups.test.js, mockup.test.js, market.test.js and vectorize.test.js.
+
+## Picture to SVG (`vectorize.js`)
+
+A studio in a `<dialog>` (built in JS, styles at the end of css/editor.css) that turns a picture into clean coloured
+shapes. Ways in: Cmd/Ctrl+V anywhere in the editor with a picture on the clipboard (an image file, or a `data:image/...`
+or `https://...png|jpg|webp|gif` address as text), File > Picture to SVG, More > Picture to SVG on phones, the
+"Picture to SVG" button on the picture card (opens on the picture under the drawing), and the studio's own Open
+picture / drop zone / drag-drop / paste.
+
+**Clipboard.** main.js no longer swallows Cmd/Ctrl+C, X and V: copying shapes still fills `M.clipboard` on keydown,
+and the `copy` / `cut` event that follows writes a mark (`application/x-embroidr`) to the system clipboard, so a
+picture copied earlier cannot win over the shapes. The `paste` event (`onPaste` in main.js) asks
+`Editor.Vectorize.takePaste(clipboardData)` first: a picture opens the studio and nothing else happens. Otherwise
+the shapes are pasted. A browser that sends no paste event for the key (headless Chrome via CDP) still pastes the
+shapes 80 ms after the keydown. Paste is ignored while typing in a field, in the Mockup, and while another dialog
+is open (in the studio it replaces the picture).
+
+**Work.** The picture is decoded once (`Trace.imageDataFrom`, 1600 px) and traced by its own `Trace.createClient()`
+(a newer trace cancels an older one; progress and Cancel in the status line). Colours (Auto up to 10, or 2 to 30),
+Background (Auto / Remove / Keep = the tracer's `auto` / `on` / `off`), Detail and Width (mm in the model, shown with
+`Editor.Units`) start a new trace after 250 ms. Keep / drop a colour, a new colour from the swatch (native colour
+input), "Merge into" another colour and the shape eraser are applied to the last result straight away, no trace.
+Colour choices survive a new trace by matching the picture colour they were made for (RGB distance < 48).
+
+**Erasing.** Steps are a list (`{ kind: 'brush', r, pts }` in picture pixels, `{ kind: 'shape', rings | line }`) with
+their own undo / redo / reset (Cmd/Ctrl+Z and Shift+Cmd/Ctrl+Z inside the dialog; the editor's keyboard handler
+ignores keys while a dialog is open, so the design history is never touched). The working picture is the original
+with the steps replayed. A removed shape is hidden in the current result (no trace) and is also painted out of
+the working picture, so it stays gone after a later trace. The tracer stops looking for a border background as
+soon as a picture has transparency, so on an opaque picture whose border colour is removed, erased pixels are
+painted in that colour (the tracer's `background.color`, or the studio's own guess from the border before the
+first answer) instead of made transparent; Before still shows them as erased (checkerboard). A brush stroke
+retraces 300 ms after it ends. Keys: B brush, E shape eraser, V look, [ ] brush size. No zoom.
+
+**Out.** "Add to design": the kept shapes (dropped colours and erased shapes left out, merged / recoloured colours
+applied, thread names from `Editor.Trace.threadNames`, geometry from `Editor.Trace.editorList`), centred in the
+hoop, ONE `Model.addMany(list, 'Picture to SVG')`, studio closes, toast with Undo. "Download .svg": width / height in
+mm, `viewBox` in mm, one `<path>` per shape in sewing order, grouped by thread (`<g data-thread>`), fills
+`fill-rule="evenodd"`, lines stroked at the tracer's measured width with round caps, no background rectangle.
+"Use as reference": the picture as it is now (with erasing) goes under the drawing through `Editor.Trace.load`.
+Settings (auto, n, background, detail) are a convenience in `localStorage['el-editor-vectorize-v1']`; the picture is
+not stored. Test: tests/editor/vectorize.test.js (`EMB_VZ_PICTURE=<png>` also traces a picture of your own).
 
 ## How things flow
 

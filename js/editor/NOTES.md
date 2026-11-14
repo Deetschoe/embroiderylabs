@@ -107,10 +107,20 @@ Mockup is the third choice of the view switch in the top bar (Design, Stitch-out
 in the tab row; also in File and in the export menu). It swaps the editor for a garment view: hoodie or
 T-shirt, front or back, any colour (chips, picker, hue / saturation / lightness), on a white stage. Each open design is stitched with `Engine.generate` and drawn once by `js/realistic`
 (thread only, up to 8 px per mm; the two scripts are loaded the first time the view opens), then placed on the
-garment at true size from `pxPerMm` in `GARMENTS`. Drag to move, Size to scale, front and back keep their own
-placements, everything is stored in `localStorage['el-editor-mockup-v1']`. Downloads: "Download picture" is the
-mockup on white as a 2000 x 2000 PNG; the arrow beside it offers the same with a transparent background, and
-the stitching alone on a clear background. The garment pictures are white blanks tinted
+garment at true size from `pxPerMm` in `GARMENTS`. Front and back keep their own **layers** (array order,
+bottom first; the Layers list on the right shows them top first): embroidery placements `{ kind: 'design', tab }`
+and pictures `{ kind: 'image', src (data URL, cut to 2048 px), mmW, mmH, opacity, blend }`, each with `dx`, `dy`
+(mm from the chest anchor), `scale`, `rot` (degrees) and `hidden`. Like the Design editor's selection: drag inside
+to move, four corner handles scale uniformly (Alt from the centre), the round handle above turns (Shift snaps 15).
+R / Shift+R turn 15 degrees, Cmd/Ctrl+] and [ move a layer up / down; rows drag to reorder. "Add image" or a file
+dropped on the garment adds a picture (PNG, JPG, WebP, SVG). Every layer is drawn onto the cloth with
+`source-atop` (a multiply / screen picture through a scratch canvas), so it is clipped to the garment and the
+garment, with its layers, then casts the same shadow as before. Everything is stored in
+`localStorage['el-editor-mockup-v1']` (old states without `kind` / `rot` load as designs at 0); if the pictures make
+it too big they stay in memory for the visit and one toast says so. Downloads: "Download picture" is the mockup in
+the scene shown as a 2000 x 2000 PNG; the arrow beside it offers the same with a transparent background, and
+"stitching only": the visible embroidery layers as placed (order, size, turn), re-drawn up to 16 px per mm, cropped,
+on a clear background. Test: `tests/editor/mockup.test.js`. The garment pictures are white blanks tinted
 per pixel; see `mockups/README.md` for where they come from and the licence question.
 
 ## Eraser

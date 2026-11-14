@@ -223,6 +223,26 @@ module.exports = function () {
     t.equal((await parse('logo-multicolour.svg', { maxColors: 2 })).report.colors.after, 2, 'a logo can be cut down to 2');
   });
 
+  test('paint order survives the clean-up: partly covering light shapes, overlapping subpaths, light donuts', async function () {
+    async function probeAt(svg, bb, pts) {
+      return page.eval('var r = __T.parse(' + JSON.stringify(svg) + '), bb = ' + JSON.stringify(bb) + ', k = r.report.width / (bb[2] - bb[0]);'
+        + 'return { colors: r.objs.map(function (o) { return o.color; }), at: ' + JSON.stringify(pts) + '.map(function (q) { var x = 65 + (q[0] - (bb[0] + bb[2]) / 2) * k, y = 90 + (q[1] - (bb[1] + bb[3]) / 2) * k;'
+        + ' var top = null; r.list.forEach(function (o) { if (__T.winding(o.geom, x, y)) top = o.style.color; }); return top; }) };');
+    }
+    /* a white bar half over a black circle, half over the white canvas: where it covers the circle, no black */
+    var a = await probeAt("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200' width='200' height='200'><rect width='200' height='200' fill='#fff'/><circle cx='80' cy='100' r='50' fill='#000'/>"
+      + "<rect x='100' y='80' width='80' height='40' fill='#fff'/><rect x='20' y='180' width='160' height='10' fill='#c00'/></svg>", [20, 50, 180, 190], [[80, 100], [120, 100], [60, 60]]);
+    t.deepEqual(a.at, ['#000000', '#FFFFFF', '#000000'], 'partly covering white bar stays on top: ' + a.colors.join(' '));
+    /* one path of two overlapping squares (nonzero) plus another black shape: the overlap stays thread */
+    var b = await probeAt("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200' width='200' height='200'><path d='M20 20 H120 V120 H20 Z M50 50 H110 V170 H50 Z' fill='#000'/>"
+      + "<rect x='160' y='10' width='30' height='30' fill='#000'/></svg>", [20, 10, 190, 170], [[80, 100], [30, 30], [80, 160], [170, 20]]);
+    t.deepEqual(b.at, ['#000000', '#000000', '#000000', '#000000'], 'overlapping subpaths stay filled');
+    /* a white donut stacked on black: the donut is cut out, its centre stays black */
+    var c = await probeAt("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200' width='200' height='200'><rect width='200' height='200' fill='#fff'/><rect x='20' y='20' width='160' height='160' fill='#000'/>"
+      + "<path fill='#fff' fill-rule='evenodd' d='M50 50 H150 V150 H50 Z M80 80 H120 V120 H80 Z'/><circle cx='170' cy='190' r='5' fill='#f00'/></svg>", [20, 20, 180, 195], [[100, 100], [60, 60], [30, 30]]);
+    t.deepEqual(c.at, ['#000000', null, '#000000'], 'the donut centre');
+  });
+
   test('plain strokes still import as lines', async function () {
     var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><line x1="10" y1="10" x2="90" y2="10" stroke="#ff0000" stroke-width="2"/>'
       + '<polyline points="10,50 50,90 90,50" fill="none" stroke="#0000ff" stroke-width="6"/><rect x="20" y="20" width="60" height="20" fill="none" stroke="#00aa00" stroke-width="1"/></svg>';

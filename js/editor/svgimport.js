@@ -632,7 +632,7 @@
     var nx = -(q2[1] - p[1]) / L, ny = (q2[0] - p[0]) / L, sgn = sa > 0 ? -1 : 1;
     var mx = (p[0] + q2[0]) / 2, my = (p[1] + q2[1]) / 2, x = mx + sgn * nx * eps, y = my + sgn * ny * eps;
     if (!inRing(x, y, r)) { x = mx - sgn * nx * eps; y = my - sgn * ny * eps; }
-    return [x, y];
+    return [x, y, 2 * mx - x, 2 * my - y];          /* [inside x, y, the mirror point just outside x, y] */
   }
   /* rings with bboxes, probes and depth (how many larger rings hold the probe: even = outer, odd = hole) */
   function indexRings(rings) {
@@ -653,6 +653,47 @@
     var c = 0;
     for (var j = 0; j < R.length; j++) { var b = R[j].bb; if (x < b.x0 || x > b.x1 || y < b.y0 || y > b.y1) continue; if (inRing(x, y, R[j].pts)) c++; }
     return (c & 1) === 1;
+  }
+  /* how a fill as drawn covers x, y: its own rule over its own rings, minus the light rings stacked on it */
+  function drawnAt(R, rule, x, y) {
+    var w = 0, c = 0, h = 0;
+    for (var j = 0; j < R.length; j++) {
+      var b = R[j].bb, r = R[j].pts;
+      if (x < b.x0 || x > b.x1 || y < b.y0 || y > b.y1) continue;
+      if (R[j].stacked) { if (inRing(x, y, r)) h++; continue; }
+      for (var i = 0, k = r.length - 1; i < r.length; k = i++) {
+        var p = r[k], q = r[i];
+        if ((p[1] > y) !== (q[1] > y) && x < (q[0] - p[0]) * (y - p[1]) / (q[1] - p[1]) + p[0]) { c++; w += q[1] > p[1] ? 1 : -1; }
+      }
+    }
+    var own = rule === 'evenodd' ? (c & 1) === 1 : w !== 0;
+    return own && (h & 1) === 0;
+  }
+  /* true when re-orienting the rings by depth parity (outer one way, holes the other, 'nonzero') sews the
+     same area as drawn. Not so for subpaths that cross or overlap each other in one path (an icon drawn as
+     two overlapping bars), or nested rings wound the same way under 'nonzero': those are left as drawn. */
+  function nestsCleanly(R, rule) {
+    for (var i = 0; i < R.length; i++) {
+      var p = R[i].pr;
+      if (filledAt(R, p[0], p[1]) !== drawnAt(R, rule, p[0], p[1]) || filledAt(R, p[2], p[3]) !== drawnAt(R, rule, p[2], p[3])) return false;
+    }
+    return true;
+  }
+  /* light ring L (indexed) and the fill below it (indexed rings): does L overlap it at all, and does it lie
+     wholly inside it with none of its edges inside L (so L can be cut out of it as a plain hole)? */
+  function overlapOf(L, R) {
+    var hit = false, i, j;
+    for (j = 0; j < R.length && !hit; j++) if (boxHit(L.bb, R[j].bb)) hit = true;
+    if (!hit) return 0;
+    var pts = L.pts, inside = 0;
+    for (i = 0; i < pts.length; i++) if (filledAt(R, pts[i][0], pts[i][1])) inside++;
+    var crossed = false;
+    for (j = 0; j < R.length && !crossed; j++) {
+      if (!boxHit(L.bb, R[j].bb)) continue;
+      for (i = 0; i < R[j].pts.length; i++) { var v = R[j].pts[i]; if (inRing(v[0], v[1], pts)) { crossed = true; break; } }
+    }
+    if (!inside && !crossed && !filledAt(R, L.pr[0], L.pr[1])) return 0;          /* apart */
+    return !crossed && filledAt(R, L.pr[0], L.pr[1]) && inside >= pts.length * 0.9 ? 2 : 1;   /* 2: inside, 1: partly */
   }
   function pointsIn(rings) { var n = 0; for (var i = 0; i < rings.length; i++) n += rings[i].length; return n; }
   function maxColorsOf(opts) {
@@ -721,15 +762,32 @@
         if (!sh0 || sh0.fill !== lightest) continue;
         var below = [];
         for (i = 0; i < li; i++) if (shapes[i] && shapes[i].fill && shapes[i].fill !== lightest) below.push({ i: i, R: indexRings(coarseRings[i]) });
+        var keep = [];
         if (below.length) {
-          var bgR = indexRings(coarseRings[li]), subOf = [];
+          var bgR = indexRings(coarseRings[li]), subOf = [], holeOf = {};
           coarse[li].forEach(function (p, n) { if (ringOf(p).length >= 3) subOf.push(sh0.subs[n]); });
           bgR.forEach(function (r, n) {
             if ((li === bgIdx && n === bgRing) || !filledAt(bgR, r.pr[0], r.pr[1])) return;
+            /* the topmost darker fill it overlaps: wholly inside it, it is a hole in it (fabric shows);
+               only partly over it, it stays a light fill sewn on top, as drawn. Over bare fabric: fabric. */
             for (var q = below.length - 1; q >= 0; q--) {
-              if (filledAt(below[q].R, r.pr[0], r.pr[1])) { (holeSubs[below[q].i] = holeSubs[below[q].i] || []).push(subOf[n]); H.stackedHoles++; return; }
+              var ov = overlapOf(r, below[q].R);
+              if (ov === 2) { (holeSubs[below[q].i] = holeSubs[below[q].i] || []).push(subOf[n]); holeOf[n] = below[q].i; H.stackedHoles++; return; }
+              if (ov === 1) { keep.push(n); return; }
             }
           });
+          /* the holes of a light ring that was cut out show the fill below again: they go with it */
+          bgR.forEach(function (r, n) {
+            if (holeOf[n] != null || filledAt(bgR, r.pr[0], r.pr[1])) return;
+            var par = -1;
+            bgR.forEach(function (p, m) { if (m !== n && p.depth === r.depth - 1 && p.area > r.area && inRing(r.pr[0], r.pr[1], p.pts) && (par < 0 || p.area < bgR[par].area)) par = m; });
+            if (par >= 0 && holeOf[par] != null) holeSubs[holeOf[par]].push(subOf[n]);
+          });
+        }
+        if (keep.length) {                                               /* light thread on top of other colours */
+          sh0.subs = keep.map(function (n) { return subOf[n]; });
+          coarseRings[li] = keep.map(function (n) { return coarseRings[li][n]; });
+          continue;
         }
         if (sh0.stroke && sh0.stroke !== sh0.fill) { sh0.fill = null; sh0.fill0 = null; }
         else shapes[li] = null;
@@ -775,28 +833,32 @@
       var swmm = sh.sw * scale, stroke = sh.stroke, name = NAMES[sh.tag] || 'Shape';
       if (stroke && sh.fill && stroke === sh.fill && swmm < HAIR) { stroke = null; H.hairlines++; }
       if (sh.fill) {
-        var rings = [];
-        flat.forEach(function (f) {
+        var rings = [], stacked = [];
+        flat.forEach(function (f, n) {
           var r = ringOf(f.pts);
           if (r.length < 3 || Math.abs(G.area(r)) < 0.05) { H.degenerate++; return; }
-          rings.push(r);
+          rings.push(r); stacked.push(n >= sh.subs.length);              /* a light ring cut out of it */
         });
         /* islands under SPECK mm2 cannot hold a stitch; a hole that small AND short closes up under the
            thread (a long thin white gap between hatching lines is kept, or the lines would merge) */
+        var clean = true;
         if (rings.length > 1 || (rings.length === 1 && Math.abs(G.area(rings[0])) < SPECK)) {
-          rings = indexRings(rings).filter(function (r) {
+          var IR = indexRings(rings);
+          IR.forEach(function (r, n) { r.stacked = stacked[n]; });
+          clean = nestsCleanly(IR, sh.rule);
+          rings = IR.filter(function (r) {
             var hole = (r.depth & 1) === 1, ext = Math.max(r.bb.x1 - r.bb.x0, r.bb.y1 - r.bb.y0);
             if (!hole && r.area < SPECK) { H.specks++; return false; }
             if (hole && r.area < SPECK / 2 && ext < HOLE_EXT) { H.pinholes++; return false; }
             return true;
           }).map(function (r) { return r.pts; });
         }
-        if (rings.length) { items.push({ kind: 'fill', color: sh.fill, rings: rings, rule: sh.rule, orient: !!holeSubs[si], name: name, line: stroke && stroke === sh.fill ? lineStyle(swmm) : null, bb: bboxOfRings(rings) }); made = true; }
+        if (rings.length) { items.push({ kind: 'fill', color: sh.fill, rings: rings, rule: sh.rule, orient: !!holeSubs[si], clean: clean, name: name, line: stroke && stroke === sh.fill ? lineStyle(swmm) : null, bb: bboxOfRings(rings) }); made = true; }
         if (stroke === sh.fill) stroke = null;                            /* same thread: sewn as 'both' */
       }
       if (stroke) {
         var ls = lineStyle(swmm), closedRings = [];
-        flat.forEach(function (f) {
+        flat.slice(0, sh.subs.length).forEach(function (f) {             /* its own outline, not the light rings cut out */
           var r = ringOf(f.pts);
           if (f.closed) {
             if (r.length >= 3 && G.pathLength(r, true) >= 0.3) closedRings.push(r); else H.degenerate++;
@@ -825,7 +887,7 @@
       if (it.kind === 'fill') {
         for (var g = groups.length - 1; g >= 0; g--) {
           var gr = groups[g];
-          if (!gr.line && gr.color === it.color && !!gr.items[0].line === !!it.line && (!it.line || gr.items[0].line.lineType === it.line.lineType)) {
+          if (!gr.line && gr.color === it.color && it.clean && gr.items[0].clean && !!gr.items[0].line === !!it.line && (!it.line || gr.items[0].line.lineType === it.line.lineType)) {
             gr.items.push(it); gr.bb = boxUnion(gr.bb, it.bb); H.merged++; return;
           }
           if (gr.color !== it.color && boxHit(gr.bb, it.bb) && gr.items.some(function (x) { return boxHit(x.bb, it.bb); })) break;
@@ -983,7 +1045,7 @@
     if (report.hygiene && report.hygiene.background) {
       /* the background was taken for fabric: one click brings it back (Undo stays in the History menu) */
       action = { label: 'Keep background', onClick: function () {
-        if (M.undoLabel() !== 'Import SVG') return;
+        if (M.undoLabel() !== 'Import SVG') { toast('The design changed since the import. Undo back to it first, or import the file again.', { label: 'Import SVG', timeout: 6000 }); return; }
         M.undo();
         S.importText(text, { keepBackground: true, maxColors: opts.maxColors });
       } };

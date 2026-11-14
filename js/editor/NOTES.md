@@ -25,6 +25,7 @@ js/editor/panels.js   Editor.Panels  properties panel, sewing-order list, stats,
 js/vendor/polygon-clipping.min.js   polygon booleans (MIT, pinned 0.15.7; version + sha256 in cut.js)
 js/editor/cut.js      Editor.Cut     Cut out: split shapes along a drawn outline (polygon booleans, line splits)
 js/editor/tools.js    Editor.Tools   pointer tools (select/pen/line/rect/ellipse/polygon/eraser/cut/pan), wheel, pinch
+js/editor/tutorial.js Editor.Tutorial  first-visit tutorial: Tutorial tab, tips card, pulsing ring (css/tutorial.css)
 js/editor/main.js                    boot, top bar (name, undo, view mode, export menu), keyboard, zoom HUD, drawer,
                                      phone sheet + dock + More menu, playback, file drops, example, help
 css/editor.css                       editor-only styles (base.css is shared, do not edit)
@@ -50,6 +51,7 @@ One global, `window.Editor`. Modules talk through a tiny event bus, `Editor.on(n
 | `trace` | the trace picture changed (added, moved, scaled, opacity, lock, removed) |
 | `units` | the display unit changed (`Editor.Units.get()` is `'in'` or `'mm'`). The document stays in millimetres |
 | `prefs` | a view preference changed (`Editor.Prefs.grid()`: the dot grid, off by default) |
+| `project-saved` | File > Save (or Cmd/Ctrl+S) handed a design file to the browser |
 
 ## Model shape (all lengths in millimetres, origin = hoop top-left)
 
@@ -166,6 +168,36 @@ right after it.
 - Speed: a 300-ring line-art path is cut in well under 100 ms in Chrome; the user's 519-ring traced file in
   about 110 ms. tests/editor/cut.test.js drives the tool with real pointer and key events in headless Chrome.
 
+## Light mode only
+
+The site has one look, light. There is no dark palette, no `@media (prefers-color-scheme: dark)` rule, no
+`[data-theme]` rule and no theme switch; `:root` and `<meta name="color-scheme">` say `light`, so the
+browser's own controls stay light too. `js/site.js` forgets a theme stored by an older version (`el-theme`,
+`theme-mode`) and `EL.theme` is a stub that always answers `light`. The Fabric choice (White / Black /
+Custom) is the garment colour on the hoop, not a theme, and stays. tests/editor/tutorial.test.js loads
+both pages with the browser asking for dark and checks that they render light.
+
+## Tutorial (`tutorial.js`, `css/tutorial.css`)
+
+On a first visit (`localStorage['el-tutorial-v1']` missing) that did not arrive with `?design=`, main.js calls
+`Editor.Tutorial.boot({ linked })` at the end of boot and the tutorial opens: the empty first tab (or a new
+tab when the hoop already holds work) becomes "Tutorial" with a small flower (8 shapes, 3 threads, loaded
+through `IO.applyPayload`, so it is not an undo step), and a tips card sits at the bottom left of the canvas
+(or of the mockup stage; on a phone above the sheet; never over the zoom buttons). Seven steps, one sentence
+each; a soft pulsing ring (`.tut-ring`, fixed, never takes a click) marks the control to try: pen, thread
+colour, Style / Line type, Stitch-out + play, Mockup + drag, Export .PES, File > Save. A step moves on by
+itself when the bus reports it (`change` with reason `Draw ...`, `Change thread`, `Change stitch style` /
+`Change line type`; `play` while playing; a drag on the mockup stage; `exported`; `project-saved`), or with
+Next. Back, Skip, the counter and dots; Esc closes it unless a menu, a dialog or a half-drawn shape uses Esc.
+Finishing, Skip or Esc store `el-tutorial-v1 = 'done'`. Help (the `Tutorial` button in the Help dialog, so
+also from `?`) and the phone More menu reopen it (`[data-tutorial-open]`, `Editor.Tutorial.open()`): back to
+the Tutorial tab if it is still open, else a new one.
+
+**Tests and scripts that drive app.html should mark it as seen before the page loads**, e.g. over CDP
+`Page.addScriptToEvaluateOnNewDocument({ source: "localStorage.setItem('el-tutorial-v1','done')" })`, or
+`localStorage.setItem('el-tutorial-v1', 'done')` on the same origin and then load app.html. (cut.test.js and
+svgimport.test.js pass with it open too; it only adds a tab and a card.)
+
 ## Units
 
 The document, the engine and the stitch settings (density, stitch length, line width) are always millimetres.
@@ -197,7 +229,7 @@ convenience in `localStorage['el-editor-stitchify-v1']`. In the page: `Editor.Tr
 The tracer's `underlay: false` (photo fills, and fills set into a fill sewn before them) is kept on the object.
 It is only ever stored as false (a missing key means the engine default), survives save/load and is copied into
 cut pieces; `Model.toEngine()` passes it on as `fill.underlay: false`. There is no control for it in the panel.
-Editor tests: `node tests/editor/run.js` runs model.test.js, svgimport.test.js and cut.test.js.
+Editor tests: `node tests/editor/run.js` runs model.test.js, svgimport.test.js, cut.test.js and tutorial.test.js.
 
 ## How things flow
 
@@ -242,7 +274,7 @@ Test scripts are scratch files, not in the repo. The five Part 1 scripts were ru
 - Export: .PES (button, Cmd+E), .DST and PES v6 (menu, keyboard and mouse); the real downloaded files
   were read with pyembroidery: stitch count, thread count / colours and size equal the on-screen stats.
   Empty or blocked design gives a toast and no file.
-- Layout: 1440 and 1000 px (drawer), 390 px phone with touch, light and dark; no horizontal page scroll.
+- Layout: 1440 and 1000 px (drawer), 390 px phone with touch (dark mode has since been removed); no horizontal page scroll.
 
 ## Part 2: what was added
 
@@ -269,7 +301,7 @@ it does not, and the copy is dropped first when the design itself can no longer 
 **Phone (<= 720 px).** Bottom sheet `#sheet` with `data-detent` peek / half / full: drag the grip, tap
 it, or ArrowUp / ArrowDown / Enter / Escape on it. Tabs Properties / Layers. Picking a tool or pressing
 on the canvas returns it to peek. `Editor.sheet = { set, get, tab }`. The dock holds four tools and
-More (`#more`: the other tools, picture / SVG, example, theme, help). The stage re-fits above the sheet
+More (`#more`: the other tools, picture / SVG, example, help, tutorial). The stage re-fits above the sheet
 (`V.sheetCover()`, `padding()` in `view.js`) unless the visitor has zoomed by hand. Pinch zoom keeps the
 point under the fingers; two fingers pan. Inside the sheet the pane scrolls as one piece.
 **Tablet (<= 1100 px).** Properties stay, layers are a drawer opened from the top bar. With a coarse
@@ -304,7 +336,7 @@ reference library, not test-sewn, so sew a test on scrap fabric first. The Hoop 
 - Playback: play, pause, scrubber by pointer and keys, stops at the end, needle marker, reduced motion.
 - Phone 390 px with touch: sheet drag and keys, tabs, dock, More, pinch and two-finger pan without a
   jump, 44 px targets, nothing covered. Tablet 1024 px with touch: every panel reachable.
-- Screenshots looked at: empty, design, stitch-out, help, sheet half / full, More; light and dark; 1440,
+- Screenshots looked at: empty, design, stitch-out, help, sheet half / full, More; 1440,
   1024 (touch) and 390 px. No horizontal page scroll anywhere.
 - Storage full: the top-bar tag reads "Not saved" and one toast says why (on the phone the tag is hidden
   and the toast is the only notice); saving resumes when room is freed.

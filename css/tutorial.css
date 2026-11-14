@@ -1,0 +1,43 @@
+/* EMBROIDERY LABS - css/tutorial.css (app.html only): the first-visit tips card and its pulsing ring.
+   Placed by js/editor/tutorial.js (position: fixed, bottom left of the canvas). Uses css/base.css tokens. */
+
+.tut { position: fixed; z-index: 80; display: grid; gap: var(--s-2); padding: var(--s-3) var(--s-4) var(--s-3);
+  background: var(--raised); border-radius: var(--r-0); box-shadow: var(--shadow-pop); color: var(--ink-1); }
+.tut[hidden] { display: none; }
+.tut__head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); min-height: 24px; }
+.tut__head .label { color: var(--signal-text); }
+.tut__skip { height: 24px; padding: 0 var(--s-2); color: var(--ink-3); }
+.tut__text { margin: 0; font-size: var(--fs-4); line-height: 22px; font-weight: var(--w-medium); }
+.tut__dots { display: flex; gap: 5px; }
+.tut__dots > i { width: 6px; height: 6px; border-radius: 50%; background: var(--line-3); transition: background var(--t-2) var(--ease), width var(--t-2) var(--ease); }
+.tut__dots > i.is-done { background: color-mix(in srgb, var(--signal) 45%, var(--line-3)); }
+.tut__dots > i.is-now { width: 16px; border-radius: var(--r-round); background: var(--signal); }
+.tut__foot { display: flex; justify-content: flex-end; gap: var(--s-2); }
+.tut__foot > .btn { border-radius: var(--r-round); padding: 0 var(--s-4); }
+.tut.is-step { animation: tut-in var(--t-3) var(--ease); }
+.tut.is-done .tut__text { color: var(--ok); }
+@keyframes tut-in { from { opacity: .4; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/* the soft ring around the control to try (never takes a click) */
+.tut-ring { position: fixed; z-index: 79; pointer-events: none; border-radius: 10px;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--signal) 70%, transparent), 0 0 0 0 color-mix(in srgb, var(--signal) 35%, transparent);
+  animation: tut-pulse 1.8s var(--ease) infinite; }
+.tut-ring[hidden] { display: none; }
+.tut-ring--wide { border-radius: var(--r-0); animation-name: tut-pulse-soft; }
+@keyframes tut-pulse {
+  0%   { box-shadow: 0 0 0 2px color-mix(in srgb, var(--signal) 70%, transparent), 0 0 0 0 color-mix(in srgb, var(--signal) 35%, transparent); }
+  70%  { box-shadow: 0 0 0 2px color-mix(in srgb, var(--signal) 70%, transparent), 0 0 0 9px color-mix(in srgb, var(--signal) 0%, transparent); }
+  100% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--signal) 70%, transparent), 0 0 0 0 color-mix(in srgb, var(--signal) 0%, transparent); }
+}
+@keyframes tut-pulse-soft { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+
+/* toasts sit at the bottom left of the canvas too: they go above the card while it is open */
+.ed.is-tut .view > .toasts { bottom: calc(var(--tut-h, 0px) + 2 * var(--s-3)); }
+
+@media (max-width: 720px) {
+  .tut { padding: var(--s-3); }
+  .tut__text { font-size: var(--fs-3); line-height: var(--lh-3); }
+  .ed.is-tut .view > .toasts { bottom: auto; }   /* on a phone toasts sit at the top already */
+}
+@media (pointer: coarse) { .tut__skip { height: 36px; } }
+@media (prefers-reduced-motion: reduce) { .tut-ring, .tut.is-step { animation: none; } }

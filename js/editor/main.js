@@ -5,7 +5,7 @@
      keyboard shortcuts (ignored while typing in a field)
      zoom HUD, Clear, the tablet drawer, the phone sheet (detents, drag) / dock
      stitch-out playback, opening files (SVG -> svgimport.js, picture -> trace.js),
-     the empty hoop and the example design, the help dialog
+     the empty hoop and the example design, the help dialog, the tutorial hook (tutorial.js)
      Editor.say(): one line for screen readers (#live)
    ========================================================================== */
 (function () {
@@ -261,7 +261,7 @@
      its own. The address is cleaned afterwards, so a reload does not open it a second time. */
   function openFromLink() {
     var m = /[?&]design=([a-z0-9-]{1,60})(?:&|$)/.exec(window.location.search || '');
-    if (!m || !window.fetch) return;
+    if (!m || !window.fetch) return !!m;
     var id = m[1];
     try { window.history.replaceState(null, '', window.location.pathname); } catch (e) { /* file:// */ }
     fetch('designs/' + id + '.embroidr', { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('missing'); return r.json(); }).then(function (data) {
@@ -274,6 +274,7 @@
       toast('Opened ' + M.doc.name + ': ' + n + (n === 1 ? ' shape' : ' shapes') + '. It is yours to change; File > Save keeps your version.', { kind: 'ok', label: 'Design', timeout: 7000 });
       Editor.say('Design opened: ' + M.doc.name);
     }).catch(function () { toast('That design could not be opened.', { kind: 'bad', label: 'Design' }); });
+    return true;
   }
   function saveProject() {
     if (!hasWork()) { toast('Nothing to save yet. Draw a shape first.', { kind: 'bad', label: 'Save' }); return false; }
@@ -281,6 +282,7 @@
     window.EL.download(f.filename, f.text, f.mime);
     toast(f.filename + ' saved. Open it again with File > Open to keep editing.', { kind: 'ok', label: 'Saved', timeout: 6000 });
     Editor.say('Design file saved');
+    Editor.emit('project-saved');
     return true;
   }
   var fileMenuOpen = false;
@@ -779,8 +781,10 @@
     if (!info.restored && !info.damaged && !M.doc.objects.length) step('first hoop', function () { M.load(M.blank()); V.fit(); });
     if (Editor.Tabs) step('tabs', Editor.Tabs.init);
     if (Editor.Mockup) step('mockup', Editor.Mockup.init);
-    step('design link', openFromLink);
+    var linked = step('design link', openFromLink);
     step('export', initExport); step('empty hoop', initEmpty);
+    /* first visit (and not arriving with a design link): the tutorial opens in a tab of its own */
+    if (Editor.Tutorial) step('tutorial', function () { Editor.Tutorial.boot({ linked: !!linked }); });
     step('render', P.render);
     document.addEventListener('keydown', onKeyDown);
     document.addEventListener('keyup', onKeyUp);

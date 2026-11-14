@@ -5,14 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Embroidr - EmbroideryLabs</title>
 <meta name="description" content="Draw a design and export a stitch file for your embroidery machine (.PES or .DST). Free, runs in your browser, nothing is uploaded.">
+<meta name="color-scheme" content="light">
 <meta name="theme-color" content="#FAF9F6">
 <link rel="icon" href="emb.png">
-<script>(function(){var d=document.documentElement,t=null;try{t=localStorage.getItem('el-theme');if(t!=='light'&&t!=='dark'){t=localStorage.getItem('theme-mode');if(t==='light'||t==='dark')localStorage.setItem('el-theme',t);else t=null}}catch(e){t=null}if(!t){try{t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}catch(e){t='light'}}d.setAttribute('data-theme',t)})();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/editor.css">
+<link rel="stylesheet" href="css/tutorial.css">
 <script src="js/site.js" defer></script>
 <script src="js/engine/embwriter.js" defer></script>
 <script src="js/engine/lineart.js" defer></script>
@@ -34,6 +35,7 @@
 <script src="js/editor/tabs.js" defer></script>
 <script src="js/editor/mockup.js" defer></script>
 <script src="js/editor/soundwave.js" defer></script>
+<script src="js/editor/tutorial.js" defer></script>
 <script src="js/editor/main.js" defer></script>
 <script src="js/config.js" defer></script>
 <script src="js/account.js" defer></script>
@@ -62,7 +64,6 @@
     <span class="ed-bar__sep"></span>
     <div class="seg" role="group" aria-label="View"><button type="button" id="view-design" data-view="design" aria-pressed="true">Design</button><button type="button" id="view-stitch" data-view="stitch" aria-pressed="false">Stitch-out</button><button type="button" id="view-mockup" data-view="mockup" aria-pressed="false">Mockup</button></div>
     <button class="btn btn--ghost btn--icon ed-bar__help" type="button" id="btn-help" data-dialog-open="help" aria-label="Help and shortcuts" data-tip="Help" data-key="?" data-tip-pos="below"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M4.5 5.2a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.1.8-1.1 1.6M7 11.4v.2"/></svg></button>
-    <button class="btn btn--ghost btn--icon" type="button" data-theme-toggle aria-label="Switch theme" aria-pressed="false"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor"/></svg></button>
     <button class="btn btn--ghost btn--icon ed-bar__drawer" type="button" id="btn-drawer" aria-label="Layers and stitch-out" aria-controls="side" aria-expanded="false"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M1.5 2.5h11v9h-11zM8.5 2.5v9"/></svg></button>
     <div class="acct" id="account-slot" hidden></div>
     <div class="split" id="export-group">
@@ -293,7 +294,7 @@
     <button type="button" data-action="mockup">Mockup</button>
     <button type="button" data-action="example">Load example</button>
     <button type="button" data-dialog-open="help">Help</button>
-    <button type="button" data-theme-toggle>Switch theme</button>
+    <button type="button" data-tutorial-open>Tutorial</button>
     <button type="button" class="more__danger" data-action="clear">Clear design</button>
   </div>
   <div class="visually-hidden" id="live" role="status" aria-live="polite"></div>
@@ -328,7 +329,7 @@
     </div>
     <span class="field__hint">Touch: one finger draws, two fingers zoom and move the view.</span>
   </div>
-  <div class="dialog__foot"><button class="btn btn--primary" type="button" data-dialog-close>Done</button></div>
+  <div class="dialog__foot"><button class="btn" type="button" data-tutorial-open>Tutorial</button><button class="btn btn--primary" type="button" data-dialog-close>Done</button></div>
 </dialog>
 <dialog class="dialog dialog--wide" id="sound" aria-labelledby="sound-title">
   <div class="dialog__head"><span class="label" id="sound-title">Sound wave</span><button class="btn btn--ghost btn--icon" type="button" data-dialog-close aria-label="Close"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8"/></svg></button></div>

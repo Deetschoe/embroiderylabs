@@ -14,7 +14,7 @@
  */
 /* global importScripts, Engine */
 'use strict';
-importScripts('embwriter.js', 'digitize.js', 'engine.js');
+importScripts('lineart.js', 'embwriter.js', 'digitize.js', 'engine.js');
 
 self.onmessage = function (ev) {
   var m = ev.data;

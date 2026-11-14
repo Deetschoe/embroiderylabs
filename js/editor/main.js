@@ -293,7 +293,7 @@
   }
   function initFileMenu() {
     var btn = $('btn-file'), menu = $('file-menu'); if (!btn || !menu) return;
-    var actions = { 'new': newDesign, open: browse, save: saveProject, 'export': function () { doExport('pes'); }, mockup: function () { if (Editor.Mockup) Editor.Mockup.open(); } };
+    var actions = { 'new': newDesign, open: browse, save: saveProject, 'export': function () { doExport('pes'); }, mockup: function () { if (Editor.Mockup) Editor.Mockup.open(); }, vectorize: function () { if (Editor.Vectorize) Editor.Vectorize.open(); } };
     on(btn, 'click', function () {
       if (fileMenuOpen) return closeFileMenu(false);
       fileMenuOpen = true; menu.hidden = false; btn.setAttribute('aria-expanded', 'true');
@@ -793,20 +793,24 @@
         M.select(M.doc.objects.map(function (o) { return o.id; }));
         return;
       }
+      /* Copy / cut / paste of shapes. The browser's own copy and paste events still happen: a copy writes a
+         mark to the clipboard (so a picture copied earlier does not win over the shapes), and a paste that
+         carries a picture opens Picture to SVG instead (see onPaste). */
       if (k === 'c' && !e.shiftKey) {
         var picked = window.getSelection ? String(window.getSelection()) : '';
         if (picked) return;                                   /* copying text off the page */
-        var c = M.copy(); if (c) { e.preventDefault(); Editor.say(c === 1 ? 'Shape copied' : c + ' shapes copied'); }
+        var c = M.copy(); if (c) { markCopy(); Editor.say(c === 1 ? 'Shape copied' : c + ' shapes copied'); }
         return;
       }
       if (k === 'x' && !e.shiftKey) {
-        var x = M.copy(); if (x) { e.preventDefault(); M.remove(M.selection.slice(), 'Cut'); Editor.say(x === 1 ? 'Shape cut' : x + ' shapes cut'); }
+        var x = M.copy(); if (x) { markCopy(); M.remove(M.selection.slice(), 'Cut'); Editor.say(x === 1 ? 'Shape cut' : x + ' shapes cut'); }
         return;
       }
       if (k === 'v' && !e.shiftKey) {
-        if (!M.clipboard) return;
-        e.preventDefault();
-        var v = M.paste(); if (v) Editor.say(v === 1 ? 'Shape pasted' : v + ' shapes pasted');
+        if (!M.clipboard) return;                             /* the paste event may bring a picture */
+        var mine = ++pasteSeq;
+        pendingPaste = mine;
+        setTimeout(function () { if (pendingPaste === mine) { pendingPaste = 0; pasteShapes(); } }, 80);
         return;
       }
       if (k === '=' || k === '+') { e.preventDefault(); V.zoomStep(1); return; }
@@ -848,6 +852,28 @@
     if (k === ']') { e.preventDefault(); P.reorderSelection(1); return; }
   }
   function onKeyUp(e) { if (e.key === ' ' || e.code === 'Space') T.space(false); }
+
+  /* ---------- clipboard: shapes, or a picture for Picture to SVG ------------------------------------ */
+  var pendingPaste = 0, pasteSeq = 0, copyMark = 0;
+  function pasteShapes() { var v = M.paste(); if (v) Editor.say(v === 1 ? 'Shape pasted' : v + ' shapes pasted'); }
+  function markCopy() { copyMark = Date.now(); }
+  function onCopy(e) {
+    if (!copyMark || Date.now() - copyMark > 1000 || !e.clipboardData) return;
+    copyMark = 0;
+    try { e.clipboardData.setData(Editor.Vectorize ? Editor.Vectorize.MARK : 'application/x-embroidr', String(M.selection.length || 1)); e.preventDefault(); } catch (x) { /* read-only clipboard */ }
+  }
+  function onPaste(e) {
+    var studio = Editor.Vectorize, dt = e.clipboardData;
+    if (isTyping(e.target)) return;
+    if (document.querySelector('dialog[open]')) {
+      if (studio && studio.isOpen() && studio.takePaste(dt)) e.preventDefault();
+      return;
+    }
+    if (Editor.Mockup && Editor.Mockup.isOpen()) return;
+    if (studio && studio.takePaste(dt)) { e.preventDefault(); pendingPaste = 0; return; }
+    var marked = !!(dt && Array.prototype.indexOf.call(dt.types || [], studio ? studio.MARK : 'application/x-embroidr') >= 0);
+    if (pendingPaste || (marked && M.clipboard)) { e.preventDefault(); pendingPaste = 0; pasteShapes(); }
+  }
 
   /* ---------- the group shortcuts in the help table (added here, so the page markup stays as it is) */
   function initHelpRows() {
@@ -922,6 +948,8 @@
     step('render', P.render);
     document.addEventListener('keydown', onKeyDown);
     document.addEventListener('keyup', onKeyUp);
+    document.addEventListener('copy', onCopy); document.addEventListener('cut', onCopy);
+    document.addEventListener('paste', onPaste);
     document.documentElement.setAttribute('data-editor', 'ready');
     if (info.damaged) toast('The design saved on this device could not be read, so the hoop starts empty.', { kind: 'bad', label: 'Restore', timeout: 8000 });
     else if (info.restored && info.dropped) toast(info.dropped + (info.dropped === 1 ? ' shape' : ' shapes') + ' from your saved design could not be read and ' + (info.dropped === 1 ? 'was' : 'were') + ' left out.', { kind: 'bad', label: 'Restore', timeout: 8000 });

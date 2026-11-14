@@ -27,6 +27,7 @@
 <script src="js/trace/trace.js" defer></script>
 <script src="js/trace/client.js" defer></script>
 <script src="js/editor/trace.js" defer></script>
+<script src="js/editor/vectorize.js" defer></script>
 <script src="js/editor/stitchfile.js" defer></script>
 <script src="js/editor/panels.js" defer></script>
 <script src="js/vendor/polygon-clipping.min.js" defer></script>
@@ -52,6 +53,7 @@
       <div class="menu menu--left" id="file-menu" role="menu" aria-label="File" hidden>
         <button type="button" role="menuitem" tabindex="-1" data-file="new"><span>New</span><small>A new design in its own tab.</small></button>
         <button type="button" role="menuitem" tabindex="-1" data-file="open"><span>Open&hellip;</span><span class="num">&#8984;O</span><small>A saved design, a PES or DST file, an SVG, or a picture to trace.</small></button>
+        <button type="button" role="menuitem" tabindex="-1" data-file="vectorize"><span>Picture to SVG&hellip;</span><small>Paste or pick a picture, get clean shapes.</small></button>
         <button type="button" role="menuitem" tabindex="-1" data-file="save"><span>Save</span><span class="num">&#8984;S</span><small>A design file you can open and edit again.</small></button>
         <button type="button" role="menuitem" tabindex="-1" data-file="share"><span>Share to Marketplace&hellip;</span><small>Let others star it, open it or unlock it.</small></button>
         <button type="button" role="menuitem" tabindex="-1" data-file="export"><span>Export .PES</span><span class="num">&#8984;E</span><small>The file your machine sews.</small></button>
@@ -161,6 +163,7 @@
               <span class="stitchify__meta num" id="trace-meta" aria-live="polite"></span>
               <span class="field__hint" id="trace-note" hidden></span>
               <button class="btn btn--primary btn--block" type="button" id="trace-stitch">Turn into stitches</button>
+              <button class="btn btn--ghost btn--block" type="button" id="trace-vectorize">Picture to SVG&hellip;</button>
             </div>
             <label class="check-row"><input class="check" type="checkbox" id="trace-show" checked><span>Show picture</span></label>
             <div class="prop"><label class="label" for="trace-opacity">Opacity</label><div class="prop__pair"><input class="slider" type="range" id="trace-opacity" min="5" max="100" step="5" value="50"><span class="num" id="opacity-value">50%</span></div></div>
@@ -302,6 +305,7 @@
     <button type="button" data-tool="pan">Pan</button>
     <button type="button" data-action="new">New design</button>
     <button type="button" data-action="import">Open a file</button>
+    <button type="button" data-action="vectorize">Picture to SVG</button>
     <button type="button" data-action="save">Save design</button>
     <button type="button" data-action="mockup">Mockup</button>
     <button type="button" data-action="share">Share to Marketplace</button>

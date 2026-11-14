@@ -513,3 +513,70 @@ button.warn:focus-visible { outline-offset: -2px; }
   .dtab-mock > span { display: none; }
 }
 
+/* ---------- Picture to SVG studio (js/editor/vectorize.js) ---------- */
+.vz { width: min(1180px, calc(100vw - 32px)); height: min(780px, calc(100dvh - 32px)); max-height: none; }
+.vz .dialog__head { padding-left: var(--s-4); }
+.vz__headr { display: flex; align-items: center; gap: var(--s-1); }
+.vz__body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 300px; }
+.vz__main { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--bg); }
+.vz__bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); padding: var(--s-3) var(--s-3) var(--s-2); }
+.vz__tools > button { padding: 0 var(--s-2); }
+.vz__tools svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.vz__brush { display: inline-flex; align-items: center; width: 120px; }
+.vz__brush[hidden] { display: none; }
+.vz__spacer { flex: 1; }
+.vz__stage { position: relative; flex: 1; min-height: 0; margin: 0 var(--s-3); border-radius: var(--r-0); background: var(--sunken); overflow: hidden; }
+.vz__stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+.vz__stage[data-tool="brush"] canvas { cursor: none; }
+.vz__stage[data-tool="shape"] canvas { cursor: pointer; }
+.vz__stage.is-over { box-shadow: inset 0 0 0 2px var(--signal); }
+.vz__drop { position: absolute; inset: var(--s-4); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s-1); border: 1.5px dashed var(--line-3); border-radius: var(--r-0); background: color-mix(in srgb, var(--raised) 55%, transparent); color: var(--ink-2); font: inherit; cursor: pointer; }
+.vz__drop:hover { border-color: var(--signal); color: var(--ink-1); }
+.vz__drop[hidden] { display: none; }
+.vz__drop-big { font-size: var(--fs-4); font-weight: var(--w-medium); color: var(--ink-1); }
+.vz__drop-small { font-size: var(--fs-2); color: var(--ink-3); }
+.vz__status { display: flex; align-items: center; gap: var(--s-3); min-height: 44px; padding: var(--s-2) var(--s-4); font-size: var(--fs-2); color: var(--ink-2); }
+.vz__meta[hidden], .vz__note[hidden], .vz__busy[hidden] { display: none; }
+.vz__busy { display: inline-flex; align-items: center; gap: var(--s-2); }
+.vz__progress { display: block; width: 120px; height: 4px; border-radius: var(--r-round); background: var(--sunken); overflow: hidden; }
+.vz__progress > i { display: block; height: 100%; width: 4%; border-radius: var(--r-round); background: var(--signal); transition: width var(--t-2) var(--ease); }
+.vz__note { color: var(--ink-3); }
+.vz__note.is-bad { color: var(--bad); }
+.vz__side { display: flex; flex-direction: column; gap: var(--s-5); min-height: 0; padding: var(--s-4); overflow: auto; border-left: 1px solid var(--line-1); background: var(--panel); }
+.vz__sec { display: flex; flex-direction: column; gap: var(--s-2); }
+.vz__sec > .label { color: var(--ink-1); }
+.vz__auto { min-height: 0; font-size: var(--fs-2); color: var(--ink-2); }
+.vz__count { display: grid; grid-template-columns: minmax(0, 1fr) 7ch; align-items: center; gap: var(--s-2); }
+.vz__count > .num { text-align: right; white-space: nowrap; font-size: var(--fs-2); color: var(--ink-2); }
+.vz .slider.is-auto { opacity: .6; }
+.vz__colors { display: flex; flex-direction: column; gap: 2px; margin-top: var(--s-1); }
+.vz__colors[hidden] { display: none; }
+.vz__color { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; align-items: center; gap: var(--s-2); min-height: 36px; padding: 0 var(--s-1) 0 var(--s-2); border-radius: var(--r-1); }
+.vz__color:hover { background: var(--hover); }
+.vz__color.is-off .vz__swatch, .vz__color.is-off .vz__name { opacity: .4; }
+.vz__color.is-off .vz__thread { text-decoration: line-through; }
+.vz__swatch { position: relative; display: block; width: 22px; height: 22px; border-radius: 50%; background: var(--c, #888); box-shadow: 0 0 0 1px var(--raised), 0 0 0 2px var(--line-3); cursor: pointer; }
+.vz__swatch:hover { box-shadow: 0 0 0 1px var(--raised), 0 0 0 2px var(--signal); }
+.vz__swatch > input { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; opacity: 0; cursor: pointer; }
+.vz__swatch:focus-within { outline: 2px solid var(--signal); outline-offset: 2px; }
+.vz__name { display: flex; align-items: baseline; gap: var(--s-2); min-width: 0; font-size: var(--fs-2); }
+.vz__thread { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-1); }
+.vz__share { flex: none; font-size: var(--fs-1); color: var(--ink-3); }
+.vz__merge { -webkit-appearance: none; appearance: none; width: 26px; height: 26px; padding: 0; border: 1px solid transparent; border-radius: var(--r-2); background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%2394918B' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 3.5h3.5L10 8h3M3 12.5h3.5L10 8M11 6l2 2-2 2'/%3E%3C/svg%3E") center / 16px no-repeat; color: transparent; font: inherit; font-size: var(--fs-2); cursor: pointer; }
+.vz__merge option { color: var(--ink-1); background: var(--raised); }
+.vz__merge:hover, .vz__merge:focus-visible { border-color: var(--line-3); background-color: var(--raised); }
+.vz__color.is-merged .vz__merge { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%233F6184' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 3.5h3.5L10 8h3M3 12.5h3.5L10 8M11 6l2 2-2 2'/%3E%3C/svg%3E"); background-color: var(--signal-wash); }
+.vz__into { flex: none; font-size: var(--fs-1); color: var(--signal-text); white-space: nowrap; }
+.vz__foot .vz__ref { margin-right: auto; }
+@media (max-width: 720px) {
+  .vz, .dialog.vz { width: 100%; max-width: 100%; height: 100dvh; max-height: 100dvh; margin: 0; border-radius: 0; }
+  .vz__body { display: flex; flex-direction: column; overflow: auto; }
+  .vz__main { flex: none; height: 50dvh; }
+  .vz__bar { padding: var(--s-2); gap: var(--s-1); }
+  .vz__stage { margin: 0 var(--s-2); }
+  .vz__brush { width: 96px; }
+  .vz__status { padding: var(--s-2) var(--s-3); min-height: 40px; }
+  .vz__side { flex: none; overflow: visible; border-left: 0; border-top: 1px solid var(--line-1); gap: var(--s-4); }
+  .vz__foot { flex-wrap: wrap; }
+  .vz__foot .vz__ref { flex-basis: 100%; margin-right: 0; order: 3; }
+}

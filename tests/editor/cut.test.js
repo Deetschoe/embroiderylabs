@@ -208,6 +208,28 @@ const RECT = { id: 'r1', name: 'Box', type: 'rect', x: 20, y: 30, w: 60, h: 40, 
       var toasts = Array.prototype.slice.call(document.querySelectorAll('.toast')).map(function(t){return t.textContent}).join(' | ');
       return { out: out, same: JSON.stringify(M.doc.objects) === before, h: M.historySize() === h, toasts: toasts };`);
     ok(r.out === null && r.same && r.h && /does not cross|Nothing under/.test(r.toasts), 'an outline that misses changes nothing and says so');
+    /* a figure-8 outline: its two loops have opposite signed areas that cancel, yet both still cut */
+    r = await ev(`var M = Editor.Model, h = M.historySize(), before = JSON.stringify(M.doc.objects);
+      var o = M.addMany([{ geom: { type: 'rect', x: 10, y: 120, w: 60, h: 40 } }])[0]; M.select([]);
+      var a0 = Editor.Cut.area(Editor.Cut.region(o));
+      var out = Editor.Cut.apply([[0, 110], [40, 170], [40, 110], [0, 170]], { ids: [o.id] });
+      var sum = M.doc.objects.filter(function (x) { return x.name.indexOf(o.name) === 0; }).reduce(function (s, x) { return s + Editor.Cut.area(Editor.Cut.region(x)); }, 0);
+      var n = out ? out.inside.length : 0;
+      M.undo(); M.undo();
+      return { split: out && out.split, n: n, a0: a0, sum: sum, same: JSON.stringify(M.doc.objects) === before };`);
+    ok(r.split === 1 && Math.abs(r.sum - r.a0) < 0.5 && r.same, 'a figure-8 outline (loops that cancel in signed area) still cuts: ' + r.sum.toFixed(1) + ' of ' + r.a0.toFixed(1) + ' mm2');
+    /* an outline-only path of 40 small rings: the rings the edge does not cross stay one closed shape per side */
+    r = await ev(`var M = Editor.Model, before = JSON.stringify(M.doc.objects), rings = [], i, j;
+      for (i = 0; i < 8; i++) for (j = 0; j < 5; j++) rings.push([[10 + i * 8, 120 + j * 8], [15 + i * 8, 120 + j * 8], [15 + i * 8, 125 + j * 8], [10 + i * 8, 125 + j * 8]]);
+      var o = M.addMany([{ geom: { type: 'path', rings: rings, fillRule: 'evenodd' }, style: { paint: 'line' } }])[0];
+      var out = Editor.Cut.apply([[29, 110], [51, 110], [51, 170], [29, 170]], { ids: [o.id] });
+      var pieces = M.doc.objects.filter(function (x) { return x.name.indexOf(o.name) === 0; });
+      var closed = pieces.filter(function (x) { return x.type === 'path'; }).map(function (x) { return x.rings.length + ':' + x.paint + ':' + x.fillRule; });
+      var open = pieces.filter(function (x) { return x.type === 'pen'; }).length;
+      M.undo(); M.undo();
+      return { n: pieces.length, closed: closed.sort(), open: open, same: JSON.stringify(M.doc.objects) === before };`);
+    /* columns 3 and 4 (x 34-39, 42-47) lie inside; columns 2 and 5 (x 26-31, 50-55) are crossed by the edge */
+    ok(r.n <= 2 + r.open && r.closed.join(',') === '10:line:evenodd,20:line:evenodd' && r.same, 'an outline-only path keeps its uncrossed rings together: ' + r.n + ' pieces (' + r.closed.join(', ') + ' + ' + r.open + ' strokes)');
     await ev('Editor.Tools.set("cut");');
     for (const q of [[10, 10], [30, 10], [30, 30]]) { p = await px(q[0], q[1]); await c.click(p.x, p.y); await wait(60); }
     ok(await ev('return Editor.Tools.busy()'), 'clicks build an outline');

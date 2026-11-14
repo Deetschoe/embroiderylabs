@@ -90,6 +90,7 @@
     : { tatami: { label: 'Fill' }, lineart: { label: 'Line art' } };
   function isFillStyle(v) { return typeof v === 'string' && Object.prototype.hasOwnProperty.call(FILL_STYLES, v); }
   var LINE_DETAILS = { fine: 1, normal: 1, bold: 1 };
+  function isDetail(v) { return typeof v === 'string' && Object.prototype.hasOwnProperty.call(LINE_DETAILS, v); }
   /* Ranges of the per-object stitch settings: the engine's own limits. */
   var RANGES = {
     lineWidth: [L.satinWidth[0], L.satinWidth[1]],
@@ -243,7 +244,7 @@
     o.lineType = d.lineType; o.lineWidth = d.lineWidth; o.spacing = d.spacing; o.stitchLen = d.stitchLen; o.angle = d.angle;
     o.pattern = isPattern(d.pattern) ? d.pattern : 'smooth';
     o.fillStyle = isFillStyle(d.fillStyle) ? d.fillStyle : 'tatami';
-    o.lineDetail = LINE_DETAILS[d.lineDetail] ? d.lineDetail : 'normal';
+    o.lineDetail = isDetail(d.lineDetail) ? d.lineDetail : 'normal';
     return o;
   };
   /* Every style key an object carries (what a piece of it inherits). */
@@ -321,7 +322,7 @@
     if (key === 'lineType') return LINE_TYPES[value] ? value : null;
     if (key === 'pattern') return isPattern(value) ? value : null;
     if (key === 'fillStyle') return isFillStyle(value) ? value : null;
-    if (key === 'lineDetail') return typeof value === 'string' && LINE_DETAILS[value] ? value : null;
+    if (key === 'lineDetail') return isDetail(value) ? value : null;
     if (RANGES[key]) { var v = Number(value); if (!isFinite(v)) return null; return G.r2(G.clamp(v, RANGES[key][0], RANGES[key][1])); }
     return null;
   }
@@ -444,7 +445,7 @@
         /* Only line art adds keys: a plain fill gives exactly the engine input it always did. */
         if (o.fillStyle === 'lineart') {
           e.fill.style = 'lineart';
-          e.fill.lineart = { detail: LINE_DETAILS[o.lineDetail] ? o.lineDetail : 'normal' };
+          e.fill.lineart = { detail: isDetail(o.lineDetail) ? o.lineDetail : 'normal' };
         }
         switch (o.type) {
           case 'rect': e.type = 'rect'; e.x = o.x; e.y = o.y; e.width = o.w; e.height = o.h; break;
@@ -472,7 +473,7 @@
     o.pattern = isPattern(r.pattern) ? r.pattern : (isPattern(base.pattern) ? base.pattern : 'smooth');
     /* designs saved before stitch styles existed have neither key: plain fill, normal detail */
     o.fillStyle = isFillStyle(r.fillStyle) ? r.fillStyle : (isFillStyle(base.fillStyle) ? base.fillStyle : 'tatami');
-    o.lineDetail = typeof r.lineDetail === 'string' && LINE_DETAILS[r.lineDetail] ? r.lineDetail : (LINE_DETAILS[base.lineDetail] ? base.lineDetail : 'normal');
+    o.lineDetail = isDetail(r.lineDetail) ? r.lineDetail : (isDetail(base.lineDetail) ? base.lineDetail : 'normal');
     ['lineWidth', 'spacing', 'stitchLen', 'angle'].forEach(function (k) {
       var v = typeof r[k] === 'number' ? validProp(k, r[k]) : null;
       o[k] = v === null ? base[k] : v;

@@ -157,7 +157,10 @@ right after it.
   a `path` (rings, nonzero rule; holes kept); slivers under 0.02 mm2 are dropped. Over `M.MAX_POINTS` points
   or 2000 rings it is split into several shapes by island.
 - Lines, open strokes and outline-only shapes are split where the outline edge crosses them, into open
-  strokes of the same thread (`M.strokePiece`), as the eraser does.
+  strokes of the same thread, as the eraser does. The rings of an outline-only shape that the edge does not
+  cross stay together as one closed shape per side (a polygon, or a path keeping the fill rule), so cutting
+  a traced outline with hundreds of rings adds a handful of layers, not hundreds.
+- The outline's size is checked on the region it encloses, not its signed area, so a figure-8 still cuts.
 - A shape wholly inside the outline is only selected. An outline that misses everything changes nothing and
   says so in a toast. The draft outline is `V.draft.lasso` (drawn in view.js).
 - Speed: a 300-ring line-art path is cut in well under 100 ms in Chrome; the user's 519-ring traced file in

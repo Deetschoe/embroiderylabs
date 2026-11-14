@@ -17,7 +17,8 @@
    Filled shapes (paint Fill or Both, any type, compound paths and line art too) are cut with polygon
    booleans: inside = shape AND region, outside = shape MINUS region, each turned back into a polygon
    (one ring) or a path (rings, nonzero rule). Lines, open strokes and outline-only shapes are split
-   where the region edge crosses them, into open strokes of the same thread, like the eraser does.
+   where the region edge crosses them, into open strokes of the same thread, like the eraser does;
+   the rings of an outline-only shape that the edge does not cross stay together as one closed shape.
    Nothing here touches the engine: a cut piece is an ordinary shape.
 
    Polygon booleans: polygon-clipping by Mike Fogel, MIT licence, vendored as
@@ -240,19 +241,31 @@
     runs.forEach(function (r) { if (r.pts.length > 1 && lineLen(r.pts) >= MIN_PIECE) res[r.side ? 'inside' : 'outside'].push(r.pts); });
     return res;
   };
+  /* An outline-only shape keeps the rings the region does not cross together, as one closed shape
+     (a polygon, or a path when there are several), instead of one stroke per ring: an imported outline
+     can have hundreds of rings. Only the rings the region edge crosses become open strokes. */
   function splitLines(o, P) {
-    var inside = [], outside = [];
+    var inside = [], outside = [], inRings = [], outRings = [];
     lineOutlines(o).forEach(function (line) {
       var r = C.splitLine(line.pts, line.closed, P);
-      if (r.whole && line.closed) {                           /* an untouched ring stays one closed loop */
-        (r.inside.length ? inside : outside).push(line.pts.concat([line.pts[0]]));
-        return;
-      }
+      if (r.whole && line.closed) { (r.inside.length ? inRings : outRings).push(line.pts); return; }
       inside = inside.concat(r.inside); outside = outside.concat(r.outside);
     });
-    if (!inside.length) return null;
-    if (!outside.length) return { whole: true, inside: [], outside: [] };
-    return { lines: true, inside: inside, outside: outside };
+    if (!inside.length && !inRings.length) return null;
+    if (!outside.length && !outRings.length) return { whole: true, inside: [], outside: [] };
+    return { lines: true, inside: inside, outside: outside, inRings: inRings, outRings: outRings };
+  }
+  /* Whole rings back to closed shapes: groups that fit Model's limits, the original fill rule kept. */
+  function ringGeoms(rings, rule) {
+    var groups = [], cur = null;
+    (rings || []).forEach(function (r) {
+      var c = cleanRing(r); if (!c) return;
+      if (!cur || cur.n + c.length > M.MAX_POINTS || cur.rings.length >= MAX_RINGS) { cur = { rings: [], n: 0 }; groups.push(cur); }
+      cur.rings.push(c); cur.n += c.length;
+    });
+    return groups.map(function (g) {
+      return g.rings.length === 1 ? { type: 'polygon', pts: g.rings[0] } : { type: 'path', rings: g.rings, fillRule: rule === 'evenodd' ? 'evenodd' : 'nonzero' };
+    });
   }
 
   /* ---------- the tool's action ------------------------------------------------------------ */
@@ -264,10 +277,11 @@
     opts = opts || {};
     if (!PC) { toast('Cut out is not available: its geometry library did not load.'); return null; }
     var pts = (lasso || []).filter(function (p) { return p && isFinite(p[0]) && isFinite(p[1]); });
-    if (pts.length < 3 || Math.abs(G.area(pts)) < 0.5) { toast('Draw around the part you want to cut out.'); return null; }
+    if (pts.length < 3) { toast('Draw around the part you want to cut out.'); return null; }
+    /* the area of the drawn region, not the signed area of the outline: a figure-8 has loops that cancel */
     var P, lb = ringBox(pts);
     try { P = lassoRegion(pts); } catch (e) { P = []; }
-    if (!P.length) { toast('Draw around the part you want to cut out.'); return null; }
+    if (!P.length || C.area(P) < 0.5) { toast('Draw around the part you want to cut out.'); return null; }
     var picked = opts.ids ? opts.ids.map(M.get).filter(Boolean) : M.selected();
     var targets = picked.length ? picked : M.doc.objects.slice();
     var results = {}, nSplit = 0, nWhole = 0, failed = 0, added = 0;
@@ -278,8 +292,8 @@
       if (!r) return;
       if (r.whole) { results[o.id] = r; nWhole++; return; }
       r.made = {
-        outside: (r.lines ? strokeGeoms(r.outside) : r.outside).map(function (g) { return M.piece(o, g, o.name); }),
-        inside: (r.lines ? strokeGeoms(r.inside) : r.inside).map(function (g) { return M.piece(o, g, o.name + ' cut'); })
+        outside: (r.lines ? ringGeoms(r.outRings, o.fillRule).concat(strokeGeoms(r.outside)) : r.outside).map(function (g) { return M.piece(o, g, o.name); }),
+        inside: (r.lines ? ringGeoms(r.inRings, o.fillRule).concat(strokeGeoms(r.inside)) : r.inside).map(function (g) { return M.piece(o, g, o.name + ' cut'); })
       };
       if (!r.made.inside.length) return;
       added += r.made.inside.length + r.made.outside.length - 1;

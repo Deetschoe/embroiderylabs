@@ -134,6 +134,11 @@ test('an unknown fillStyle or lineDetail loads as the plain fill / normal; setPr
   assert.strictEqual(M.setProp([M.doc.objects[0].id], 'fillStyle', 'nope'), false);
   assert.strictEqual(M.setProp([M.doc.objects[0].id], 'lineDetail', 'nope'), false);
   assert.strictEqual(M.validProp('fillStyle', '__proto__'), null);
+  /* names every object has (prototype keys) are not details either */
+  ['__proto__', 'constructor', 'toString'].forEach(k => assert.strictEqual(M.validProp('lineDetail', k), null));
+  doc.objects[1].lineDetail = 'constructor';
+  M.load(doc);
+  assert.strictEqual(M.doc.objects[1].lineDetail, 'normal');
 });
 
 test("the importer's style.fillStyle passes through M.addMany", () => {

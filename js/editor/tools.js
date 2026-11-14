@@ -151,7 +151,7 @@
       return;
     }
     var pts = G.simplify(g.pts, Math.max(0.05, 0.6 / V.ppm()));
-    if (pts.length < 3 || G.pathLength(pts, true) < 3 || Math.abs(G.area(pts)) < 0.5) { hint('cut'); return; }
+    if (pts.length < 3 || G.pathLength(pts, true) < 3) { hint('cut'); return; }
     cutWith(pts);
   }
 

@@ -420,12 +420,15 @@
     };
     const unit = (a, b) => { const dx = b.x - a.x, dy = b.y - a.y, l = Math.hypot(dx, dy) || 1; return { x: dx / l, y: dy / l }; };
     const n = Math.max(2, Math.ceil(L / o.satinStep)), out = [], cosFan = Math.cos(o.fanDeg * Math.PI / 180);
+    // the widest half-width: satinHalf[1], or wider when `thin` was raised (every line up to `thin` is satin),
+    // never past 3.5 (a 7 mm satin stitch)
+    const hMax = Math.min(3.5, Math.max(o.satinHalf[1], (o.thin + o.satinPull) / 2));
     let fans = 0;
     for (let k = 0; k <= n; k++) {
       const t = L * k / n, p = at(t), a = at(Math.max(0, t - 0.35)), b = at(Math.min(L, t + 0.35));
       const pa = at(Math.max(0, t - 0.4)), pb = at(Math.min(L, t + 0.4));
       const tg = unit(a, b), s = k % 2 ? -1 : 1;
-      let h = Math.min(o.satinHalf[1], Math.max(o.satinHalf[0], (p.w + o.satinPull) / 2));
+      let h = Math.min(hMax, Math.max(o.satinHalf[0], (p.w + o.satinPull) / 2));
       const t1 = unit(pa, p), t2 = unit(p, pb);
       if (t > 0.05 && t < L - 0.05 && t1.x * t2.x + t1.y * t2.y < cosFan) {
         const inner = t1.x * t2.y - t1.y * t2.x > 0 ? 1 : -1;

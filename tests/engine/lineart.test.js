@@ -148,6 +148,12 @@ module.exports = {
       const r = Engine.generate(one([disc(50, 50, 8)]));
       assert.deepStrictEqual(Engine.validate(r), []); assert.deepStrictEqual(codes(r), []);
       assert.ok(Math.abs(r.bounds.width - 16) < 0.6, 'disc ' + r.bounds.width);
+      // thin raised to 5 mm: a 4 mm line is one satin as wide as the line, not a 2.4 mm satin patched with loops
+      const o4 = LA.buildUncached(toPts([bar([20, 50], [60, 50], 4)]), 'nonzero', Object.assign({ thin: 5, debug: true }, BUILD), Dz);
+      assert.deepStrictEqual(pick(o4.stats), { run: 0, bean: 0, ring: 0, satin: 1, edge: false, core: false });
+      let y0 = Infinity, y1 = -Infinity;
+      for (const p of o4.parts) p.points.forEach((q, i) => { if (p.src[i] === 'satin' && q.x > 25 && q.x < 55) { y0 = Math.min(y0, q.y); y1 = Math.max(y1, q.y); } });
+      assert.ok(y1 - y0 > 3.7 && y1 - y0 < 4.5, '4 mm line with thin 5: satin ' + (y1 - y0).toFixed(2) + ' mm wide');
     });
 
     await t.test('synthetic hatching, lines and shapes: coverage 0.95 or more, under 1% of the thread off the drawing, nothing across bare fabric', () => {

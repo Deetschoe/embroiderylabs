@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 120" width="360" height="120">
+  <!-- "OAB" turned into outlines: counters are holes. O and B even-odd, A non-zero with a reversed hole -->
+  <path fill="#222222" fill-rule="evenodd" d="M60 10 C95 10 110 35 110 60 C110 85 95 110 60 110 C25 110 10 85 10 60 C10 35 25 10 60 10 Z M60 30 C40 30 32 45 32 60 C32 75 40 90 60 90 C80 90 88 75 88 60 C88 45 80 30 60 30 Z"/>
+  <path fill="#222222" d="M160 10 L180 10 L220 110 L198 110 L189 86 L151 86 L142 110 L120 110 Z M157 68 L183 68 L170 34 Z"/>
+  <path fill="#222222" fill-rule="evenodd" d="M240 10 L300 10 C330 10 340 25 340 40 C340 50 334 56 326 59 C338 63 346 72 346 85 C346 102 332 110 305 110 L240 110 Z M262 28 L262 52 L298 52 C312 52 318 47 318 40 C318 33 312 28 298 28 Z M262 70 L262 92 L302 92 C318 92 324 86 324 81 C324 75 318 70 302 70 Z"/>
+</svg>

@@ -12,7 +12,9 @@ The page is `app.html`. It loads, in this order (classic scripts, `defer`, no mo
 
 ```
 js/site.js                       shared (EL.toast, EL.confirm, EL.store, EL.download ...)   DO NOT EDIT
-js/engine/{embwriter,digitize,engine}.js    window.Engine, see js/engine/API.md            DO NOT EDIT
+js/engine/{embwriter,lineart,digitize,engine}.js  window.Engine, see js/engine/API.md     DO NOT EDIT
+                                 (lineart.js comes with the line-art engine change; until it is there the
+                                 page logs one 404 for it and line art is sewn as the plain fill)
 js/editor/geom.js     Editor.Geom    pure geometry + colour helpers, no DOM
 js/editor/model.js    Editor.Model   document in mm, selection, defaults, undo history, event bus
 js/editor/view.js     Editor.View    pan/zoom transform, DPR canvas, rulers, hoop, drawing, hit testing, side preview
@@ -20,7 +22,10 @@ js/editor/io.js       Editor.IO      engine client (live stitches), export, auto
 js/editor/svgimport.js Editor.SvgImport  SVG file -> shapes (own parser, reads a DOMParser tree, never inserts it)
 js/editor/trace.js    Editor.Trace   picture to draw over: decode, move / scale / opacity / lock, optional storage
 js/editor/panels.js   Editor.Panels  properties panel, sewing-order list, stats, warnings, hoop + fabric controls
-js/editor/tools.js    Editor.Tools   pointer tools (select/pen/line/rect/ellipse/polygon/eraser/pan), wheel, pinch
+js/vendor/polygon-clipping.min.js   polygon booleans (MIT, pinned 0.15.7; version + sha256 in cut.js)
+js/editor/cut.js      Editor.Cut     Cut out: split shapes along a drawn outline (polygon booleans, line splits)
+js/editor/tools.js    Editor.Tools   pointer tools (select/pen/line/rect/ellipse/polygon/eraser/cut/pan), wheel, pinch
+js/editor/tutorial.js Editor.Tutorial  first-visit tutorial: Tutorial tab, tips card, pulsing ring (css/tutorial.css)
 js/editor/main.js                    boot, top bar (name, undo, view mode, export menu), keyboard, zoom HUD, drawer,
                                      phone sheet + dock + More menu, playback, file drops, example, help
 css/editor.css                       editor-only styles (base.css is shared, do not edit)
@@ -46,6 +51,7 @@ One global, `window.Editor`. Modules talk through a tiny event bus, `Editor.on(n
 | `trace` | the trace picture changed (added, moved, scaled, opacity, lock, removed) |
 | `units` | the display unit changed (`Editor.Units.get()` is `'in'` or `'mm'`). The document stays in millimetres |
 | `prefs` | a view preference changed (`Editor.Prefs.grid()`: the dot grid, off by default) |
+| `project-saved` | File > Save (or Cmd/Ctrl+S) handed a design file to the browser |
 
 ## Model shape (all lengths in millimetres, origin = hoop top-left)
 
@@ -53,7 +59,8 @@ One global, `window.Editor`. Modules talk through a tiny event bus, `Editor.on(n
 Model.doc = { name, hoop: { w, h }, objects: [ object, ... ] }     // array order = sewing order, last is on top
 object    = { id, name, type, <geometry>,
               color '#rrggbb', paint 'fill'|'line'|'both',
-              lineType 'running'|'bean'|'satin', lineWidth, spacing, stitchLen, angle }
+              lineType 'running'|'bean'|'satin', lineWidth, spacing, stitchLen, angle,
+              pattern, fillStyle 'tatami'|'lineart', lineDetail 'fine'|'normal'|'bold' }
 geometry  = rect    { x, y, w, h }
             ellipse { cx, cy, rx, ry }
             line    { x1, y1, x2, y2 }
@@ -102,24 +109,132 @@ Mockup is the third choice of the view switch in the top bar (Design, Stitch-out
 in the tab row; also in File and in the export menu). It swaps the editor for a garment view: hoodie or
 T-shirt, front or back, any colour (chips, picker, hue / saturation / lightness), on a white stage. Each open design is stitched with `Engine.generate` and drawn once by `js/realistic`
 (thread only, up to 8 px per mm; the two scripts are loaded the first time the view opens), then placed on the
-garment at true size from `pxPerMm` in `GARMENTS`. Drag to move, Size to scale, front and back keep their own
-placements, everything is stored in `localStorage['el-editor-mockup-v1']`. Downloads: "Download picture" is the
-mockup on white as a 2000 x 2000 PNG; the arrow beside it offers the same with a transparent background, and
-the stitching alone on a clear background. The garment pictures are white blanks tinted
+garment at true size from `pxPerMm` in `GARMENTS`. Front and back keep their own **layers** (array order,
+bottom first; the Layers list on the right shows them top first): embroidery placements `{ kind: 'design', tab }`
+and pictures `{ kind: 'image', src (data URL, cut to 2048 px), mmW, mmH, opacity, blend }`, each with `dx`, `dy`
+(mm from the chest anchor), `scale`, `rot` (degrees) and `hidden`. Like the Design editor's selection: drag inside
+to move, four corner handles scale uniformly (Alt from the centre), the round handle above turns (Shift snaps 15).
+R / Shift+R turn 15 degrees, Cmd/Ctrl+] and [ move a layer up / down; rows drag to reorder. "Add image" or a file
+dropped on the garment adds a picture (PNG, JPG, WebP, SVG). Every layer is drawn onto the cloth with
+`source-atop` (a multiply / screen picture through a scratch canvas), so it is clipped to the garment and the
+garment, with its layers, then casts the same shadow as before. Everything is stored in
+`localStorage['el-editor-mockup-v1']` (old states without `kind` / `rot` load as designs at 0); if the pictures make
+it too big they stay in memory for the visit and one toast says so. Downloads: "Download picture" is the mockup in
+the scene shown as a 2000 x 2000 PNG; the arrow beside it offers the same with a transparent background, and
+"stitching only": the visible embroidery layers as placed (order, size, turn), re-drawn up to 16 px per mm, cropped,
+on a clear background. Test: `tests/editor/mockup.test.js`. The garment pictures are white blanks tinted
 per pixel; see `mockups/README.md` for where they come from and the licence question.
 
 ## Eraser
 
 The eraser is a disc (`eraserRadius()` in `tools.js`, about 9 px on screen). Rubbing over a line, a stroke or
 an outline-only shape removes just the part under it (`Geom.eraseLine`); what is left becomes open strokes with
-the same thread (`Model.strokePiece`), one undo step per rub. A filled shape cannot lose a bite (that needs the
-fill outline to be cut, which is not built), so pressing one without rubbing removes it whole.
+the same thread (`Model.strokePiece`), one undo step per rub. A filled shape cannot lose a bite, so pressing one
+without rubbing removes it whole; to take a piece out of a fill, use Cut out (K) and delete the inside part.
+
+## Groups (Figma-like, one level)
+
+`Model.doc.groups = [{ id, name }]`; a member carries `group: id`, and the members of a group always sit next to
+each other in `objects` (`normalizeGroups()` runs in every commit and in `load`: it drops unknown group ids and
+empty groups and gathers scattered members at the first one; a list that already follows the rules is never
+reordered). Groups are editor-only: `M.toEngine()` copies named fields, so the engine sees the same flat list and
+an ungrouped or grouped design gives byte-identical stitches (tests/editor/groups-model.test.js checks every
+design in designs/). API: `M.groupShapes(ids)` (Cmd/Ctrl+G; the block goes where the last picked shape was
+sewn, never inside another group), `M.ungroup(ids)` (Shift+Cmd/Ctrl+G), `M.renameGroup`, `M.place(ids, beforeId,
+groupId | null | undefined)` (sewing-order drags: into a group, out of it, or a whole group as a block),
+`M.reorder` (`[` `]`: a whole group steps as one block, a shape inside steps within its group), `M.members`,
+`M.groupOf`, `M.unitOf`, `M.selectedGroup()`, `M.insideGroup()`. All are single undo steps. Cut and eraser
+pieces keep their group; duplicate / paste of a whole group makes a new group "<name> copy", a copy of part of
+a group is loose. On the canvas (tools.js) a click on a grouped shape picks the whole group, a double-click
+picks just that shape ("inside"; further clicks pick siblings), Esc steps out to the group; a marquee takes
+whole groups. Move / resize act on the selection, so on the whole group (there is no rotate tool yet). In the
+sewing order (panels.js) a group is a row with a caret (fold, view only), its name (double-click to rename), the
+stitch total and an Ungroup button; its shapes are indented under it. The Group / Ungroup button sits in the
+sewing-order header; a right-click on the canvas or a row opens a small menu (Group / Ungroup, Export selection
+.pes / .dst, Delete). Files: `IO.payload()` writes `v: 2` and `doc.groups` only when the design has groups (a
+design without them is written exactly as before, `v: 1`); `IO.restore` accepts any `v >= 1`.
+
+Export selection only: the export menu starts with a "Selection only" switch (off each time the menu opens);
+with it on, the formats below export `IO.selectionDesign()` (the selected shapes in sewing order, named after the
+group), stitched on a second engine client so the live stitches are not superseded. The engine centres every
+file on its own stitches, so the part is centred the way the whole design is. Shift+Cmd/Ctrl+E does the same as
+.pes. `IO.exportFile(format, { selection: true })`; the accounts hook gets the part's design.
 
 ## Fill patterns
 
 Each filled shape has `pattern` (`smooth`, `brick`, `ribbed`, `diagonal`, `crosshatch`), shown as Pattern in
 the Stitch section. The list comes from `Engine.FILL_PATTERNS`; the engine does the work (`fill.pattern`, see
 js/engine/API.md). Designs saved before this have no `pattern` and load as `smooth`.
+
+## Stitch style (Fill / Line art)
+
+Each object has `fillStyle`: `tatami` (the plain fill, the default) or `lineart` (for drawings and traced line
+art: the engine sews thin lines along their middle with satin, bean or running stitch and fills the wide parts),
+and `lineDetail` (`fine`, `normal`, `bold`), which only line art uses. The panel shows them as Style (Fill / Line
+art) at the top of the Stitch section, for fills and Both; Detail appears only while line art is on. The list of
+styles is `Engine.FILL_STYLES` when the engine has it, else `{ tatami, lineart }` (`M.FILL_STYLES`); an engine
+without line art sews an unknown style as the plain fill. `M.toEngine` adds `fill.style: 'lineart'` and
+`fill.lineart: { detail }` ONLY for line art, so a plain fill gives exactly the engine input it always did
+(tests/editor/model.test.js checks every design in designs/*.embroidr against the old mapping). Designs saved
+before this have neither key and load as `tatami` / `normal`; an unknown value loads as `tatami`. SVG import
+can pass `style.fillStyle` through `M.addMany`.
+
+## Cut out (`cut.js`, key K)
+
+Draw an outline over the hoop: drag for freehand (it closes on release), or click points and close it like a
+polygon (click the first point, double-click or Enter; Backspace takes back a point, Esc drops it). Every
+SELECTED shape, or when nothing is selected every shape under the outline, is split into the part inside and
+the part outside, as ONE undo step "Cut out"; the inside parts become the selection, so the panel can change
+their thread, paint, line type, fill pattern or stitch style straight away. Both parts keep every style field
+of the original (`M.piece`); the outside part keeps the name, the inside part is "<name> cut" and is sewn
+right after it.
+
+- Filled shapes (paint Fill or Both: rect, ellipse, polygon, closed stroke, compound path, line art) are cut
+  with polygon booleans (`polygonClipping.intersection` / `difference`). `Cut.region(o)` turns the shape into
+  the area the engine fills: one ring as it is; evenodd paths by XOR of the rings; nonzero paths by XOR when
+  the rings nest cleanly (what the importer and drawn shapes give), otherwise by exact winding numbers.
+  Ellipses are flattened to 0.02 mm. The result is rounded to 1/100 mm and becomes a `polygon` (one ring) or
+  a `path` (rings, nonzero rule; holes kept); slivers under 0.02 mm2 are dropped. Over `M.MAX_POINTS` points
+  or 2000 rings it is split into several shapes by island.
+- Lines, open strokes and outline-only shapes are split where the outline edge crosses them, into open
+  strokes of the same thread, as the eraser does. The rings of an outline-only shape that the edge does not
+  cross stay together as one closed shape per side (a polygon, or a path keeping the fill rule), so cutting
+  a traced outline with hundreds of rings adds a handful of layers, not hundreds.
+- The outline's size is checked on the region it encloses, not its signed area, so a figure-8 still cuts.
+- A shape wholly inside the outline is only selected. An outline that misses everything changes nothing and
+  says so in a toast. The draft outline is `V.draft.lasso` (drawn in view.js).
+- Speed: a 300-ring line-art path is cut in well under 100 ms in Chrome; the user's 519-ring traced file in
+  about 110 ms. tests/editor/cut.test.js drives the tool with real pointer and key events in headless Chrome.
+
+## Light mode only
+
+The site has one look, light. There is no dark palette, no `@media (prefers-color-scheme: dark)` rule, no
+`[data-theme]` rule and no theme switch; `:root` and `<meta name="color-scheme">` say `light`, so the
+browser's own controls stay light too. `js/site.js` forgets a theme stored by an older version (`el-theme`,
+`theme-mode`) and `EL.theme` is a stub that always answers `light`. The Fabric choice (White / Black /
+Custom) is the garment colour on the hoop, not a theme, and stays. tests/editor/tutorial.test.js loads
+both pages with the browser asking for dark and checks that they render light.
+
+## Tutorial (`tutorial.js`, `css/tutorial.css`)
+
+On a first visit (`localStorage['el-tutorial-v1']` missing) that did not arrive with `?design=` or `?market=` (the second is opened by publish.js), main.js calls
+`Editor.Tutorial.boot({ linked })` at the end of boot and the tutorial opens: the empty first tab (or a new
+tab when the hoop already holds work) becomes "Tutorial" with a small flower (8 shapes, 3 threads, loaded
+through `IO.applyPayload`, so it is not an undo step), and a tips card sits at the bottom left of the canvas
+(or of the mockup stage; on a phone above the sheet; never over the zoom buttons). Seven steps, one sentence
+each; a soft pulsing ring (`.tut-ring`, fixed, never takes a click) marks the control to try: pen, thread
+colour, Style / Line type, Stitch-out + play, Mockup + drag, Export .PES, File > Save. A step moves on by
+itself when the bus reports it (`change` with reason `Draw ...`, `Change thread`, `Change stitch style` /
+`Change line type`; `play` while playing; a drag on the mockup stage; `exported`; `project-saved`), or with
+Next. Back, Skip, the counter and dots; Esc closes it unless a menu, a dialog or a half-drawn shape uses Esc.
+Finishing, Skip or Esc store `el-tutorial-v1 = 'done'`. Help (the `Tutorial` button in the Help dialog, so
+also from `?`) and the phone More menu reopen it (`[data-tutorial-open]`, `Editor.Tutorial.open()`): back to
+the Tutorial tab if it is still open, else a new one.
+
+**Tests and scripts that drive app.html should mark it as seen before the page loads**, e.g. over CDP
+`Page.addScriptToEvaluateOnNewDocument({ source: "localStorage.setItem('el-tutorial-v1','done')" })`, or
+`localStorage.setItem('el-tutorial-v1', 'done')` on the same origin and then load app.html. (cut.test.js and
+svgimport.test.js pass with it open too; it only adds a tab and a card.)
 
 ## Units
 
@@ -128,6 +243,31 @@ The document, the engine and the stitch settings (density, stitch length, line w
 position, export and import messages. Inches are the default; the choice and the grid switch are stored in
 `localStorage['el-editor-prefs-v1']`. Use `Editor.Units.num(mm)` / `.short(mm)` / `.size(w, h)` for anything new
 that shows a length, never `toFixed` plus a hard-coded "mm".
+
+## Turn a picture into stitches (`trace.js` + js/trace)
+
+With a picture loaded, the "SVG or picture" section shows a card on top of the picture controls: Colours (a
+slider 2 to 30 and "Pick the colours for me (up to 10)", on by default), thread swatches, the stitch count and
+size, one short note, and the primary button "Turn into stitches" (also offered in the toast after a picture is
+opened). The picture is traced by the global `Trace` (js/trace/trace.js + client.js, loaded before
+js/editor/trace.js) in a Web Worker, or on the main thread in slices from `file://`: at the picture's width on
+the hoop (10 to 400 mm; wider is traced at 400 and scaled), at x = y = 0, so moving the picture or changing its
+opacity needs no new trace. A new picture, width or colour setting starts a new trace after 300 ms (an older answer
+is dropped); progress and Cancel show while it works. The swatch names are the Brother threads the .pes writer
+will list (`Engine.Writer.buildUniquePalette`, so two close shades get two names); the stitch count is the real
+engine's count for the shapes as the editor will send them (`Model.toEngine` + `Engine.generate`).
+The button adds the shapes with ONE `Model.addMany(list, 'Turn picture into stitches')`, named after their
+thread ("Khaki", "Pewter 2", "Black line 3"), then hides the picture: `V.trace.hidden`, `img` = null, `pic` kept;
+"Show picture" brings it back, and the flag is stored with the picture. While the shapes of that same result are
+still in the design (`S.applied`), the button reads "Added to your design" and a second press, a double click or
+the toast's action adds no copy; Undo or deleting them makes it available again. The colour setting is a per-visitor
+convenience in `localStorage['el-editor-stitchify-v1']`. In the page: `Editor.Trace.stitch()`, `.setColors()`,
+`.cancel()`, `.preview()`.
+
+The tracer's `underlay: false` (photo fills, and fills set into a fill sewn before them) is kept on the object.
+It is only ever stored as false (a missing key means the engine default), survives save/load and is copied into
+cut pieces; `Model.toEngine()` passes it on as `fill.underlay: false`. There is no control for it in the panel.
+Editor tests: `node tests/editor/run.js` runs model.test.js, svgimport.test.js, cut.test.js, tutorial.test.js, groups-model.test.js, groups.test.js, mockup.test.js and market.test.js.
 
 ## How things flow
 
@@ -172,7 +312,7 @@ Test scripts are scratch files, not in the repo. The five Part 1 scripts were ru
 - Export: .PES (button, Cmd+E), .DST and PES v6 (menu, keyboard and mouse); the real downloaded files
   were read with pyembroidery: stitch count, thread count / colours and size equal the on-screen stats.
   Empty or blocked design gives a toast and no file.
-- Layout: 1440 and 1000 px (drawer), 390 px phone with touch, light and dark; no horizontal page scroll.
+- Layout: 1440 and 1000 px (drawer), 390 px phone with touch (dark mode has since been removed); no horizontal page scroll.
 
 ## Part 2: what was added
 
@@ -199,7 +339,7 @@ it does not, and the copy is dropped first when the design itself can no longer 
 **Phone (<= 720 px).** Bottom sheet `#sheet` with `data-detent` peek / half / full: drag the grip, tap
 it, or ArrowUp / ArrowDown / Enter / Escape on it. Tabs Properties / Layers. Picking a tool or pressing
 on the canvas returns it to peek. `Editor.sheet = { set, get, tab }`. The dock holds four tools and
-More (`#more`: the other tools, picture / SVG, example, theme, help). The stage re-fits above the sheet
+More (`#more`: the other tools, picture / SVG, example, help, tutorial). The stage re-fits above the sheet
 (`V.sheetCover()`, `padding()` in `view.js`) unless the visitor has zoomed by hand. Pinch zoom keeps the
 point under the fingers; two fingers pan. Inside the sheet the pane scrolls as one piece.
 **Tablet (<= 1100 px).** Properties stay, layers are a drawer opened from the top bar. With a coarse
@@ -234,7 +374,7 @@ reference library, not test-sewn, so sew a test on scrap fabric first. The Hoop 
 - Playback: play, pause, scrubber by pointer and keys, stops at the end, needle marker, reduced motion.
 - Phone 390 px with touch: sheet drag and keys, tabs, dock, More, pinch and two-finger pan without a
   jump, 44 px targets, nothing covered. Tablet 1024 px with touch: every panel reachable.
-- Screenshots looked at: empty, design, stitch-out, help, sheet half / full, More; light and dark; 1440,
+- Screenshots looked at: empty, design, stitch-out, help, sheet half / full, More; 1440,
   1024 (touch) and 390 px. No horizontal page scroll anywhere.
 - Storage full: the top-bar tag reads "Not saved" and one toast says why (on the phone the tag is hidden
   and the toast is the only notice); saving resumes when room is freed.

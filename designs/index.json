@@ -1,0 +1,207 @@
+{
+ "v": 1,
+ "designs": [
+  {
+   "id": "smiling-man",
+   "title": "Smiling man",
+   "tags": [
+    "portrait"
+   ],
+   "file": "designs/smiling-man.embroidr",
+   "thumb": "designs/thumbs/smiling-man.webp",
+   "stitches": 9123,
+   "colors": 19,
+   "stops": 22,
+   "minutes": 39.4,
+   "width": 86.4,
+   "height": 86.5,
+   "hoop": {
+    "w": 130,
+    "h": 180
+   },
+   "shapes": 86
+  },
+  {
+   "id": "anime-girl",
+   "title": "Anime girl",
+   "tags": [
+    "portrait",
+    "anime"
+   ],
+   "file": "designs/anime-girl.embroidr",
+   "thumb": "designs/thumbs/anime-girl.webp",
+   "stitches": 13826,
+   "colors": 14,
+   "stops": 40,
+   "minutes": 61.7,
+   "width": 88.8,
+   "height": 114.2,
+   "hoop": {
+    "w": 130,
+    "h": 180
+   },
+   "shapes": 94
+  },
+  {
+   "id": "anime-boy",
+   "title": "Anime boy",
+   "tags": [
+    "portrait",
+    "anime"
+   ],
+   "file": "designs/anime-boy.embroidr",
+   "thumb": "designs/thumbs/anime-boy.webp",
+   "stitches": 13745,
+   "colors": 14,
+   "stops": 28,
+   "minutes": 52.6,
+   "width": 95.8,
+   "height": 124.9,
+   "hoop": {
+    "w": 130,
+    "h": 180
+   },
+   "shapes": 90
+  },
+  {
+   "id": "sunflower",
+   "title": "Sunflower",
+   "tags": [
+    "flower"
+   ],
+   "file": "designs/sunflower.embroidr",
+   "thumb": "designs/thumbs/sunflower.webp",
+   "stitches": 14811,
+   "colors": 10,
+   "stops": 11,
+   "minutes": 39,
+   "width": 93.2,
+   "height": 142.8,
+   "hoop": {
+    "w": 130,
+    "h": 180
+   },
+   "shapes": 67
+  },
+  {
+   "id": "cherry-blossom",
+   "title": "Cherry blossom",
+   "tags": [
+    "flower"
+   ],
+   "file": "designs/cherry-blossom.embroidr",
+   "thumb": "designs/thumbs/cherry-blossom.webp",
+   "stitches": 10097,
+   "colors": 9,
+   "stops": 9,
+   "minutes": 33.9,
+   "width": 103.1,
+   "height": 127.9,
+   "hoop": {
+    "w": 130,
+    "h": 180
+   },
+   "shapes": 115
+  },
+  {
+   "id": "lotus",
+   "title": "Lotus",
+   "tags": [
+    "flower"
+   ],
+   "file": "designs/lotus.embroidr",
+   "thumb": "designs/thumbs/lotus.webp",
+   "stitches": 13130,
+   "colors": 12,
+   "stops": 30,
+   "minutes": 55.8,
+   "width": 106.7,
+   "height": 96.4,
+   "hoop": {
+    "w": 130,
+    "h": 180
+   },
+   "shapes": 121
+  },
+  {
+   "id": "butterfly",
+   "title": "Butterfly",
+   "tags": [
+    "insect"
+   ],
+   "file": "designs/butterfly.embroidr",
+   "thumb": "designs/thumbs/butterfly.webp",
+   "stitches": 14917,
+   "colors": 6,
+   "stops": 6,
+   "minutes": 41.9,
+   "width": 104.2,
+   "height": 74.1,
+   "hoop": {
+    "w": 130,
+    "h": 180
+   },
+   "shapes": 68
+  },
+  {
+   "id": "dragonfly",
+   "title": "Dragonfly",
+   "tags": [
+    "insect"
+   ],
+   "file": "designs/dragonfly.embroidr",
+   "thumb": "designs/thumbs/dragonfly.webp",
+   "stitches": 4383,
+   "colors": 6,
+   "stops": 6,
+   "minutes": 17.7,
+   "width": 110.6,
+   "height": 91,
+   "hoop": {
+    "w": 130,
+    "h": 180
+   },
+   "shapes": 62
+  },
+  {
+   "id": "ladybug",
+   "title": "Ladybug",
+   "tags": [
+    "insect"
+   ],
+   "file": "designs/ladybug.embroidr",
+   "thumb": "designs/thumbs/ladybug.webp",
+   "stitches": 14910,
+   "colors": 10,
+   "stops": 13,
+   "minutes": 40,
+   "width": 90.6,
+   "height": 139.1,
+   "hoop": {
+    "w": 130,
+    "h": 180
+   },
+   "shapes": 40
+  },
+  {
+   "id": "bee",
+   "title": "Bumblebee",
+   "tags": [
+    "insect"
+   ],
+   "file": "designs/bee.embroidr",
+   "thumb": "designs/thumbs/bee.webp",
+   "stitches": 10670,
+   "colors": 11,
+   "stops": 21,
+   "minutes": 42.1,
+   "width": 108.6,
+   "height": 109.9,
+   "hoop": {
+    "w": 130,
+    "h": 180
+   },
+   "shapes": 94
+  }
+ ]
+}

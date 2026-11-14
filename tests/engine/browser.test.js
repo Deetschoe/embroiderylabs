@@ -129,6 +129,12 @@ module.exports = {
         assert.strictEqual(n, c.files);
         // the worker really was a separate script fetched over http, and it loaded the engine itself
         for (const f of ['worker.js', 'embwriter.js', 'digitize.js', 'engine.js']) assert.ok(srv.requests.filter(p => p === '/js/engine/' + f).length >= (f === 'worker.js' ? 1 : 2), f + ' requested by the page and by the worker');
+        // line art: the worker loaded lineart.js itself, and both paths give node's stitches
+        assert.ok(srv.requests.filter(p => p === '/js/engine/lineart.js').length >= 2, 'lineart.js requested by the page and by the worker');
+        const laHash = D.hash(new Uint8Array(Engine.generate(D.designs.lineart).ir.commands.buffer));
+        assert.strictEqual(r.data.hashes['worker:lineart.ir'], laHash, 'line art in the worker'); assert.strictEqual(r.data.hashes['main:lineart.ir'], laHash, 'line art on the main thread');
+        assert.deepStrictEqual([c.workerLineartCodes, c.mainLineartCodes], [[], []]);
+        t.note('line art in Chrome', 'synthetic design identical to node in the worker (' + r.data.timings['worker lineart'] + ' ms) and on the main thread (' + r.data.timings['main lineart'] + ' ms)');
         assert.strictEqual(c.stale[1], null, 'the generate in the middle was dropped'); assert.strictEqual(c.stale[2], 'Test sew'); assert.ok(c.stale[0] === 'Patch' || c.stale[0] === null);
         assert.deepStrictEqual(c.progressLast, [12, 12]); assert.ok(c.progressCalls >= 1);
         assert.deepStrictEqual([c.unknownFormat, c.emptyDesign, c.invalidResult], ['UNKNOWN_FORMAT', 'EMPTY_DESIGN', 'INVALID_RESULT']);

@@ -150,7 +150,7 @@ div.sec__head { cursor: default; }
    or --sheet-h in px while the grip is dragged. */
 .sheet { display: contents; }
 .sheet__grip, .sheet__peek, .sheet__tabs { display: none; }
-/* "More" menu: the tools that do not fit in the dock, plus Clear and theme */
+/* "More" menu: the tools that do not fit in the dock, plus Clear and Help */
 .more { position: fixed; right: var(--s-2); bottom: calc(var(--dock-h) + env(safe-area-inset-bottom, 0px) + var(--s-2)); z-index: calc(var(--z-dock) + 1); display: grid; min-width: 200px; border-radius: var(--r-0); background: var(--raised); box-shadow: var(--shadow-pop); overflow: hidden; }
 .more > button { display: flex; align-items: center; gap: var(--s-3); height: 44px; padding: 0 var(--s-3); border: 0; border-bottom: 1px solid var(--line-1); background: transparent; text-align: left; font: var(--w-semi) var(--fs-3)/1 var(--font-ui); }
 .more > button:last-child { border-bottom: 0; }
@@ -174,7 +174,7 @@ div.sec__head { cursor: default; }
 /* ---------- Phone: canvas first, tools along the bottom, the rest in the sheet */
 @media screen and (max-width: 720px) {
   .ed { grid-template: "bar" var(--bar-h) "tabs" var(--tabs-h) "stage" minmax(0, 1fr) "dock" calc(var(--dock-h) + env(safe-area-inset-bottom, 0px)) / 100%; }
-  .rail, .status, .ed-bar__drawer, .ed-bar .seg, .ed-bar__state, .ed-bar__help, .ed-bar__sep, .ed-bar .brand > span, .ed-bar [data-theme-toggle], .ed-bar .filemenu { display: none; }   /* File lives in the More menu on phones */
+  .rail, .status, .ed-bar__drawer, .ed-bar .seg, .ed-bar__state, .ed-bar__help, .ed-bar__sep, .ed-bar .brand > span, .ed-bar .filemenu { display: none; }   /* File lives in the More menu on phones */
   .ed-bar__file { flex: 1; }
   .ed-bar__file > input { flex: 1; width: auto; max-width: none; }
   .ed-bar__spacer { display: none; }
@@ -280,6 +280,24 @@ div.sec__head { cursor: default; }
 .flag--error { background: var(--bad); }
 .layers__empty[hidden] { display: none; }
 
+/* ---------- Groups in the sewing order: a row with a caret, its shapes indented under it ---------- */
+.layer--group { grid-template-columns: 18px 14px minmax(0, 1fr) auto auto; }
+.layer--group > .name { font-weight: var(--w-semi); }
+.layer--group > .glyph--group { color: var(--ink-3); }
+.layer__caret { display: grid; place-items: center; width: 18px; height: 22px; padding: 0; border: 0; border-radius: var(--r-2); background: transparent; color: var(--ink-3); cursor: pointer; }
+.layer__caret:hover { background: var(--hover); color: var(--ink-1); }
+.layer__caret svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.layer__ungroup:hover { color: var(--ink-1); background: var(--hover); }
+.layer__ungroup svg { stroke-dasharray: 2 1.5; }
+.layer--child { padding-left: calc(var(--s-3) + 14px); background-image: linear-gradient(var(--line-3), var(--line-3)); background-size: 1px 100%; background-position: calc(var(--s-3) + 5px) 0; background-repeat: no-repeat; }
+.layer--child.is-in-picked { background: color-mix(in srgb, var(--signal) 7%, var(--raised)); }
+.layer--child.is-in-picked:hover { background: var(--hover); }
+.layer--group[aria-selected="true"] .layer__del { opacity: 1; }
+.layer--group .layer__rename { left: 44px; }
+.layer--child .layer__rename { left: 82px; }
+.layer.is-drop-in::before, .layer.is-drop-in.is-drop-after::after { left: calc(var(--s-3) + 14px); }
+@media (pointer: coarse) { .layer__caret { width: 18px; height: 44px; } }
+
 /* ---------- Engine warnings under the stats ---------------------------------- */
 .warns { display: grid; border-top: 1px solid var(--line-1); }
 .warn { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--s-2); align-items: start; width: 100%; padding: var(--s-2) var(--s-3); border: 0; border-bottom: 1px solid var(--line-1); background: transparent; color: var(--ink-2); text-align: left; font-size: var(--fs-1); line-height: 1.35; }
@@ -335,6 +353,28 @@ button.warn:focus-visible { outline-offset: -2px; }
 .trace { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-1); }
 .trace[hidden] { display: none; }
 .trace__row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2); }
+/* turn the picture into stitches: a soft card on top of the picture controls */
+.stitchify { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-2); margin-bottom: var(--s-2); padding: var(--s-3); border: 1px solid var(--line-1); border-radius: var(--r-0); background: var(--raised); }
+.stitchify > .prop { min-height: 0; }
+.stitchify__count { display: grid; grid-template-columns: minmax(0, 1fr) 7ch; align-items: center; gap: var(--s-2); }
+.stitchify__count > .num { text-align: right; white-space: nowrap; font-size: var(--fs-1); color: var(--ink-2); }
+.stitchify .slider.is-auto { opacity: .6; }
+.stitchify__auto { min-height: 0; font-size: var(--fs-2); color: var(--ink-2); }
+.stitchify__swatches { display: flex; flex-wrap: wrap; gap: var(--s-1); }
+.stitchify__swatches[hidden] { display: none; }
+.stitchify__swatch { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; height: 24px; padding: 0 var(--s-2) 0 6px; border-radius: var(--r-round); background: var(--sunken); font-size: var(--fs-1); color: var(--ink-2); }
+.stitchify__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stitchify__meta { font-size: var(--fs-1); color: var(--ink-2); }
+.stitchify__meta[hidden], .stitchify > .field__hint[hidden] { display: none; }
+.stitchify > .field__hint.is-bad { color: var(--bad); }
+.stitchify__busy { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--s-2); }
+.stitchify__busy[hidden] { display: none; }
+.stitchify__busy > .num { font-size: var(--fs-1); color: var(--ink-2); white-space: nowrap; }
+.stitchify__busy > .btn { height: 24px; padding: 0 var(--s-2); }
+.stitchify__bar { display: block; height: 4px; border-radius: var(--r-round); background: var(--sunken); overflow: hidden; }
+.stitchify__bar > span { display: block; width: 4%; height: 100%; border-radius: inherit; background: var(--signal); transition: width var(--t-2) var(--ease); }
+@media (prefers-reduced-motion: reduce) { .stitchify__bar > span { transition: none; } }
+@media (pointer: coarse) { .stitchify__busy > .btn { height: 44px; } }
 .prop__pair > .num { text-align: right; white-space: nowrap; font-size: var(--fs-1); }
 
 /* ---------- Help ------------------------------------------------------------------ */
@@ -358,7 +398,6 @@ button.warn:focus-visible { outline-offset: -2px; }
   .ed-bar__state, .ed-bar__file > .num { display: none; }   /* the Export button already names the format */
   .ed-bar > .brand { flex: none; }
   .ed-bar__file { flex: 1; min-width: 0; }
-  .more > [data-theme-toggle][aria-pressed="true"] { background: transparent; color: inherit; }   /* a switch, not the active tool */
   .menu { top: calc(var(--bar-h) + env(safe-area-inset-top, 0px) + 4px); }
   .sheet { left: env(safe-area-inset-left, 0px); right: env(safe-area-inset-right, 0px); max-height: calc(100dvh - var(--top-h) - var(--dock-h) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); }
   .sheet[data-detent="half"] ~ .stage .hud { bottom: calc(46dvh + var(--s-2)); }   /* stays above the open sheet */
@@ -369,6 +408,7 @@ button.warn:focus-visible { outline-offset: -2px; }
 
 .hoop-custom { display: grid; gap: var(--s-1); }
 .hoop-custom[hidden] { display: none; }
+.prop[hidden] { display: none; }
 
 /* ---------- Small switch row (Show grid) -------------------------------------------- */
 .prop > .check-row { min-height: var(--row-h); font-size: var(--fs-2); color: var(--ink-2); }
@@ -407,7 +447,7 @@ button.warn:focus-visible { outline-offset: -2px; }
 .mock__left { border-right: 1px solid var(--line-1); }
 .mock__right { border-left: 1px solid var(--line-1); }
 .mock .pane > .sec__head, .mock .pane > .sec, .mock .pane > .mock__foot { flex: none; }
-/* the stage is the picture: white in both themes, like the file that is downloaded */
+/* the stage is the picture: white, like the file that is downloaded */
 .mock__stage { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: #FFFFFF; touch-action: none; }
 .mock__stage > canvas { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; cursor: grab; }
 .mock__stage > canvas:focus, .mock__stage > canvas:focus-visible { outline: none; }   /* the dashed box round the picked design shows where the keys go */
@@ -417,14 +457,39 @@ button.warn:focus-visible { outline-offset: -2px; }
 .mock__chip { width: 100%; aspect-ratio: 1; padding: 0; border: 1px solid var(--line-2); border-radius: 50%; background: var(--c, #888); cursor: pointer; }
 .mock__chip:hover { transform: scale(1.08); }
 .mock__chip[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--signal); }
-.mock__item { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--s-2); min-height: var(--row-h); padding: 0 var(--s-2) 0 var(--s-3); border-bottom: 1px solid var(--line-1); font-size: var(--fs-2); cursor: pointer; }
+.mock__side { color: var(--ink-3); font-size: var(--fs-1); }
+.mock__layers { flex: none; }
+.mock__item { display: flex; align-items: center; gap: var(--s-2); min-height: 40px; padding: 4px var(--s-2) 4px var(--s-3); border-bottom: 1px solid var(--line-1); background: var(--panel); font-size: var(--fs-2); cursor: pointer; user-select: none; -webkit-user-select: none; position: relative; }
 .mock__item:hover { background: var(--hover); }
 .mock__item[aria-selected="true"] { background: var(--signal-wash); }
-.mock__item > .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.mock__item:focus-visible { outline-offset: -2px; }
+.mock__item > .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 .mock__item > .num { color: var(--ink-2); font-size: var(--fs-1); white-space: nowrap; }
+.mock__item.is-hidden > .name, .mock__item.is-hidden > .mock__thumb { opacity: .45; }
+.mock__item.is-drag { z-index: 2; box-shadow: var(--shadow-pop); border-radius: var(--r-1); cursor: grabbing; }
+.mock__item.drop-before::before, .mock__item.drop-after::after { content: ""; position: absolute; left: var(--s-2); right: var(--s-2); height: 2px; border-radius: 2px; background: var(--signal); pointer-events: none; }
+.mock__item.drop-before::before { top: -1px; }
+.mock__item.drop-after::after { bottom: -1px; }
+.mock__layers.is-sorting .mock__item:not(.is-drag) { transition: none; }
+.mock__thumb { flex: none; width: 28px; height: 28px; border-radius: var(--r-2); background: var(--sunken); }
+.mock__grip { display: none; flex: none; width: 16px; height: 32px; margin-left: -6px; place-items: center; color: var(--ink-3); touch-action: none; cursor: grab; }
+.mock__grip svg { width: 8px; height: 12px; fill: currentColor; }
+.mock__eye[aria-pressed="false"] { color: var(--ink-3); }
+.mock__rot { display: grid; grid-template-columns: minmax(0, 1fr) 56px 22px; gap: 6px; align-items: center; }
+.mock__rot > .input-unit > span { padding: 0 5px; }
+.mock__rot > .mini:disabled { opacity: .4; cursor: default; }
+.mock__rot > .mini:disabled:hover { background: transparent; color: var(--ink-2); }
+.mock__props.is-off .prop > .label { color: var(--ink-3); }
+.mock__img-props[hidden] { display: none; }
+.mock__img-props .seg > button { padding: 0 4px; }
+.mock__add-img { justify-content: space-between; }
+.mock__add-img > svg { width: 14px; height: 14px; fill: none; stroke: var(--signal-text); stroke-width: 1.3; stroke-linejoin: round; }
+.mock__stage.is-over::after { content: ""; position: absolute; inset: var(--s-2); border: 2px dashed var(--signal); border-radius: var(--r-0); background: color-mix(in srgb, var(--signal) 6%, transparent); pointer-events: none; }
+@media (pointer: coarse) { .mock__grip { display: grid; } .mock__item { min-height: 48px; } }
 .mock__empty { padding: var(--s-3); color: var(--ink-2); font-size: var(--fs-2); }
 .mock__empty[hidden] { display: none; }
 .mock__adds { display: grid; gap: var(--s-1); }
+.mock__adds:empty { display: none; }
 .mock__add { justify-content: space-between; font-weight: 500; }
 .mock__add > span { overflow: hidden; text-overflow: ellipsis; }
 .mock__add > small { color: var(--signal-text); font-size: var(--fs-1); font-weight: 600; }
@@ -447,3 +512,11 @@ button.warn:focus-visible { outline-offset: -2px; }
   .mock__menu { position: absolute; top: auto; bottom: calc(100% + 4px); left: 0; right: 0; }
   .dtab-mock > span { display: none; }
 }
+
+/* ---------- Sound wave dialog ---------- */
+.sound { display: flex; flex-direction: column; gap: var(--s-3); }
+.sound__controls { display: flex; flex-direction: column; gap: var(--s-2); }
+.sound__controls[hidden] { display: none; }
+.sound__controls .prop[hidden] { display: none; }
+.sound__preview { display: flex; align-items: center; justify-content: center; height: min(360px, 42dvh); padding: var(--s-3); border-radius: var(--r-0); background: #fff; border: 1px solid var(--line-1); }
+.sound__preview svg { display: block; width: 100%; height: 100%; }

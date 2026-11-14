@@ -141,31 +141,64 @@
     return '';
   };
 
-  IO.exportFile = function (format) {
+  /* The design with only the selected shapes, in sewing order (a group is its shapes). The engine
+     centres every file on its own stitches, so the part comes out centred the way the full design does. */
+  IO.selectionDesign = function () {
+    var ids = M.selection; if (!ids.length) return null;
+    var d = M.toEngine();
+    d.objects = d.objects.filter(function (o) { return ids.indexOf(o.id) !== -1; });
+    var g = M.selectedGroup && M.selectedGroup();
+    d.name = g ? g.name : M.doc.name + ' selection';
+    return d.objects.length ? d : null;
+  };
+  /* Stitches for a part of the design, on a client of its own so the live stitches are never superseded. */
+  var partClient = null;
+  function generatePart(design) {
+    var E = window.Engine;
+    if (!partClient && E && typeof E.createClient === 'function') { try { partClient = E.createClient(); } catch (e) { partClient = null; } }
+    if (partClient) return partClient.generate(design).then(function (r) { return r || E.generate(design); });
+    return new Promise(function (resolve) { resolve(E.generate(design)); });
+  }
+
+  /* format: 'pes' | 'dst' | ...; opts.selection: only the selected shapes / group. */
+  IO.exportFile = function (format, opts) {
     format = format || 'pes';
+    var part = !!(opts && opts.selection), design = null;
     if (exporting) return Promise.resolve(false);
     if (!M.doc.objects.length) {
       toast('Nothing to export yet. Draw a shape first.', { kind: 'bad', label: 'Export' });
       return Promise.resolve(false);
     }
+    if (part) {
+      design = IO.selectionDesign();
+      if (!design) { toast('Select the shapes or the group to export first.', { kind: 'bad', label: 'Export' }); return Promise.resolve(false); }
+    }
     if (!client) { toast('The stitch engine did not load. Reload the page and try again.', { kind: 'bad', label: 'Export' }); return Promise.resolve(false); }
     exporting = true;
-    return IO.fresh().then(function (result) {
+    var name = part ? design.name : M.doc.name;
+    return (part ? generatePart(design) : IO.fresh()).then(function (result) {
       if (!result || !result.canExport) {
         var e = result && (result.warnings || []).filter(function (w) { return w.severity === 'error'; })[0];
         toast(e ? e.message : 'This design cannot be exported yet.', { kind: 'bad', label: 'Export', timeout: 7000 });
         return false;
       }
-      return client.export(result, { format: format, name: M.doc.name }).then(function (file) {
+      /* With accounts on (js/account.js), the server makes the file and counts it. It resolves
+         null when it has already told the visitor why not (sign in, plan used up). */
+      var hook = window.EL_ACCOUNT && typeof window.EL_ACCOUNT.export === 'function' ? window.EL_ACCOUNT.export : null;
+      var made = hook
+        ? Promise.resolve(hook({ design: part ? design : M.toEngine(), format: format, name: name }))
+        : client.export(result, { format: format, name: name });
+      return made.then(function (file) {
+        if (hook && !file) return false;
         if (!file || !file.bytes || !file.bytes.length) throw new Error('The engine returned an empty file.');
         window.EL.download(file.filename, file.bytes, file.mime);
         var b = result.bounds || { width: 0, height: 0 }, colors = result.totals.colors;
-        IO.lastExport = { filename: file.filename, format: file.format, stitches: file.stitches, bytes: file.bytes.length, width: b.width, height: b.height, colors: colors };
+        IO.lastExport = { filename: file.filename, format: file.format, stitches: file.stitches, bytes: file.bytes.length, width: b.width, height: b.height, colors: colors, selection: part, objects: part ? design.objects.length : M.doc.objects.length };
         var what = format === 'dst'
           ? colors + (colors === 1 ? ' thread stop' : ' thread stops') + ' (DST stores no colours)'
           : colors + (colors === 1 ? ' colour' : ' colours');
         window.EL.toast(file.filename + ': ' + num(file.stitches) + ' stitches, ' + Editor.Units.size(b.width, b.height) + ' ' + Editor.Units.label() + ', ' + what,
-          { kind: 'ok', label: 'Exported', timeout: 7000 });
+          { kind: 'ok', label: part ? 'Exported selection' : 'Exported', timeout: 7000 });
         Editor.emit('exported', IO.lastExport);
         return true;
       });
@@ -177,8 +210,13 @@
 
   /* ---------- autosave ------------------------------------------------------------ */
   function setSave(state) { if (IO.saveState !== state) { IO.saveState = state; Editor.emit('saved'); } }
+  /* v 1: shapes only. v 2: the same, plus doc.groups (and `group` on the shapes in one). A design
+     without groups is still written as v 1, so older copies of the editor keep reading it; this one
+     reads both, and anything newer as well as it can (Model.load checks every field). */
+  IO.FILE_VERSION = 2;
   function payload() {
-    return { v: 1, app: 'embroidr', savedAt: Date.now(), doc: M.serialize(), view: { fabric: { mode: V.fabric.mode, color: V.fabric.color } } };
+    var doc = M.serialize();
+    return { v: doc.groups ? 2 : 1, app: 'embroidr', savedAt: Date.now(), doc: doc, view: { fabric: { mode: V.fabric.mode, color: V.fabric.color } } };
   }
   /* The design as a file the visitor keeps: the same shape as the autosave, so File > Open reads both. */
   IO.PROJECT_EXT = '.embroidr';
@@ -211,7 +249,7 @@
   IO.restore = function () {
     var data = null, dropped = 0;
     try { data = window.EL.store.get(KEY, null); } catch (e) { data = null; }
-    if (!data || typeof data !== 'object' || data.v !== 1 || !data.doc || typeof data.doc !== 'object') return { restored: false, dropped: 0 };
+    if (!data || typeof data !== 'object' || !(data.v >= 1) || !data.doc || typeof data.doc !== 'object') return { restored: false, dropped: 0 };
     try {
       dropped = M.load(data.doc);
       var f = data.view && data.view.fabric;

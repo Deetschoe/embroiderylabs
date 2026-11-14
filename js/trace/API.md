@@ -1,4 +1,4 @@
-# Trace: picture to embroidery shapes (API 1.0.0)
+# Trace: picture to embroidery shapes (API 1.1.0)
 
 Turns a picture (logo, drawing, clip art, photograph) into coloured shapes the stitch engine can sew.
 Everything runs in the visitor's browser. No dependencies, no network.
@@ -15,7 +15,7 @@ Files
 | `js/trace/trace.js` | the algorithm. UMD: `window.Trace`, `self.Trace` in a worker, `require()` in node |
 | `js/trace/client.js` | page side: `Trace.imageDataFrom` (read + shrink a picture) and `Trace.createClient` (worker with main-thread fallback) |
 | `js/trace/worker.js` | the worker `createClient` starts. Must sit next to `trace.js` |
-| `tests/trace/run.js` | `node tests/trace/run.js` (29 tests, no npm packages) |
+| `tests/trace/run.js` | `node tests/trace/run.js` (31 tests, no npm packages) |
 
 ```html
 <script src="js/trace/trace.js"></script>
@@ -53,7 +53,8 @@ Synchronous. Use it in node or in your own worker; in a page use the client belo
 | option | default | meaning |
 |---|---|---|
 | `width` | `100` | finished width in mm, 10 to 400. Height follows the picture's shape |
-| `colors` | `6` | most thread colours, 2 to 12. Fewer are used when the picture has fewer (`COLORS_MERGED`) |
+| `colors` | `6` | most thread colours, 2 to 30, or `'auto'`. Fewer are used when the picture has fewer (`COLORS_MERGED`). `'auto'` picks the fewest colours that show the picture well (see below), at most `maxColors` |
+| `maxColors` | `10` | with `colors: 'auto'` only: the most it may pick, 2 to 30 |
 | `detail` | `'medium'` | `'low'`, `'medium'`, `'high'`: smallest shape kept (3 / 1.6 / 1 mm2 for flat art, 10 / 5.5 / 3 mm2 for photographs) and working grid (0.28 / 0.22 / 0.18 mm) |
 | `background` | `'auto'` | `'auto'`: leave out transparent areas and a plain colour that runs round the border. `'on'`: always leave out the border colour. `'off'`: sew everything. `true` / `false` are accepted |
 | `mode` | `'auto'` | `'auto'`, `'logo'`, `'photo'`. Photo mode smooths harder, keeps only bigger shapes and sews fills without underlay |
@@ -64,6 +65,28 @@ Synchronous. Use it in node or in your own worker; in a page use the client belo
 
 Wrong or out-of-range options never throw: the nearest valid value is used and an `INVALID_OPTION` warning
 (with `param`) says so.
+
+### Automatic colour count (`colors: 'auto'`)
+
+The palette step is run for 1, 2, 3 ... colours on the picture's colour histogram (with the border background as
+one extra colour when it will be left out; it is not a thread). For each count two numbers are measured in OKLab:
+`rms`, the average colour error, and `miss`, the share of the picture further than 0.07 from every palette colour
+(a colour no thread is close to). The pick is the smallest count, from 2, where either
+
+- the picture is flat art and fully explained: `rms` <= 0.012, `miss` <= 0.2%, and two more colours would lower
+  `rms` by no more than 0.004 (so the faint colours of a pale picture still count), or
+- nothing sizeable is missed (`miss` <= 0.5% for flat art, 2% for photographs) and two more colours would cut
+  `rms` by less than 20% (diminishing returns),
+
+else `maxColors`. All distances shrink for a low-contrast picture, like every other colour threshold. Picks on
+the sample pictures: logos get exactly their own colours (2 to 8), photographs 4 to 10 (soft, bold subjects 4 to 6;
+busy ones reach the cap). Costs 50 to 200 ms. The chosen count then goes through the same pipeline as a number would,
+except that a background colour also used inside the design may add one thread (never past `maxColors`) and
+`COLORS_MERGED` is not raised. `stats.autoColors.curve` holds the measurements.
+
+Above 12 colours: the logo / photograph test uses a probe palette as large as the request, so flat art with many
+colours stays flat art, and spare palette slots are not given to the blend along edges (it would be sewn as
+hairlines of an in-between thread). Results for 12 colours or fewer are unchanged from 1.0.0.
 
 `hooks`: `{ onProgress(fraction 0..1), shouldCancel() -> boolean }`. When `shouldCancel` returns true the call
 throws an Error with `code: 'CANCELLED'`.
@@ -82,9 +105,10 @@ calling thread and returns a Promise (rejects with `code: 'CANCELLED'`). `create
   origin: { x, y },              // mm, where the picture's top-left corner was put
   mode: 'logo' | 'photo',        // what it was treated as
   background: { removed, reason: 'transparent' | 'border' | null, color },   // color: hex of a removed border colour
-  stats: { objects, regions, lines, colors, points, estimatedStitches, workWidth, workHeight, mmPerPixel, timeMs, stages, detect },
+  stats: { objects, regions, lines, colors, points, estimatedStitches, workWidth, workHeight, mmPerPixel, timeMs, stages, detect,
+           autoColors },            // colors 'auto' only, else null: { picked, max, curve: [{ k, n, rms, miss }] }
   warnings: [ { code, severity: 'error' | 'warning' | 'info', message, ... } ],
-  version: '1.0.0'
+  version: '1.1.0'
 }
 ```
 
@@ -201,9 +225,8 @@ const made = Editor.Model.addMany(list, 'Trace picture');   // [] when the docum
 - `Trace.toEditorObjects(result, { holes: 'polygon' })` gives single keyhole polygons instead of paths
   (`Trace.toPolygon(rings)` does one), for code that has no ring type
 - coordinates are mm in the same frame as the editor's hoop when you passed `hoop` (or `x` / `y`) to the trace
-- one gap: `Editor.Model.toEngine()` does not pass a per-object `underlay`, so shapes brought in this way are
-  sewn WITH underlay. For photographs that brings back the engine's `TOO_DENSE` warning and about a third more
-  stitches. Carrying `style.underlay` through to `fill.underlay` in the editor would close it
+- the editor keeps `underlay: false` on the object (saved, copied into cut pieces) and `Editor.Model.toEngine()`
+  passes it on as `fill.underlay: false`, so photographs are sewn without underlay as the tracer intends
 
 Checked by tests/trace/run.js against the real js/editor/model.js: every object is taken, and the editor's own
 `toEngine()` output sews to within 1% of the direct result (2091 against 2099 stitches).
@@ -221,7 +244,7 @@ Headless Chrome 157, in the worker, 100 mm wide, medium detail, picture already 
 The page was never held up for more than about 100 ms in worker mode (that is the canvas step). On the main
 thread (`file://`) a logo holds the page for about 100 ms at a time and a large high-detail trace for up to
 about 300 ms at a time; progress still arrives and cancel still works. The largest job allowed (400 mm, high,
-12 colours) takes about 1.3 s in node.
+12 colours) takes about 1.3 s in node; a 1200 px photograph at 150 mm, high, 30 colours about 1.2 s.
 
 ## What it cannot do
 
@@ -233,7 +256,6 @@ about 300 ms at a time; progress still arrives and cancel still works. The large
 - Edges are found on a 0.18 to 0.28 mm grid, so a straight edge can sit about 0.1 mm off.
 - A smooth gradient in a logo becomes a few bands, with no special warning.
 - With few colours, similar colours merge (brown into red, cream into a white background). More colours fixes it.
-- The engine's `TOO_DENSE` warning comes back for photographs sewn with underlay (see the editor gap above), and
-  its `THIN_FILL` warning appears on some photographs (3 of the 9 samples) for slivers too narrow to fill well.
+- The engine's `THIN_FILL` warning appears on some photographs (3 of the 9 samples) for slivers too narrow to fill well.
 - Nothing made by this has been sewn on a real machine. The files were read back with pyembroidery and drawn,
   which shows where the needle goes, not how cloth and thread behave. Every result needs a test sew.

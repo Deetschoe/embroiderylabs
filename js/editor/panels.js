@@ -20,7 +20,7 @@
     satin: 'M2 12 4 4l2 8 2-8 2 8 2-8 2 8',
     running: 'M1.5 8h3M6.5 8h3M11.5 8h3'
   };
-  var LINE_NAMES = { running: 'running line', bean: 'bean line', satin: 'satin line' };
+  var LINE_NAMES = { running: 'running line', bean: 'bean line', satin: 'satin line', raw: 'imported stitches' };
   var MAX_WARNINGS = 6;
 
   function $(id) { return document.getElementById(id); }
@@ -63,22 +63,22 @@
   function apply(key, value, coalesce) {
     var ids = M.selection.slice();
     if (ids.length) M.setProp(ids, key, value, coalesce);
-    M.setDefault(key, value);
+    if (!(key === 'lineType' && value === 'raw')) M.setDefault(key, value);   /* a drawn stroke is never "as imported" */
   }
   function canFill(o) { return o.type !== 'line' && !(o.type === 'pen' && !o.closed && o.pts.length < 3); }
   /* Which controls do anything for the selection (all of them for the defaults). */
   function usage(sel) {
-    var u = { paint: true, lineType: true, lineWidth: true, spacing: true, stitchLen: true, angle: true, pattern: true };
+    var u = { paint: true, lineType: true, lineWidth: true, spacing: true, stitchLen: true, angle: true, pattern: true, fillStyle: true, lineDetail: M.defaults.fillStyle === 'lineart' };
     if (!sel.length) return u;
-    u = { paint: false, lineType: false, lineWidth: false, spacing: false, stitchLen: false, angle: false, pattern: false };
+    u = { paint: false, lineType: false, lineWidth: false, spacing: false, stitchLen: false, angle: false, pattern: false, fillStyle: false, lineDetail: false };
     sel.forEach(function (o) {
       var p = M.paintOf(o), line = p !== 'fill', fill = p !== 'line', satin = line && o.lineType === 'satin';
       if (canFill(o)) u.paint = true;
       if (line) u.lineType = true;
       if (satin) u.lineWidth = true;
       if (fill || satin) u.spacing = true;
-      if (fill || (line && !satin)) u.stitchLen = true;
-      if (fill) { u.angle = true; u.pattern = true; }
+      if (fill || (line && !satin && o.lineType !== 'raw')) u.stitchLen = true;   /* imported stitches keep their own points */
+      if (fill) { u.angle = true; u.pattern = true; u.fillStyle = true; if (o.fillStyle === 'lineart') u.lineDetail = true; }
     });
     return u;
   }
@@ -108,13 +108,28 @@
     el.hex.textContent = color.mixed ? 'Mixed' : color.value.toUpperCase();
 
     var type = current('lineType');
-    el.type.value = type.value;
+    /* "As imported" is only offered for stitches that were opened from a machine file */
+    var rawOpt = el.type.querySelector('option[value="raw"]'), anyRaw = sel.some(function (o) { return o.lineType === 'raw'; });
+    if (anyRaw && !rawOpt) { rawOpt = document.createElement('option'); rawOpt.value = 'raw'; rawOpt.textContent = 'As imported'; el.type.appendChild(rawOpt); }
+    else if (!anyRaw && rawOpt) rawOpt.remove();
+    el.type.value = type.value === 'raw' && !anyRaw ? 'running' : type.value;
     setOff(el.type.closest('.prop'), !use.lineType, 'Only used when the shape has a line (Paint: Line or Both).', [el.type]);
 
     if (el.pattern) {
       var pat = current('pattern');
       el.pattern.value = pat.mixed ? '' : (pat.value || 'smooth');
       setOff(el.pattern.closest('.prop'), !use.pattern, 'Only used by fills.', [el.pattern]);
+    }
+
+    /* Stitch style (Fill / Line art) and, only for line art, its Detail */
+    var fs = current('fillStyle');
+    el.styleBtns.forEach(function (b) { b.setAttribute('aria-pressed', !fs.mixed && (fs.value || 'tatami') === b.getAttribute('data-fill-style') ? 'true' : 'false'); });
+    setOff(el.styleBtns[0].closest('.prop'), !use.fillStyle, 'Only used by fills.', el.styleBtns);
+    el.detailRow.hidden = !use.lineDetail;
+    if (use.lineDetail) {
+      var det = current('lineDetail'), lineArt = sel.filter(function (o) { return o.fillStyle === 'lineart'; });
+      if (sel.length && lineArt.length !== sel.length) det = { value: lineArt[0].lineDetail, mixed: lineArt.some(function (o) { return o.lineDetail !== lineArt[0].lineDetail; }) };
+      el.detailBtns.forEach(function (b) { b.setAttribute('aria-pressed', !det.mixed && (det.value || 'normal') === b.getAttribute('data-line-detail') ? 'true' : 'false'); });
     }
 
     var why = {
@@ -206,6 +221,24 @@
     el.color.addEventListener('input', function () { apply('color', el.color.value, true); });
     el.color.addEventListener('change', function () { apply('color', el.color.value, true); M.seal(); });
     el.type.addEventListener('change', function () { apply('lineType', el.type.value); });
+    el.styleBtns = Array.prototype.slice.call(document.querySelectorAll('[data-fill-style]'));
+    el.detailBtns = Array.prototype.slice.call(document.querySelectorAll('[data-line-detail]'));
+    el.detailRow = $('line-detail-row');
+    el.styleBtns.forEach(function (b) {
+      var k = b.getAttribute('data-fill-style');
+      if (!M.FILL_STYLES[k]) { b.hidden = true; return; }
+      b.addEventListener('click', function () { apply('fillStyle', k); say(k === 'lineart' ? 'Stitch style line art' : 'Stitch style fill'); });
+    });
+    el.detailBtns.forEach(function (b) {
+      b.addEventListener('click', function () {
+        var k = b.getAttribute('data-line-detail');
+        /* only the line-art shapes of the selection have a detail to change */
+        var ids = M.selected().filter(function (o) { return o.fillStyle === 'lineart'; }).map(function (o) { return o.id; });
+        if (ids.length) M.setProp(ids, 'lineDetail', k);
+        M.setDefault('lineDetail', k);
+        say('Line art detail ' + k);
+      });
+    });
     if (el.pattern) {
       Object.keys(M.PATTERNS).forEach(function (k) {
         var opt = document.createElement('option'); opt.value = k; opt.textContent = M.PATTERNS[k].label || k; el.pattern.appendChild(opt);
@@ -279,20 +312,32 @@
 
   /* =========================================================================
      SEWING ORDER
+     One row per shape, in sewing order. A group is a row of its own (caret, name, the stitches of
+     all its shapes, ungroup) with its shapes indented under it; a click on it selects its shapes,
+     dragging it moves them as one block, and shapes can be dragged in and out of it.
      ========================================================================= */
   var counts = {};          /* object id -> stitches, from the newest engine result */
   var notes = {};           /* object id -> [engine messages] */
   var anchor = null;        /* id a Shift-click range starts from */
   var drag = null;
   var renaming = null;
+  var collapsed = {};       /* group id -> true while its shapes are folded away (view only, not saved) */
+  var isMac = /mac|iphone|ipad|ipod/i.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '');
+  var MOD = isMac ? '⌘' : 'Ctrl+', SHIFT_MOD = isMac ? '⇧⌘' : 'Ctrl+Shift+';
+  var GROUP_ICON = 'M2.5 2.5h5v5h-5zM8.5 8.5h5v5h-5zM1 1h14v14H1z';
+  var UNGROUP_ICON = 'M2 2h5v5H2zM9 9h5v5H9z';
 
   function rows() { return Array.prototype.slice.call(el.list.children); }
   function rowOf(id) { var r = rows(); for (var i = 0; i < r.length; i++) if (r[i]._id === id) return r[i]; return null; }
-  function rowFrom(node) { while (node && node !== el.list) { if (node._id) return node; node = node.parentNode; } return null; }
+  function groupRowOf(gid) { var r = rows(); for (var i = 0; i < r.length; i++) if (r[i]._gid === gid) return r[i]; return null; }
+  function rowFrom(node) { while (node && node !== el.list) { if (node._id || node._gid) return node; node = node.parentNode; } return null; }
+  /* what a row stands for: the shapes it selects */
+  function rowIds(row) { return row._gid ? M.members(row._gid) : [row._id]; }
 
-  function buildRow(o, i) {
+  function buildRow(o, i, child) {
     var row = document.createElement('div');
-    row.className = 'layer'; row.setAttribute('role', 'option'); row.tabIndex = -1; row._id = o.id;
+    row.className = 'layer' + (child ? ' layer--child' : ''); row.setAttribute('role', 'option'); row.tabIndex = -1; row._id = o.id;
+    if (child) row._in = o.group;
     var chip = span('thread'); chip.style.setProperty('--c', o.color);
     var del = document.createElement('button');
     del.type = 'button'; del.className = 'layer__del'; del.tabIndex = -1;
@@ -306,8 +351,29 @@
     row.appendChild(del);
     return row;
   }
+  function buildGroupRow(g) {
+    var row = document.createElement('div'), open = !collapsed[g.id];
+    row.className = 'layer layer--group'; row.setAttribute('role', 'option'); row.tabIndex = -1; row._gid = g.id;
+    row.setAttribute('aria-expanded', open ? 'true' : 'false');
+    var caret = document.createElement('button');
+    caret.type = 'button'; caret.className = 'layer__caret'; caret.tabIndex = -1;
+    caret.setAttribute('aria-label', (open ? 'Fold ' : 'Unfold ') + g.name);
+    caret.appendChild(svg(open ? 'M3 4.5 6 7.5 9 4.5' : 'M4.5 3 7.5 6 4.5 9', '0 0 12 12'));
+    var un = document.createElement('button');
+    un.type = 'button'; un.className = 'layer__del layer__ungroup'; un.tabIndex = -1;
+    un.setAttribute('aria-label', 'Ungroup ' + g.name); un.title = 'Ungroup';
+    un.appendChild(svg(UNGROUP_ICON, '0 0 16 16'));
+    row.appendChild(caret);
+    row.appendChild(svg(GROUP_ICON, '0 0 16 16', 'glyph glyph--group'));
+    row.appendChild(span('name', g.name));
+    row.appendChild(span('num count'));
+    row.appendChild(un);
+    return row;
+  }
+  function nameCell(row) { return row.querySelector('.name'); }
+  function countCell(row) { return row.querySelector('.count'); }
   function fillCount(row, o) {
-    var cell = row.children[4], flag = V.flags[o.id], n = counts[o.id];
+    var cell = countCell(row), flag = V.flags[o.id], n = counts[o.id];
     var text = n == null ? '' : num(n), msgs = notes[o.id] || [];
     var sig = (flag || '') + '|' + text + '|' + msgs.join('|') + '|' + o.name;
     if (cell._sig === sig) return;
@@ -323,54 +389,133 @@
     row.setAttribute('aria-label', label);
     if (msgs.length) row.setAttribute('title', msgs.join('\n')); else row.removeAttribute('title');
   }
-  function updateCounts() {
-    rows().forEach(function (row) { var o = M.get(row._id); if (o) fillCount(row, o); });
+  /* a group's row: the stitches of all its shapes, and the worst flag among them */
+  function fillGroupCount(row, g) {
+    var ids = M.members(g.id), total = 0, known = false, flag = null, cell = countCell(row);
+    ids.forEach(function (id) {
+      if (counts[id] != null) { total += counts[id]; known = true; }
+      var f = V.flags[id]; if (f === 'error' || (f && !flag)) flag = f;
+    });
+    var text = known ? num(total) : '', sig = (flag || '') + '|' + text + '|' + g.name + '|' + ids.length + '|' + !!collapsed[g.id];
+    if (cell._sig === sig) return;
+    cell._sig = sig; cell.textContent = '';
+    if (flag) { var fl = span('flag' + (flag === 'error' ? ' flag--error' : ''), '!'); fl.setAttribute('aria-hidden', 'true'); cell.appendChild(fl); }
+    cell.appendChild(document.createTextNode(text));
+    row.setAttribute('aria-label', 'Group ' + g.name + ', ' + ids.length + (ids.length === 1 ? ' shape' : ' shapes') + (known ? ', ' + num(total) + ' stitches' : '') + (collapsed[g.id] ? ', folded' : ''));
   }
+  function updateCounts() {
+    rows().forEach(function (row) {
+      if (row._gid) { var g = M.group(row._gid); if (g) fillGroupCount(row, g); return; }
+      var o = M.get(row._id); if (o) fillCount(row, o);
+    });
+  }
+  function allSelected(ids) { return ids.length > 0 && ids.every(function (id) { return M.isSelected(id); }); }
   function syncSelection() {
-    var list = rows(), tab = null;
+    var list = rows(), tab = null, picked = Object.create(null), whole = Object.create(null);
+    M.selection.forEach(function (id) { picked[id] = true; });
+    /* per group: is every one of its shapes picked? (one pass, so a big group stays quick) */
+    M.doc.objects.forEach(function (o) {
+      if (!o.group) return;
+      if (!(o.group in whole)) whole[o.group] = true;
+      if (!picked[o.id]) whole[o.group] = false;
+    });
     list.forEach(function (row) {
-      var on = M.isSelected(row._id);
+      var on = row._gid ? !!whole[row._gid] : !!picked[row._id];
       row.setAttribute('aria-selected', on ? 'true' : 'false');
       row.tabIndex = -1;
       if (on && !tab) tab = row;
+      /* the shapes of a picked group are shown as part of it, a little lighter */
+      if (row._in) row.classList.toggle('is-in-picked', !!whole[row._in]);
     });
     if (!tab) tab = list[0];
     if (tab) tab.tabIndex = 0;
-    var objs = M.doc.objects, sel = M.selection, n = sel.length;
+    var objs = M.doc.objects, n = M.selection.length;
     /* can the selection still move up / down? */
     var up = false, down = false;
     for (var i = 0; i < objs.length; i++) {
-      if (sel.indexOf(objs[i].id) === -1) continue;
-      if (i > 0 && sel.indexOf(objs[i - 1].id) === -1) up = true;
-      if (i < objs.length - 1 && sel.indexOf(objs[i + 1].id) === -1) down = true;
+      if (!picked[objs[i].id]) continue;
+      if (i > 0 && !picked[objs[i - 1].id]) up = true;
+      if (i < objs.length - 1 && !picked[objs[i + 1].id]) down = true;
     }
     el.up.disabled = !n || !up; el.down.disabled = !n || !down;
+    renderGroupButton();
+  }
+  /* The header button groups the selection, or ungroups it when the selection is a group. */
+  function groupMode() {
+    if (!M.selection.length) return null;
+    if (M.selectedGroup()) return 'ungroup';
+    return 'group';
+  }
+  function renderGroupButton() {
+    var b = el.groupBtn; if (!b) return;
+    var mode = groupMode(), un = mode === 'ungroup';
+    b.disabled = !mode;
+    b.setAttribute('aria-label', un ? 'Ungroup' : 'Group selection');
+    b.setAttribute('data-tip', un ? 'Ungroup' : 'Group');
+    b.setAttribute('data-key', un ? SHIFT_MOD + 'G' : MOD + 'G');
+    var p = b.querySelector('path'); if (p) p.setAttribute('d', un ? UNGROUP_ICON : GROUP_ICON);
   }
   function renderLayers() {
     if (renaming) endRename(false);
     var objs = M.doc.objects, active = document.activeElement;
     var focused = active && el.list.contains(active) ? rowFrom(active) : null;
-    var focusId = focused ? focused._id : null;
+    var focusId = focused ? (focused._id || null) : null, focusGid = focused ? (focused._gid || null) : null;
     el.list.textContent = '';
-    objs.forEach(function (o, i) { el.list.appendChild(buildRow(o, i)); });
+    var shown = {};
+    objs.forEach(function (o, i) {
+      var g = o.group ? M.group(o.group) : null;
+      if (g && !shown[g.id]) { shown[g.id] = true; el.list.appendChild(buildGroupRow(g)); }
+      if (g && collapsed[g.id]) return;
+      el.list.appendChild(buildRow(o, i, !!g));
+    });
     el.list.hidden = !objs.length;
     el.empty.hidden = !!objs.length;
     el.total.textContent = String(objs.length);
     el.count.textContent = String(objs.length);
     syncSelection(); updateCounts();
-    if (focusId) { var r = rowOf(focusId); if (r) r.focus({ preventScroll: true }); }
+    var r = focusGid ? groupRowOf(focusGid) : focusId ? rowOf(focusId) : null;
+    if (!r && focusId) { var go = M.get(focusId); if (go && go.group) r = groupRowOf(go.group); }   /* folded away: its group */
+    if (r) r.focus({ preventScroll: true });
+  }
+  function setCollapsed(gid, yes) {
+    if (!!collapsed[gid] === !!yes) return;
+    if (yes) collapsed[gid] = true; else delete collapsed[gid];
+    var g = M.group(gid);
+    renderLayers();
+    var row = groupRowOf(gid); if (row) row.focus({ preventScroll: true });
+    if (g) say(g.name + (yes ? ' folded' : ' unfolded'));
   }
 
+  /* ---------- group / ungroup (header button, Cmd/Ctrl+G, Shift+Cmd/Ctrl+G, the right-click menu) */
+  function groupSelection() {
+    var ids = M.selection.slice();
+    if (!ids.length) { say('Select shapes to group'); return null; }
+    var g = M.groupShapes(ids);
+    if (g) { delete collapsed[g.id]; say(g.name + ': ' + M.members(g.id).length + ' shapes grouped'); }
+    return g;
+  }
+  function ungroupSelection() {
+    var n = M.ungroup(M.selection.slice());
+    if (n) say(n === 1 ? 'Ungrouped' : n + ' groups ungrouped');
+    return n;
+  }
+  P.groupSelection = groupSelection;
+  P.ungroupSelection = ungroupSelection;
+  P.groupMode = groupMode;
+  P.setCollapsed = setCollapsed;
+
   /* ---------- rename in place ------------------------------------------------ */
-  function startRename(id) {
-    var row = rowOf(id), o = M.get(id); if (!row || !o) return;
+  function startRename(id, isGroup) {
+    var row = isGroup ? groupRowOf(id) : rowOf(id), o = isGroup ? M.group(id) : M.get(id);
+    if (!row && !isGroup && o && o.group && collapsed[o.group]) { setCollapsed(o.group, false); row = rowOf(id); }
+    if (!row || !o) return;
     if (renaming) endRename(true);
     var input = document.createElement('input');
     input.type = 'text'; input.className = 'layer__rename'; input.maxLength = 60; input.value = o.name;
     input.setAttribute('aria-label', 'Name of ' + o.name); input.autocomplete = 'off'; input.spellcheck = false;
-    row.children[3].setAttribute('data-editing', '');
+    nameCell(row).setAttribute('data-editing', '');
     row.appendChild(input);
-    renaming = { id: id, input: input, row: row };
+    renaming = { id: id, group: !!isGroup, input: input, row: row };
     input.addEventListener('keydown', function (e) {
       e.stopPropagation();
       if (e.key === 'Enter') { e.preventDefault(); endRename(true); }
@@ -386,61 +531,122 @@
     renaming = null;
     var value = r.input.value, had = document.activeElement === r.input;
     if (r.input.parentNode) r.input.parentNode.removeChild(r.input);
-    r.row.children[3].removeAttribute('data-editing');
-    var changed = commit && M.rename(r.id, value);          /* rebuilds the list when the name changed */
-    if (changed) say('Renamed to ' + M.get(r.id).name);
-    if (had && !fromBlur) { var row = rowOf(r.id); if (row) row.focus({ preventScroll: true }); }
+    nameCell(r.row).removeAttribute('data-editing');
+    var changed = commit && (r.group ? M.renameGroup(r.id, value) : M.rename(r.id, value));   /* rebuilds the list when the name changed */
+    if (changed) say('Renamed to ' + (r.group ? M.group(r.id) : M.get(r.id)).name);
+    if (had && !fromBlur) { var row = r.group ? groupRowOf(r.id) : rowOf(r.id); if (row) row.focus({ preventScroll: true }); }
   }
 
   /* ---------- pointer: select, drag to reorder ---------------------------------- */
   function clearDrop() {
-    rows().forEach(function (r) { r.classList.remove('is-drop-before', 'is-drop-after', 'is-dragging'); });
+    rows().forEach(function (r) { r.classList.remove('is-drop-before', 'is-drop-after', 'is-drop-in', 'is-dragging'); });
     el.list.classList.remove('is-sorting');
   }
   function selectRange(a, b) {
-    var i = M.indexOf(a), j = M.indexOf(b); if (i === -1 || j === -1) return M.select([b]);
+    var i = M.indexOf(a), j = M.indexOf(b); if (i === -1 || j === -1) return M.select(M.unitOf(b));
     var lo = Math.min(i, j), hi = Math.max(i, j), ids = [];
     for (var k = lo; k <= hi; k++) ids.push(M.doc.objects[k].id);
     M.select(ids);
   }
   function onDown(e) {
     var row = rowFrom(e.target); if (!row || e.button !== 0) return;
-    if (e.target.closest && e.target.closest('.layer__del, .layer__rename')) return;
-    var id = row._id, was = M.isSelected(id), mod = e.metaKey || e.ctrlKey;
-    if (e.shiftKey && anchor && M.get(anchor)) selectRange(anchor, id);
-    else if (mod) { M.toggle(id); anchor = id; }
-    else { if (!was) M.select([id]); anchor = id; }
-    drag = { id: id, row: row, y: e.clientY, pid: e.pointerId, moved: false, index: -1,
-      collapse: was && !e.shiftKey && !mod, touch: e.pointerType === 'touch' };
+    if (e.target.closest && e.target.closest('.layer__del, .layer__rename, .layer__caret')) return;
+    var ids = rowIds(row); if (!ids.length) return;
+    var key = row._gid ? ids[0] : row._id, mod = e.metaKey || e.ctrlKey, was = allSelected(ids);
+    if (e.shiftKey && anchor && M.get(anchor)) selectRange(anchor, row._gid ? ids[ids.length - 1] : key);
+    else if (mod) {
+      var rest = M.selection.filter(function (id) { return ids.indexOf(id) === -1; });
+      M.select(was ? rest : rest.concat(ids)); anchor = key;
+    } else { if (!was) M.select(ids); anchor = key; }
+    drag = { ids: ids, gid: row._gid || null, row: row, y: e.clientY, pid: e.pointerId, moved: false, target: null,
+      collapse: was && !e.shiftKey && !mod && M.selection.length > ids.length, touch: e.pointerType === 'touch' };
     /* touch scrolls the list instead (touch-action: pan-y); reorder with the arrow buttons */
     if (!drag.touch) { try { row.setPointerCapture(e.pointerId); } catch (x) { /* older browsers */ } }
+  }
+  /* the shape sewn right after `id`, leaving out the shapes being moved (null: none) */
+  function nextAfter(id, moving) {
+    var a = M.doc.objects, i = M.indexOf(id);
+    for (i = i + 1; i < a.length; i++) if (moving.indexOf(a[i].id) === -1) return a[i].id;
+    return null;
+  }
+  function firstNotMoving(ids, moving) { for (var i = 0; i < ids.length; i++) if (moving.indexOf(ids[i]) === -1) return ids[i]; return null; }
+  function lastRowOfGroup(list, gid) { var last = null; list.forEach(function (r) { if (r._gid === gid || r._in === gid) last = r; }); return last; }
+  /* Where a drop at clientY lands: { before: id | null, group: id | null (loose) | undefined (keep),
+     mark: the row the line is drawn on, at: 'before' | 'after', inside: drawn indented } */
+  function dropTarget(clientY) {
+    var list = rows().filter(function (r) { return !(drag.gid && (r._gid === drag.gid || r._in === drag.gid)); });
+    if (!list.length) return null;
+    var moving = drag.ids, i, r = null, box = null;
+    for (i = 0; i < list.length; i++) {
+      box = list[i].getBoundingClientRect();
+      if (clientY < box.bottom) { r = list[i]; break; }
+    }
+    if (!r) return { before: null, group: drag.gid ? undefined : null, mark: list[list.length - 1], at: 'after' };   /* below every row: sewn last */
+    var gid = r._gid || r._in || null, upper = clientY < box.top + box.height / 2, mem;
+    if (drag.gid) {
+      /* a group moves past whole groups and loose shapes only */
+      if (gid) {
+        var head = groupRowOf(gid), tail = lastRowOfGroup(list, gid);
+        var top = head.getBoundingClientRect().top, bottom = tail.getBoundingClientRect().bottom;
+        mem = M.members(gid);
+        if (clientY < (top + bottom) / 2) return { before: mem[0], group: undefined, mark: head, at: 'before' };
+        return { before: nextAfter(mem[mem.length - 1], moving), group: undefined, mark: tail, at: 'after' };
+      }
+      if (upper) return { before: r._id, group: undefined, mark: r, at: 'before' };
+      return { before: nextAfter(r._id, moving), group: undefined, mark: r, at: 'after' };
+    }
+    if (r._gid) {
+      mem = M.members(r._gid);
+      var first = firstNotMoving(mem, moving);
+      if (upper || !first) return { before: first || nextAfter(mem[mem.length - 1], moving), group: null, mark: r, at: 'before' };   /* before the group, loose */
+      if (collapsed[r._gid]) return { before: nextAfter(mem[mem.length - 1], moving), group: null, mark: r, at: 'after' };
+      return { before: first, group: r._gid, mark: r, at: 'after', inside: true };                                                     /* first in the group */
+    }
+    if (r._in) {
+      if (upper) return { before: r._id, group: r._in, mark: r, at: 'before', inside: true };
+      return { before: nextAfter(r._id, moving), group: r._in, mark: r, at: 'after', inside: true };
+    }
+    if (upper) return { before: r._id, group: null, mark: r, at: 'before' };
+    return { before: nextAfter(r._id, moving), group: null, mark: r, at: 'after' };
   }
   function onMove(e) {
     if (!drag || e.pointerId !== drag.pid || drag.touch) return;
     if (!drag.moved) {
       if (Math.abs(e.clientY - drag.y) < 5 || M.doc.objects.length < 2) return;
       drag.moved = true;
-      drag.row.classList.add('is-dragging'); el.list.classList.add('is-sorting');
+      rows().forEach(function (r) { if (r === drag.row || (drag.gid && r._in === drag.gid)) r.classList.add('is-dragging'); });
+      el.list.classList.add('is-sorting');
     }
-    var list = rows(), j = list.length, i;
-    for (i = 0; i < list.length; i++) {
-      var r = list[i].getBoundingClientRect();
-      if (e.clientY < r.top + r.height / 2) { j = i; break; }
-    }
-    list.forEach(function (r2) { r2.classList.remove('is-drop-before', 'is-drop-after'); });
-    if (j < list.length) list[j].classList.add('is-drop-before'); else list[list.length - 1].classList.add('is-drop-after');
-    drag.index = j;
+    var t = dropTarget(e.clientY);
+    rows().forEach(function (r2) { r2.classList.remove('is-drop-before', 'is-drop-after', 'is-drop-in'); });
+    drag.target = t;
+    if (!t) return;
+    t.mark.classList.add(t.at === 'before' ? 'is-drop-before' : 'is-drop-after');
+    if (t.inside) t.mark.classList.add('is-drop-in');
+  }
+  /* nothing would change: same group, and already sewn right before t.before */
+  function sameSpot(ids, t) {
+    var a = M.doc.objects, first = M.indexOf(ids[0]), last = M.indexOf(ids[ids.length - 1]);
+    var o = M.get(ids[0]), same = t.group === undefined || (t.group || null) === (o.group || null);
+    var after = last + 1 < a.length ? a[last + 1].id : null;
+    return same && last - first + 1 === ids.length && after === t.before;
   }
   function onUp(e) {
     if (!drag || e.pointerId !== drag.pid) return;
     var d = drag; drag = null;
     if (d.moved) {
       clearDrop();
-      var from = M.indexOf(d.id), to = d.index > from ? d.index - 1 : d.index;
-      if (from !== -1 && d.index !== -1 && to !== from && M.moveTo(d.id, to)) {
-        var o = M.get(d.id); say(o.name + ' is now number ' + (M.indexOf(d.id) + 1) + ' of ' + M.doc.objects.length + ' in the sewing order');
+      var t = d.target;
+      if (t && !sameSpot(d.ids, t)) {
+        var o = M.get(d.ids[0]), was = o && o.group;
+        var label = t.group && t.group !== was ? 'Move into group' : (t.group === null && was ? 'Move out of group' : 'Reorder');
+        if (M.place(d.ids, t.before, t.group, label)) {
+          var g = d.gid && M.group(d.gid);
+          if (g) say(g.name + ' moved in the sewing order');
+          else if (o) say(o.name + (label === 'Move into group' ? ' moved into ' + M.group(t.group).name : label === 'Move out of group' ? ' moved out of its group' : ' is now number ' + (M.indexOf(o.id) + 1) + ' of ' + M.doc.objects.length + ' in the sewing order'));
+        }
       }
-    } else if (d.collapse) M.select([d.id]);
+    } else if (d.collapse) M.select(d.ids);
   }
   function onCancel(e) {
     if (!drag || (e.pointerId != null && e.pointerId !== drag.pid)) return;
@@ -450,31 +656,41 @@
   /* ---------- keyboard ------------------------------------------------------------ */
   function reorderSelection(dir) {
     var ids = M.selection.slice(); if (!ids.length) return false;
+    var g = M.selectedGroup();
     if (!M.reorder(ids, dir)) return false;
     var o = M.get(ids[0]);
-    say(ids.length === 1 && o ? o.name + ' is now number ' + (M.indexOf(o.id) + 1) + ' of ' + M.doc.objects.length : 'Moved ' + ids.length + ' shapes ' + (dir > 0 ? 'later' : 'earlier'));
+    say(g ? g.name + ' moved ' + (dir > 0 ? 'later' : 'earlier') : ids.length === 1 && o ? o.name + ' is now number ' + (M.indexOf(o.id) + 1) + ' of ' + M.doc.objects.length : 'Moved ' + ids.length + ' shapes ' + (dir > 0 ? 'later' : 'earlier'));
     return true;
   }
   P.reorderSelection = reorderSelection;
 
+  function pickRow(row, add) {
+    var ids = rowIds(row);
+    if (add) M.select(M.selection.concat(ids.filter(function (id) { return !M.isSelected(id); })));
+    else { M.select(ids); anchor = ids[0]; }
+  }
   function onKey(e) {
     var row = rowFrom(e.target); if (!row || e.target !== row) return;
-    var list = rows(), i = list.indexOf(row), id = row._id, key = e.key, next = null;
+    var list = rows(), i = list.indexOf(row), key = e.key, next = null, gid = row._gid || null;
     if (key === 'ArrowDown' || key === 'ArrowUp') {
       e.preventDefault();
       var dir = key === 'ArrowDown' ? 1 : -1;
-      if (e.altKey) { if (!M.isSelected(id)) M.select([id]); reorderSelection(dir); return; }
+      if (e.altKey) { if (!allSelected(rowIds(row))) pickRow(row); reorderSelection(dir); return; }
       next = list[i + dir];
-    } else if (key === 'Home') { e.preventDefault(); next = list[0]; }
+    } else if (gid && (key === 'ArrowLeft' || key === 'ArrowRight')) { e.preventDefault(); setCollapsed(gid, key === 'ArrowLeft'); return; }
+    else if (row._in && key === 'ArrowLeft') { e.preventDefault(); next = groupRowOf(row._in); }
+    else if (key === 'Home') { e.preventDefault(); next = list[0]; }
     else if (key === 'End') { e.preventDefault(); next = list[list.length - 1]; }
-    else if (key === 'Enter' || key === 'F2') { e.preventDefault(); startRename(id); return; }
+    else if (key === 'Enter' || key === 'F2') { e.preventDefault(); startRename(gid || row._id, !!gid); return; }
     else if (key === ' ') {
       e.preventDefault();
-      if (e.metaKey || e.ctrlKey) M.toggle(id); else M.select([id]);
-      anchor = id; return;
+      var own = rowIds(row);
+      if (e.metaKey || e.ctrlKey) { if (allSelected(own)) M.select(M.selection.filter(function (id) { return own.indexOf(id) === -1; })); else pickRow(row, true); }
+      else pickRow(row);
+      anchor = own[0]; return;
     } else if (key === 'Delete' || key === 'Backspace') {
       e.preventDefault();
-      var ids = M.isSelected(id) ? M.selection.slice() : [id];
+      var ids = allSelected(rowIds(row)) ? M.selection.slice() : rowIds(row);
       if (M.remove(ids, ids.length > 1 ? 'Delete ' + ids.length + ' shapes' : 'Delete')) {
         say(ids.length > 1 ? ids.length + ' shapes deleted' : 'Shape deleted');
         var left = rows(), f = left[Math.min(i, left.length - 1)];
@@ -483,8 +699,7 @@
       return;
     } else return;
     if (next) {
-      if (e.shiftKey) { if (!M.isSelected(next._id)) M.select(M.selection.concat([next._id])); }
-      else { M.select([next._id]); anchor = next._id; }
+      pickRow(next, e.shiftKey);
       next.focus(); if (next.scrollIntoView) next.scrollIntoView({ block: 'nearest' });
     }
   }
@@ -492,6 +707,17 @@
   function initLayers() {
     el.list = $('layers-list'); el.empty = $('layers-empty'); el.total = $('layer-total'); el.count = $('layer-count');
     el.up = $('layer-up'); el.down = $('layer-down');
+    /* the Group button sits with the sewing-order buttons (made here, so the page markup stays as it is) */
+    el.groupBtn = $('layer-group');
+    if (!el.groupBtn && el.up && el.up.parentNode) {
+      var gb = document.createElement('button');
+      gb.className = 'mini'; gb.type = 'button'; gb.id = 'layer-group'; gb.disabled = true;
+      gb.setAttribute('data-tip-pos', 'left');
+      gb.appendChild(svg(GROUP_ICON, '0 0 16 16'));
+      el.up.parentNode.insertBefore(gb, el.up);
+      el.groupBtn = gb;
+    }
+    if (el.groupBtn) el.groupBtn.addEventListener('click', function () { if (groupMode() === 'ungroup') ungroupSelection(); else groupSelection(); });
     el.list.addEventListener('pointerdown', onDown);
     el.list.addEventListener('pointermove', onMove);
     el.list.addEventListener('pointerup', onUp);
@@ -500,11 +726,14 @@
     el.list.addEventListener('keydown', onKey);
     el.list.addEventListener('dblclick', function (e) {
       var row = rowFrom(e.target);
-      if (row && !(e.target.closest && e.target.closest('.layer__del'))) startRename(row._id);
+      if (row && !(e.target.closest && e.target.closest('.layer__del, .layer__caret'))) startRename(row._gid || row._id, !!row._gid);
     });
     el.list.addEventListener('click', function (e) {
+      var caret = e.target.closest ? e.target.closest('.layer__caret') : null;
+      if (caret) { var cr = rowFrom(caret); if (cr && cr._gid) setCollapsed(cr._gid, !collapsed[cr._gid]); return; }
       var del = e.target.closest ? e.target.closest('.layer__del') : null, row = del && rowFrom(del);
       if (!row) return;
+      if (row._gid) { var g = M.group(row._gid), gname = g ? g.name : 'Group'; if (M.ungroup(M.members(row._gid))) say(gname + ' ungrouped'); return; }
       var o = M.get(row._id), name = o ? o.name : 'Shape';
       if (M.remove([row._id], 'Delete')) say(name + ' deleted');
     });

@@ -15,6 +15,7 @@ tools and may change.
 
 ```html
 <!-- classic scripts, in this order; they create ONE global: window.Engine -->
+<script src="js/engine/lineart.js"></script>   <!-- optional: the 'lineart' fill style (section 4) -->
 <script src="js/engine/embwriter.js"></script>
 <script src="js/engine/digitize.js"></script>
 <script src="js/engine/engine.js"></script>
@@ -22,9 +23,13 @@ tools and may change.
 
 | Where | How | Result |
 |---|---|---|
-| page | the three script tags above | `window.Engine` |
-| Web Worker | `importScripts('embwriter.js', 'digitize.js', 'engine.js')` | `self.Engine` (this is what `worker.js` does) |
-| node | `const Engine = require('./js/engine/engine.js')` | the same object |
+| page | the script tags above | `window.Engine` |
+| Web Worker | `importScripts('lineart.js', 'embwriter.js', 'digitize.js', 'engine.js')` | `self.Engine` (this is what `worker.js` does) |
+| node | `const Engine = require('./js/engine/engine.js')` | the same object (finds `lineart.js` next to it by itself) |
+
+Without `lineart.js` everything works the same, except that `fill.style: 'lineart'` sews the normal fill and
+reports `PARAM_CLAMPED`. Load it before `digitize.js`. The worker always loads it, so a page that leaves the
+tag out still gets line art whenever the worker runs; only the main-thread fallback then lacks it.
 
 `worker.js` must stay in the same folder as `engine.js`. A page never loads `worker.js` itself:
 `Engine.createClient()` does.
@@ -42,6 +47,7 @@ Engine.createClient(options?)        // -> client: the same generate/export as P
 Engine.FORMATS                       // [{ id, ext, mime, label }]
 Engine.DEFAULTS, Engine.LIMITS       // numbers used when a setting is missing / out of range
 Engine.FILL_PATTERNS                 // { smooth, brick, ribbed, diagonal, crosshatch }: values of fill.pattern, each { label }
+Engine.FILL_STYLES                   // { tatami: { label: 'Fill' }, lineart: { label: 'Auto (line art)' } }: values of fill.style
 Engine.OP                            // { STITCH: 0, JUMP: 1, TRIM: 2, COLOR_CHANGE: 3, END: 4 }
 ```
 
@@ -138,12 +144,50 @@ Curves must be flattened to points by the caller (a point every 0.5 to 1 mm is p
 | `pattern` | `'smooth'` | `smooth`, `brick`, `ribbed`, `diagonal`, `crosshatch` | where the needle lands row to row (`Engine.FILL_PATTERNS`). `crosshatch` is an open lattice: two passes at right angles, rows at 3 x `spacing` (at least 1.2 mm), no underlay. An unknown value gives `PARAM_CLAMPED` and the smooth fill. |
 | `underlay` | `true` | boolean | edge run plus a loose cross layer under the fill |
 | `pullComp` | 0.2 | 0 to 1.0 | each row end is lengthened by this much, mm, to make up for the fabric pulling in |
+| `style` | `'tatami'` | `tatami`, `lineart` | how the shape is sewn (`Engine.FILL_STYLES`). `tatami` is the fill described above. `lineart` is for drawings: see below. An unknown value gives `PARAM_CLAMPED` and `tatami`. |
+| `lineart` | `{}` | object | settings for `style: 'lineart'`, below. Ignored otherwise. |
+
+#### `fill.style: 'lineart'` (Auto, line art)
+
+For traced drawings, line art, logos and lettering: one filled object that is mostly lines. The engine
+measures the drawing's width everywhere (on a 0.05 mm grid) and sews each part the way it would be digitized
+by hand. A line's width is measured all along it (the width most of the line has, so a tapering line counts as
+fairly wide):
+
+| Part of the drawing | Sewn as |
+|---|---|
+| lines 0.9 mm wide and more (up to `thin`) | satin along the line, as wide as the line where it is (plus 0.12 mm pull each side), with a running underlay along the centre; stitches on the inside of a sharp bend are shortened |
+| lines 0.65 to 0.9 mm | a narrow ring: out along one edge of the line, back along the other |
+| lines 0.45 to 0.65 mm | a triple run spread over the line's width |
+| lines under 0.45 mm | a running stitch (1.3 mm) along the centre |
+| areas wider than `thin` | one running ring 0.15 mm inside the edge, and the normal tatami fill inside it (`spacing`, `stitchLength`, `angle`, `pattern`, `underlay`, `pullComp` of this object apply to it) |
+| black the thread would still miss | a small loop just inside its edge, or one stitch there and back |
+
+Sewing order: each connected black area is ONE thread. The needle travels inside the black from piece to
+piece, and the order is planned so that most of that travel is covered by stitches sewn later. Separate black
+areas always start with a trim, even when they are close together: no thread is laid across bare fabric
+(a normal fill joins pieces under 2 mm apart with a stitch). Gaps under 0.2 mm and holes under 0.3 mm2 in the
+drawing are closed (the thread cannot show them), specks under 0.2 mm2 are left out.
+
+| `fill.lineart` field | Default | Range (clamped) | Meaning |
+|---|---|---|---|
+| `detail` | `'normal'` | `'fine'`, `'normal'`, `'bold'` | how much small detail is kept: the gap, hole and speck sizes above are halved (`fine`) or doubled (`bold`). Unknown: `PARAM_CLAMPED` and `normal`. |
+| `thin` | 2.0 | 0.5 to 5 | mm. Parts wider than this get the edge ring and tatami; narrower parts are lines. |
+| `satinMin` | 0.9 | 0.5 to 3 | mm. Lines at least this wide are satin. |
+| `beanMin` | 0.45 | 0.2 to 2 | mm. Lines at least this wide get more than one pass. |
+| `res` | automatic | 0.03 to 0.5 | mm per grid pixel; only a coarser grid than the automatic one is used |
+
+The grid is 0.05 mm and never more than 6 million pixels, so for a drawing larger than about 120 x 120 mm it
+gets coarser; above 0.1 mm `LINEART_REDUCED` says so (the finest lines may be lost). The same drawing always
+gives the same stitches, in node and in every browser. Time, for planning: a busy 82 x 144 mm drawing
+(435 rings, about 23,500 stitches) takes about 1.5 to 2 s; the result is kept (8 drawings), so generating the
+design again after an edit to another object is immediate.
 
 `line` settings:
 
 | Field | Default | Range (clamped) | Meaning |
 |---|---|---|---|
-| `type` | `'running'` | `'running' \| 'bean' \| 'satin'` | `'bean'` is a triple run (forward, back, forward). `'run'` is accepted for `'running'`. |
+| `type` | `'running'` | `'running' \| 'bean' \| 'satin' \| 'raw'` | `'bean'` is a triple run (forward, back, forward). `'run'` is accepted for `'running'`. `'raw'` sews exactly through the points given, one stitch per point (stitches read from a machine file); `stitchLength`, `width` and `spacing` are not used, and a step over the format limit is still split. |
 | `stitchLength` | 2.5 | 1.0 to 7.0 | running and bean stitch length, mm |
 | `width` | 3.0 | 1.0 to 12.0 | satin only: column width, mm. Under 1 mm is sewn as a bean stitch (`SATIN_TOO_NARROW`); over 9 mm warns; over 12 mm is cut to 12 mm (`SATIN_TOO_WIDE`). Stitches over 7 mm are split. |
 | `spacing` | 0.4 | 0.2 to 2.0 | satin only: distance between stitches along the column, mm |
@@ -215,7 +259,8 @@ present when the warning belongs to one object. Only `'error'` blocks export.
 | `STITCH_TOO_LONG` | warning | a stitch length over 7 mm was asked for (7 is used), or stitches over 7 mm exist | `count?`, `longestMm?` |
 | `TOO_DENSE` | warning | row or satin spacing under 0.3 mm, or thread stacked too thickly in one place (about three fills on top of each other) | `densityMmPerMm2?`, `at?: { x, y }` mm |
 | `TOO_LARGE` | warning | one fill would need more than about 400,000 stitches. Skipped. | |
-| `PARAM_CLAMPED` | info | a setting was replaced | `param`, `value` |
+| `PARAM_CLAMPED` | info | a setting was replaced (also: an unknown `fill.style`, or `'lineart'` without `lineart.js` loaded; the normal fill is sewn) | `param`, `value` |
+| `LINEART_REDUCED` | info | a `lineart` drawing is so large that it was measured on a grid coarser than 0.1 mm | `resolutionMm` |
 | `INTERNAL_ERROR` | warning | the engine failed on one object and skipped it (a bug: please report) | `detail` |
 | `TOO_MANY_STITCHES` | error | the whole design needs more than 500,000 stitches (`LIMITS.maxStitches`). Nothing is exported. | `stitches`, `limit` |
 | `LARGE_DESIGN` | warning | more than 100,000 stitches (`LIMITS.largeDesign`): slow to sew, small home machines may not load it. Still exportable. | `stitches`, `threshold`, `timeMin` |

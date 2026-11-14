@@ -1,0 +1,10 @@
+# Copy to .dev.vars for `npx wrangler dev` (never commit .dev.vars).
+SITE_ORIGIN="http://localhost:8437"
+SITE_URL="http://localhost:8437"
+GOOGLE_CLIENT_ID="your-client-id.apps.googleusercontent.com"
+SESSION_SECRET="run: openssl rand -base64 48"
+# Stripe test mode (optional for local work)
+# STRIPE_SECRET_KEY="sk_test_..."
+# STRIPE_WEBHOOK_SECRET="whsec_... (printed by: stripe listen --forward-to localhost:8788/api/stripe/webhook)"
+# STRIPE_PRICE_HOBBY="price_..."
+# STRIPE_PRICE_PRO="price_..."

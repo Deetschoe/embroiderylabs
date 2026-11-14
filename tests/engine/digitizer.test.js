@@ -101,6 +101,38 @@ module.exports = {
       assert.deepStrictEqual(codes(odd), ['PARAM_CLAMPED']);
       assert.deepStrictEqual(Array.from(odd.ir.commands), Array.from(plain.ir.commands), 'an unknown pattern falls back to the smooth fill');
     });
+    t.test('line type raw sews exactly through the given points; machine files read back (js/editor/stitchfile.js) give the same needle points', () => {
+      const pts = []; for (let i = 0; i < 60; i++) pts.push([20 + i * 0.9, 30 + (i % 2 ? 3.1 : 0)]);
+      const raw = Engine.generate({ hoop: { width: 100, height: 100 }, objects: [{ id: 'a', type: 'polyline', points: pts, color: '#224466', paint: 'line', line: { type: 'raw' } }] });
+      assertSound(raw, 'raw line'); assert.deepStrictEqual(codes(raw), []);
+      const at = new Set(); for (let i = 0, c = raw.ir.commands; i < c.length; i += 3) if (c[i] === 0) at.add((c[i + 1] + 500) + ',' + (c[i + 2] + 500));
+      for (const p of pts) assert.ok(at.has(Math.round(p[0] * 10) + ',' + Math.round(p[1] * 10)), 'the needle does not land on ' + p);
+      // a design -> PES and DST -> the reader -> raw strokes -> the engine again: every original needle point is still sewn
+      globalThis.Engine = Engine;
+      const SF = require(path.join(__dirname, '..', '..', 'js', 'editor', 'stitchfile.js'));
+      const design = { hoop: { width: 100, height: 100 }, objects: [
+        { id: 'a', type: 'rect', x: 20, y: 20, width: 30, height: 20, color: '#aa2233', paint: 'fill' },
+        { id: 'b', type: 'ellipse', cx: 65, cy: 60, rx: 14, ry: 10, color: '#2255aa', paint: 'both', line: { type: 'satin', width: 2 } },
+        { id: 'c', type: 'polyline', points: [[15, 80], [40, 70], [80, 85]], color: '#22aa55', paint: 'line', line: { type: 'bean' } }] };
+      const first = Engine.generate(design), b = first.bounds, cx = (b.minX + b.maxX) / 2, cy = (b.minY + b.maxY) / 2;
+      const want = new Set(); for (let i = 0, c = first.ir.commands; i < c.length; i += 3) if (c[i] === 0) want.add(Math.round(c[i + 1] + 500 - cx * 10) + ',' + Math.round(c[i + 2] + 500 - cy * 10));
+      for (const fmt of ['pes', 'dst']) {
+        const file = Engine.exportFile(first, fmt), parsed = SF.read(file.bytes, 'x.' + fmt);
+        assert.ok(parsed.ok, fmt + ': ' + parsed.error);
+        assert.strictEqual(parsed.colors, 3, fmt + ': colour blocks');
+        assert.ok(Math.abs((parsed.bounds.x1 - parsed.bounds.x0) - b.width) < 0.11 && Math.abs((parsed.bounds.y1 - parsed.bounds.y0) - b.height) < 0.11, fmt + ': size');
+        const made = SF.toObjects(parsed, [[100, 100]], null);
+        assert.deepStrictEqual(made.hoop, { w: 100, h: 100 });
+        const again = Engine.generate({ hoop: { width: 100, height: 100 }, objects: made.objects.map(o => ({ id: o.id, type: 'polyline', points: o.pts, closed: false, color: o.color, paint: 'line', line: { type: 'raw' } })) });
+        assertSound(again, fmt + ' read back'); assert.ok(again.canExport, fmt + ': read back cannot be exported');
+        const b2 = again.bounds, got = new Set(), ox = (b2.minX + b2.maxX) / 2, oy = (b2.minY + b2.maxY) / 2;
+        for (let i = 0, c = again.ir.commands; i < c.length; i += 3) if (c[i] === 0) got.add(Math.round(c[i + 1] + 500 - ox * 10) + ',' + Math.round(c[i + 2] + 500 - oy * 10));
+        let missing = 0; for (const k of want) if (!got.has(k)) missing++;
+        assert.ok(missing <= want.size * 0.01, fmt + ': ' + missing + ' of ' + want.size + ' needle points were lost on the way back');
+      }
+      assert.strictEqual(SF.read(new Uint8Array([1, 2, 3]), 'x.pes').ok, false);
+      assert.strictEqual(SF.read(new Uint8Array(600), 'x.dst').ok, false, 'an empty DST has no stitches');
+    });
     t.test('fill: holes stay empty (donut, both fill rules)', () => {
       for (const key of ['donut', 'donutEvenOdd']) {
         const r = Engine.generate(C.fillDesign(C.FILL_SHAPES[key]));

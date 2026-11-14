@@ -5,16 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Embroidr - EmbroideryLabs</title>
 <meta name="description" content="Draw a design and export a stitch file for your embroidery machine (.PES or .DST). Free, runs in your browser, nothing is uploaded.">
+<meta name="color-scheme" content="light">
 <meta name="theme-color" content="#FAF9F6">
 <link rel="icon" href="emb.png">
-<script>(function(){var d=document.documentElement,t=null;try{t=localStorage.getItem('el-theme');if(t!=='light'&&t!=='dark'){t=localStorage.getItem('theme-mode');if(t==='light'||t==='dark')localStorage.setItem('el-theme',t);else t=null}}catch(e){t=null}if(!t){try{t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}catch(e){t='light'}}d.setAttribute('data-theme',t)})();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/editor.css">
+<link rel="stylesheet" href="css/tutorial.css">
 <script src="js/site.js" defer></script>
 <script src="js/engine/embwriter.js" defer></script>
+<script src="js/engine/lineart.js" defer></script>
 <script src="js/engine/digitize.js" defer></script>
 <script src="js/engine/engine.js" defer></script>
 <script src="js/editor/geom.js" defer></script>
@@ -22,12 +24,24 @@
 <script src="js/editor/view.js" defer></script>
 <script src="js/editor/io.js" defer></script>
 <script src="js/editor/svgimport.js" defer></script>
+<script src="js/trace/trace.js" defer></script>
+<script src="js/trace/client.js" defer></script>
 <script src="js/editor/trace.js" defer></script>
+<script src="js/editor/stitchfile.js" defer></script>
 <script src="js/editor/panels.js" defer></script>
+<script src="js/vendor/polygon-clipping.min.js" defer></script>
+<script src="js/editor/cut.js" defer></script>
 <script src="js/editor/tools.js" defer></script>
 <script src="js/editor/tabs.js" defer></script>
 <script src="js/editor/mockup.js" defer></script>
+<script src="js/editor/soundwave.js" defer></script>
+<script src="js/editor/tutorial.js" defer></script>
 <script src="js/editor/main.js" defer></script>
+<script src="js/config.js" defer></script>
+<script src="js/account.js" defer></script>
+<script src="js/market-rules.js" defer></script>
+<script src="js/market-api.js" defer></script>
+<script src="js/editor/publish.js" defer></script>
 </head>
 <body>
 <div class="ed" id="app">
@@ -38,12 +52,15 @@
       <button class="btn btn--ghost" type="button" id="btn-file" aria-haspopup="menu" aria-controls="file-menu" aria-expanded="false">File</button>
       <div class="menu menu--left" id="file-menu" role="menu" aria-label="File" hidden>
         <button type="button" role="menuitem" tabindex="-1" data-file="new"><span>New</span><small>A new design in its own tab.</small></button>
-        <button type="button" role="menuitem" tabindex="-1" data-file="open"><span>Open&hellip;</span><span class="num">&#8984;O</span><small>A saved design, an SVG, or a picture to trace.</small></button>
+        <button type="button" role="menuitem" tabindex="-1" data-file="open"><span>Open&hellip;</span><span class="num">&#8984;O</span><small>A saved design, a PES or DST file, an SVG, or a picture to trace.</small></button>
         <button type="button" role="menuitem" tabindex="-1" data-file="save"><span>Save</span><span class="num">&#8984;S</span><small>A design file you can open and edit again.</small></button>
+        <button type="button" role="menuitem" tabindex="-1" data-file="share"><span>Share to Marketplace&hellip;</span><small>Let others star it, open it or unlock it.</small></button>
         <button type="button" role="menuitem" tabindex="-1" data-file="export"><span>Export .PES</span><span class="num">&#8984;E</span><small>The file your machine sews.</small></button>
+        <button type="button" role="menuitem" tabindex="-1" data-file="sound"><span>Sound wave&hellip;</span><small>Turn 10 seconds of a song into a waveform design.</small></button>
         <button type="button" role="menuitem" tabindex="-1" data-file="mockup"><span>Mockup</span><small>See it on a hoodie or T-shirt and download a picture.</small></button>
       </div>
     </div>
+    <a class="btn btn--ghost hide-phone" href="market.html" id="btn-market">Marketplace</a>
     <label class="ed-bar__file"><span class="visually-hidden">Design name</span><input id="design-name" value="untitled" maxlength="60" spellcheck="false" autocomplete="off"><span class="num">.pes</span></label>
     <span class="ed-bar__state"><span class="tag" id="save-state">Saved on this device</span></span>
     <span class="ed-bar__spacer"></span>
@@ -52,8 +69,8 @@
     <span class="ed-bar__sep"></span>
     <div class="seg" role="group" aria-label="View"><button type="button" id="view-design" data-view="design" aria-pressed="true">Design</button><button type="button" id="view-stitch" data-view="stitch" aria-pressed="false">Stitch-out</button><button type="button" id="view-mockup" data-view="mockup" aria-pressed="false">Mockup</button></div>
     <button class="btn btn--ghost btn--icon ed-bar__help" type="button" id="btn-help" data-dialog-open="help" aria-label="Help and shortcuts" data-tip="Help" data-key="?" data-tip-pos="below"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M4.5 5.2a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.1.8-1.1 1.6M7 11.4v.2"/></svg></button>
-    <button class="btn btn--ghost btn--icon" type="button" data-theme-toggle aria-label="Switch theme" aria-pressed="false"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor"/></svg></button>
     <button class="btn btn--ghost btn--icon ed-bar__drawer" type="button" id="btn-drawer" aria-label="Layers and stitch-out" aria-controls="side" aria-expanded="false"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M1.5 2.5h11v9h-11zM8.5 2.5v9"/></svg></button>
+    <div class="acct" id="account-slot" hidden></div>
     <div class="split" id="export-group">
       <button class="btn btn--primary" type="button" id="btn-export" aria-disabled="true">Export .PES <kbd>⌘E</kbd></button>
       <button class="btn btn--primary btn--icon split__more" type="button" id="btn-export-menu" aria-label="Other file formats" aria-haspopup="menu" aria-controls="export-menu" aria-expanded="false"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3.5 5.5 7 9l3.5-3.5"/></svg></button>
@@ -77,6 +94,7 @@
     <button class="tool" type="button" data-tool="polygon" aria-pressed="false" aria-label="Polygon" data-tip="Polygon" data-key="G"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M9 2l6.5 4.7-2.5 7.8H5L2.5 6.7z"/></svg><span class="tool__key" aria-hidden="true">G</span></button>
     <span class="rail__sep"></span>
     <button class="tool" type="button" data-tool="eraser" aria-pressed="false" aria-label="Eraser" data-tip="Eraser" data-key="E"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M6.5 15 2.5 11l8-8 5 5-7 7zM6 7.5l5 5M8.5 15H16"/></svg><span class="tool__key" aria-hidden="true">E</span></button>
+    <button class="tool" type="button" data-tool="cut" aria-pressed="false" aria-label="Cut out" data-tip="Cut out" data-key="K"><svg viewBox="0 0 18 18" aria-hidden="true"><circle cx="4.5" cy="13.5" r="2.2"/><circle cx="13.5" cy="13.5" r="2.2"/><path d="M6.2 12 13 2.5M11.8 12 5 2.5"/></svg><span class="tool__key" aria-hidden="true">K</span></button>
     <button class="tool" type="button" data-tool="pan" aria-pressed="false" aria-label="Pan" data-tip="Pan" data-key="H or hold Space"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M9 2v14M2 9h14M9 2 7 4M9 2l2 2M9 16l-2-2M9 16l2-2M2 9l2-2M2 9l2 2M16 9l-2-2M16 9l-2 2"/></svg><span class="tool__key" aria-hidden="true">H</span></button>
     <button class="tool rail__end" type="button" id="btn-clear" aria-label="Clear design" data-tip="Clear design" data-key=""><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M3 5h12M7 5V3h4v2M4.5 5l.8 10h7.4l.8-10M7.5 8v4.5M10.5 8v4.5"/></svg></button>
   </nav>
@@ -107,6 +125,8 @@
       <section class="sec">
         <div class="sec__head"><span class="label">Stitch</span></div>
         <div class="sec__body">
+          <div class="prop"><span class="label">Style</span><div class="seg" role="group" aria-label="Stitch style" id="fill-style"><button type="button" data-fill-style="tatami" aria-pressed="true" title="Even rows that cover the whole shape">Fill</button><button type="button" data-fill-style="lineart" aria-pressed="false" title="For drawings and traced line art: thin lines are sewn along their middle, wide parts are filled">Line art</button></div></div>
+          <div class="prop" id="line-detail-row" hidden><span class="label">Detail</span><div class="seg" role="group" aria-label="Line art detail" id="line-detail"><button type="button" data-line-detail="fine" aria-pressed="false" title="Keeps the smallest lines and gaps">Fine</button><button type="button" data-line-detail="normal" aria-pressed="true">Normal</button><button type="button" data-line-detail="bold" aria-pressed="false" title="Merges tiny gaps and drops specks">Bold</button></div></div>
           <div class="prop"><label class="label" for="stitch-density">Density</label><div class="prop__pair"><input class="slider" type="range" id="stitch-density" min="0.2" max="2" step="0.1" value="0.4"><div class="input-unit"><input type="number" id="density-value" value="0.4" min="0.2" max="2" step="0.1" inputmode="decimal" aria-label="Row spacing in millimetres"><span>mm</span></div></div></div>
           <div class="prop"><label class="label" for="max-stitch-length">Max length</label><div class="prop__pair"><input class="slider" type="range" id="max-stitch-length" min="1" max="7" step="0.5" value="3"><div class="input-unit"><input type="number" id="max-stitch-value" value="3" min="1" max="7" step="0.5" inputmode="decimal" aria-label="Maximum stitch length in millimetres"><span>mm</span></div></div></div>
           <div class="prop"><label class="label" for="fill-angle">Fill angle</label><div class="prop__pair"><input class="slider" type="range" id="fill-angle" min="0" max="175" step="5" value="0"><div class="input-unit"><input type="number" id="fill-angle-value" value="0" min="0" max="175" step="5" inputmode="numeric" aria-label="Fill row angle in degrees"><span>deg</span></div></div></div>
@@ -132,9 +152,19 @@
         <div class="sec__head"><span class="label">SVG or picture</span></div>
         <div class="sec__body">
           <button class="btn btn--drop" type="button" id="trace-upload">Drop an SVG or a picture, or browse</button>
-          <input type="file" id="trace-input" accept=".embroidr,.json,application/json,.svg,image/svg+xml,image/png,image/jpeg,image/webp,image/gif" hidden>
-          <span class="field__hint">An SVG becomes shapes. A picture goes under your drawing to trace over and is not exported.</span>
+          <input type="file" id="trace-input" accept=".embroidr,.json,application/json,.pes,.pec,.dst,.svg,image/svg+xml,image/png,image/jpeg,image/webp,image/gif" hidden>
+          <span class="field__hint">An SVG becomes shapes. A picture can be turned into stitches, or traced over by hand.</span>
           <div class="trace" id="trace-controls" hidden>
+            <div class="stitchify" id="stitchify" aria-label="Turn the picture into stitches">
+              <div class="prop"><label class="label" for="trace-colors">Colours</label><div class="stitchify__count"><input class="slider" type="range" id="trace-colors" min="2" max="30" step="1" value="6" aria-describedby="trace-colors-value"><span class="num" id="trace-colors-value">Auto</span></div></div>
+              <label class="check-row stitchify__auto"><input class="check" type="checkbox" id="trace-colors-auto" checked><span>Pick the colours for me (up to 10)</span></label>
+              <div class="stitchify__swatches" id="trace-swatches" role="list" aria-label="Thread colours"></div>
+              <div class="stitchify__busy" id="trace-busy" hidden><span class="stitchify__bar" aria-hidden="true"><span id="trace-bar"></span></span><span class="num" id="trace-busy-text" role="status">Working</span><button class="btn btn--ghost" type="button" id="trace-cancel">Cancel</button></div>
+              <span class="stitchify__meta num" id="trace-meta" aria-live="polite"></span>
+              <span class="field__hint" id="trace-note" hidden></span>
+              <button class="btn btn--primary btn--block" type="button" id="trace-stitch">Turn into stitches</button>
+            </div>
+            <label class="check-row"><input class="check" type="checkbox" id="trace-show" checked><span>Show picture</span></label>
             <div class="prop"><label class="label" for="trace-opacity">Opacity</label><div class="prop__pair"><input class="slider" type="range" id="trace-opacity" min="5" max="100" step="5" value="50"><span class="num" id="opacity-value">50%</span></div></div>
             <div class="prop"><label class="label" for="trace-size">Width</label><div class="prop__pair"><input class="slider" type="range" id="trace-size" min="10" max="200" step="1" value="80"><span class="num" id="trace-size-value">80 mm</span></div></div>
             <label class="check-row"><input class="check" type="checkbox" id="trace-lock"><span>Lock picture in place</span></label>
@@ -208,6 +238,10 @@
         <div class="prop"><span class="label">Type</span><div class="seg" role="group" aria-label="Garment"><button type="button" data-garment="hoodie" aria-pressed="true">Hoodie</button><button type="button" data-garment="tee" aria-pressed="false">T-shirt</button></div></div>
         <div class="prop"><span class="label">View</span><div class="seg" role="group" aria-label="Side of the garment"><button type="button" data-side="front" aria-pressed="true">Front</button><button type="button" data-side="back" aria-pressed="false">Back</button></div></div>
       </div></section>
+      <div class="sec__head"><span class="label">Scene</span></div>
+      <section class="sec"><div class="sec__body">
+        <div class="prop"><span class="label">Setting</span><div class="seg" role="group" aria-label="Scene"><button type="button" data-scene="studio" aria-pressed="true" title="Plain white, like a product cut-out">Studio</button><button type="button" data-scene="wood" aria-pressed="false" title="Laid on a wooden floor, with its shadow">Wood floor</button></div></div>
+      </div></section>
       <div class="sec__head"><span class="label">Colour</span></div>
       <section class="sec"><div class="sec__body">
         <div class="mock__chips" id="mock-chips" role="group" aria-label="Garment colours"></div>
@@ -218,26 +252,35 @@
       </div></section>
     </aside>
     <div class="mock__stage" id="mock-stage">
-      <canvas id="mock-canvas" tabindex="0" aria-label="Mockup. Drag a design to move it, drag the garment to pan, scroll to zoom."></canvas>
+      <canvas id="mock-canvas" tabindex="0" aria-label="Mockup. Drag a layer to move it, a corner to resize it, the round handle to turn it. Drag the garment to pan, scroll to zoom. R turns the picked layer."></canvas>
       <div class="mock__busy" id="mock-busy" role="status" hidden></div>
       <div class="hud"><button type="button" data-mock-zoom="out" aria-label="Zoom out"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 7h8"/></svg></button><span class="num" id="mock-zoom">100%</span><button type="button" data-mock-zoom="in" aria-label="Zoom in"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 7h8M7 3v8"/></svg></button><button type="button" data-mock-zoom="fit" aria-label="Fit the garment"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M2 5V2h3M12 5V2H9M2 9v3h3M12 9v3H9"/></svg></button></div>
     </div>
-    <aside class="pane mock__right" aria-label="Designs on the garment">
-      <div class="sec__head"><span class="label" id="mock-side-name">On the front</span></div>
-      <div id="mock-placed" role="listbox" aria-label="Designs on this side"></div>
-      <div class="mock__empty" id="mock-placed-empty">Nothing here yet. Add a design below, then drag it into place.</div>
-      <section class="sec"><div class="sec__body">
-        <div class="prop" id="mock-scale-row"><label class="label" for="mock-scale">Size</label><div class="prop__pair"><input class="slider" type="range" id="mock-scale" min="25" max="300" step="5" value="100"><span class="num" id="mock-scale-value">100%</span></div></div>
+    <aside class="pane mock__right" aria-label="Layers">
+      <div class="sec__head"><span class="label">Layers</span><span class="num mock__side" id="mock-side-name">Front</span></div>
+      <div class="mock__layers" id="mock-layers" role="listbox" aria-label="Layers on this side, top first"></div>
+      <div class="mock__empty" id="mock-layers-empty">Nothing here yet. Add a design or an image below.</div>
+      <section class="sec mock__props" id="mock-props"><div class="sec__body">
+        <div class="prop" id="mock-scale-row"><label class="label" for="mock-scale">Size</label><div class="prop__pair"><input class="slider" type="range" id="mock-scale" min="10" max="400" step="5" value="100"><span class="num" id="mock-scale-value">100%</span></div></div>
+        <div class="prop" id="mock-rot-row"><label class="label" for="mock-rot">Rotation</label><div class="mock__rot"><input class="slider" type="range" id="mock-rot" min="-180" max="180" step="1" value="0"><div class="input-unit"><input type="number" id="mock-rot-value" min="-180" max="180" step="1" value="0" inputmode="numeric" aria-label="Rotation in degrees"><span>°</span></div><button class="mini" type="button" id="mock-rot-reset" aria-label="Reset rotation" title="Reset rotation"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.5A3.6 3.6 0 1 0 3.6 3.4M2.3 1.8l1.3 1.6-1.9.8"/></svg></button></div></div>
+        <div class="mock__img-props" id="mock-img-props" hidden>
+          <div class="prop"><label class="label" for="mock-opacity">Opacity</label><div class="prop__pair"><input class="slider" type="range" id="mock-opacity" min="0" max="100" step="1" value="100"><span class="num" id="mock-opacity-value">100%</span></div></div>
+          <div class="prop"><span class="label">Blend</span><div class="seg" role="group" aria-label="Blend"><button type="button" data-blend="normal" aria-pressed="true">Normal</button><button type="button" data-blend="multiply" aria-pressed="false">Multiply</button><button type="button" data-blend="screen" aria-pressed="false">Screen</button></div></div>
+        </div>
         <button class="btn btn--block" type="button" id="mock-true-size">Back to true size</button>
       </div></section>
-      <div class="sec__head"><span class="label">Add a design</span></div>
-      <section class="sec"><div class="sec__body"><div class="mock__adds" id="mock-adds"></div></div></section>
+      <div class="sec__head"><span class="label">Add</span></div>
+      <section class="sec"><div class="sec__body">
+        <div class="mock__adds" id="mock-adds"></div>
+        <button class="btn btn--block mock__add mock__add-img" type="button" id="mock-add-image"><span>Add image</span><svg viewBox="0 0 14 14" aria-hidden="true"><rect x="1.5" y="2.5" width="11" height="9" rx="1.5"/><path d="m2 10 3.2-3.2 2.3 2.3 1.6-1.6L12 10.4"/><circle cx="9.5" cy="5.2" r="1"/></svg></button>
+        <input type="file" id="mock-image-file" accept="image/png,image/jpeg,image/webp,image/svg+xml,.png,.jpg,.jpeg,.webp,.svg" multiple hidden>
+      </div></section>
       <div class="mock__foot">
         <div class="split mock__dl" id="mock-dl-group">
           <button class="btn btn--primary" type="button" id="mock-download">Download picture</button>
           <button class="btn btn--primary btn--icon split__more" type="button" id="mock-download-more" aria-label="More download options" aria-haspopup="menu" aria-controls="mock-download-menu" aria-expanded="false"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3.5 5.5 7 9l3.5-3.5"/></svg></button>
           <div class="menu mock__menu" id="mock-download-menu" role="menu" aria-label="Download as" hidden>
-            <button type="button" role="menuitem" tabindex="-1" data-dl="white"><span>White background</span><span class="num">.png</span><small>The garment on white. Same as the button.</small></button>
+            <button type="button" role="menuitem" tabindex="-1" data-dl="white"><span>As shown</span><span class="num">.png</span><small>The scene you see: white studio or wood floor. Same as the button.</small></button>
             <button type="button" role="menuitem" tabindex="-1" data-dl="transparent"><span>Transparent</span><span class="num">.png</span><small>The garment with nothing behind it.</small></button>
             <button type="button" role="menuitem" tabindex="-1" data-dl="thread"><span>Stitching only</span><span class="num">.png</span><small>Just the thread, on a clear background.</small></button>
           </div>
@@ -257,14 +300,17 @@
     <button type="button" data-tool="line">Line</button>
     <button type="button" data-tool="polygon">Polygon</button>
     <button type="button" data-tool="eraser">Eraser</button>
+    <button type="button" data-tool="cut">Cut out</button>
     <button type="button" data-tool="pan">Pan</button>
     <button type="button" data-action="new">New design</button>
     <button type="button" data-action="import">Open a file</button>
     <button type="button" data-action="save">Save design</button>
     <button type="button" data-action="mockup">Mockup</button>
+    <button type="button" data-action="share">Share to Marketplace</button>
+    <button type="button" data-action="market">Marketplace</button>
     <button type="button" data-action="example">Load example</button>
     <button type="button" data-dialog-open="help">Help</button>
-    <button type="button" data-theme-toggle>Switch theme</button>
+    <button type="button" data-tutorial-open>Tutorial</button>
     <button type="button" class="more__danger" data-action="clear">Clear design</button>
   </div>
   <div class="visually-hidden" id="live" role="status" aria-live="polite"></div>
@@ -281,10 +327,11 @@
           <tr><td><kbd>V</kbd> <kbd>P</kbd> <kbd>L</kbd></td><td>Select, pen, line</td></tr>
           <tr><td><kbd>R</kbd> <kbd>O</kbd> <kbd>G</kbd></td><td>Rectangle, ellipse, polygon</td></tr>
           <tr><td><kbd>E</kbd> <kbd>H</kbd></td><td>Eraser, pan</td></tr>
+          <tr><td><kbd>K</kbd></td><td>Cut out: draw around part of a shape to split it off, then change its thread or stitch style</td></tr>
           <tr><td><kbd>Space</kbd> + drag</td><td>Pan the view</td></tr>
           <tr><td><kbd>+</kbd> <kbd>-</kbd> <kbd>0</kbd></td><td>Zoom in, zoom out, fit the hoop</td></tr>
           <tr><td><kbd>Shift</kbd> + drag</td><td>Square, circle, straight angles, keep proportions</td></tr>
-          <tr><td><kbd>Enter</kbd> <kbd>Esc</kbd></td><td>Finish or cancel a polygon</td></tr>
+          <tr><td><kbd>Enter</kbd> <kbd>Esc</kbd></td><td>Finish or cancel a polygon or a cut-out outline</td></tr>
           <tr><td><kbd>⌘Z</kbd> <kbd>⇧⌘Z</kbd></td><td>Undo, redo</td></tr>
           <tr><td><kbd>⌘C</kbd> <kbd>⌘X</kbd> <kbd>⌘V</kbd></td><td>Copy, cut, paste</td></tr>
           <tr><td><kbd>⌘D</kbd> <kbd>⌘A</kbd></td><td>Duplicate, select all</td></tr>
@@ -298,7 +345,28 @@
     </div>
     <span class="field__hint">Touch: one finger draws, two fingers zoom and move the view.</span>
   </div>
-  <div class="dialog__foot"><button class="btn btn--primary" type="button" data-dialog-close>Done</button></div>
+  <div class="dialog__foot"><button class="btn" type="button" data-tutorial-open>Tutorial</button><button class="btn btn--primary" type="button" data-dialog-close>Done</button></div>
+</dialog>
+<dialog class="dialog dialog--wide" id="sound" aria-labelledby="sound-title">
+  <div class="dialog__head"><span class="label" id="sound-title">Sound wave</span><button class="btn btn--ghost btn--icon" type="button" data-dialog-close aria-label="Close"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8"/></svg></button></div>
+  <div class="dialog__body sound">
+    <button class="btn btn--drop" type="button" id="sound-pick">Pick a song or sound, or drop it here</button>
+    <input type="file" id="sound-input" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.oga,.flac,.aif,.aiff" multiple hidden>
+    <span class="field__hint">One file is split into bass, mids, vocals and highs. Pick several files (your own stems) and each gets a row. Nothing is uploaded.</span>
+    <span class="field__hint" id="sound-status" role="status"></span>
+    <div class="sound__controls" id="sound-controls" hidden>
+      <div class="sound__preview" id="sound-preview"></div>
+      <div class="prop"><label class="label" for="sound-start">10 seconds</label><div class="prop__pair"><input class="slider" type="range" id="sound-start" min="0" max="0" step="0.5" value="0"><span class="num" id="sound-start-val">0:00</span></div></div>
+      <div class="prop"><span class="label">Layout</span><div class="seg" role="group" aria-label="Layout" id="sound-layout"><button type="button" data-v="stems" aria-pressed="true">Stems square</button><button type="button" data-v="wave" aria-pressed="false">One wave</button></div></div>
+      <div class="prop" id="sound-rows-prop"><span class="label">Rows</span><div class="seg" role="group" aria-label="Rows" id="sound-rows"><button type="button" data-v="4" aria-pressed="false">4</button><button type="button" data-v="5" aria-pressed="true">5</button></div></div>
+      <div class="prop"><span class="label">Style</span><div class="seg" role="group" aria-label="Style" id="sound-style"><button type="button" data-v="fill" aria-pressed="true">Filled</button><button type="button" data-v="line" aria-pressed="false">Line</button><button type="button" data-v="bars" aria-pressed="false">Bars</button></div></div>
+      <div class="prop" id="sound-size-prop"><label class="label" for="sound-size">Size</label><div class="prop__pair"><input class="slider" type="range" id="sound-size" min="60" max="300" step="5" value="180"><span class="num" id="sound-size-val"></span></div></div>
+      <div class="prop" id="sound-width-prop"><label class="label" for="sound-width">Width</label><div class="prop__pair"><input class="slider" type="range" id="sound-width" min="40" max="380" step="5" value="180"><span class="num" id="sound-width-val"></span></div></div>
+      <div class="prop" id="sound-height-prop"><label class="label" for="sound-height">Height</label><div class="prop__pair"><input class="slider" type="range" id="sound-height" min="10" max="200" step="5" value="60"><span class="num" id="sound-height-val"></span></div></div>
+      <span class="field__hint" id="sound-note"></span>
+    </div>
+  </div>
+  <div class="dialog__foot"><button class="btn" type="button" id="sound-svg" disabled>Download SVG</button><button class="btn btn--primary" type="button" id="sound-make" disabled>Open as design</button></div>
 </dialog>
 </body>
 </html>

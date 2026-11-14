@@ -29,12 +29,13 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  const VERSION = '1.0.0';
+  const VERSION = '1.1.0';
   const now = () => (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now());
 
   const DEFAULTS = {
     width: 100,            // mm, finished width of the picture; the height follows the picture's shape
-    colors: 6,             // most thread colours to use
+    colors: 6,             // most thread colours to use, or 'auto': the fewest that show the picture well (see chooseColours)
+    maxColors: 10,         // with colors 'auto': never more than this
     detail: 'medium',      // 'low' | 'medium' | 'high'
     background: 'auto',    // 'auto' | 'on' | 'off'  (remove the background?)
     mode: 'auto',          // 'auto' | 'logo' | 'photo'
@@ -44,7 +45,7 @@
     hoop: null,            // { width, height } mm: centre the picture in it (unless x / y are given) and warn if it does not fit
   };
   const LIMITS = {
-    width: [10, 400], colors: [2, 12],
+    width: [10, 400], colors: [2, 30],
     inputPixels: 40e6,     // refuse pictures larger than this (downsample with a canvas first, see API.md)
     workPixels: 1400000,   // the working raster never exceeds this; resolution is lowered for huge designs
     objects: 1500,         // more shapes than this are not returned (the smallest are dropped)
@@ -69,6 +70,7 @@
     borderShare: 0.6,      // drawings: share of the picture's edge one plain colour needs to count as the background
     smallPrint: 3.2,       // mm: tangles of hairlines lower than this (tiny lettering) are left out
     runBelow: 0.35,        // mm: thinner source lines get a single running stitch, wider ones a bean stitch
+    blendsAbove: 12,       // flat art traced with more colours than this: edge blends are not given a colour (withoutBlends)
     blendTexture: true,    // texture finer than thread can show is blended to its average colour
     inlaidShare: 0.3,      // a fill with at least this share of its edge against earlier fills is sewn without underlay
     underlap: 0.45,        // mm: how far an earlier colour reaches under the colours sewn after it
@@ -176,7 +178,9 @@
       return v;
     };
     out.width = num('width', LIMITS.width[0], LIMITS.width[1], false);
-    out.colors = num('colors', LIMITS.colors[0], LIMITS.colors[1], true);
+    out.maxColors = num('maxColors', LIMITS.colors[0], LIMITS.colors[1], true);
+    if (o.colors === 'auto') out.colors = 'auto';
+    else out.colors = num('colors', LIMITS.colors[0], LIMITS.colors[1], true);
     out.detail = pick('detail', ['low', 'medium', 'high']);
     if (o.background === true || o.background === false) out.background = o.background ? 'on' : 'off';
     else out.background = pick('background', ['auto', 'on', 'off']);
@@ -448,7 +452,8 @@
 
   // ====================================================================== 2. colours
   /* Weighted k-means in Lab over a colour histogram. Deterministic: no random numbers anywhere. */
-  function buildPalette(P, weightOf, K) {
+  /* The colour histogram k-means works on: opaque pixels with a weight, binned in Lab. */
+  function colourBins(P, weightOf) {
     const { N, L, A, B, opaque } = P;
     const QL = 64, QA = 64, bins = new Map();
     let pts = 0;
@@ -464,9 +469,14 @@
       if (id === undefined) { id = pts++; bins.set(key, id); bw.push(0); bl.push(0); ba.push(0); bb.push(0); }
       bw[id] += w; bl[id] += l * w; ba[id] += a * w; bb[id] += b * w;
     }
-    if (!pts) return { centers: [], total: 0 };
     let total = 0;
     for (let i = 0; i < pts; i++) { bl[i] /= bw[i]; ba[i] /= bw[i]; bb[i] /= bw[i]; total += bw[i]; }
+    return { pts, bw, bl, ba, bb, total };
+  }
+  function buildPalette(P, weightOf, K) { return kmeansBins(colourBins(P, weightOf), K); }
+  function kmeansBins(H, K) {
+    const { pts, bw, bl, ba, bb, total } = H;
+    if (!pts) return { centers: [], total: 0 };
     // Hue and colourfulness count double here, and a small patch counts for more than its size (weight ^ 0.6):
     // otherwise five shades of the largest colour are chosen and the one bright accent (an eye, a flower) is lost.
     // seeding: heaviest bin, then repeatedly the bin with the largest weight x squared distance to the chosen ones
@@ -509,10 +519,57 @@
     for (let j = 0; j < k; j++) if (wsum[j] > 0) centers.push({ L: cl[j], a: ca[j], b: cb[j], w: wsum[j] });
     return { centers, total, rms: Math.sqrt(err / total) };
   }
+  /* Share of the histogram's weight lying further than `far` (OKLab) from every centre: a colour the palette misses. */
+  function missedShare(H, centers, far) {
+    let miss = 0; const f2 = far * far;
+    for (let i = 0; i < H.pts; i++) {
+      let bd = Infinity;
+      for (const c of centers) { const dl = H.bl[i] - c.L, da = H.ba[i] - c.a, db = H.bb[i] - c.b, d = dl * dl + da * da + db * db; if (d < bd) bd = d; }
+      if (bd > f2) miss += H.bw[i];
+    }
+    return H.total ? miss / H.total : 0;
+  }
+  /* colours 'auto': the fewest thread colours that show the picture well, never more than `cap`.
+     Generator: yields progress 0..1, returns { colors, curve }. The palette step is run for k = 1, 2, ... on the same
+     colour histogram the real palette uses (with the border background in it as one more colour, bgSlot = 1, when it
+     will be taken out; it is not a thread and does not count against cap), and for each k two things are measured
+     in OKLab: rms, the average colour error, and miss, the share of the picture further than AUTO.far from every
+     palette colour (a colour with no thread close to it). The count is the smallest k >= 2 where either
+       a) the picture is flat art and is fully explained: rms <= AUTO.flat, miss <= AUTO.flatMiss, and two more
+          threads would lower rms by no more than a third of AUTO.flat (a pale picture's faint colours still count), or
+       b) nothing sizeable is missed (miss <= AUTO.miss for photographs, AUTO.logoMiss for flat art) and two more threads would cut rms by less than AUTO.gain
+          (diminishing returns: photographs, gradients),
+     or `cap` when neither happens. Colour distances scale with the picture's contrast (spreadK) like everywhere else. */
+  function* chooseColours(P, weightOf, spreadK, cap, bgSlot, photo) {
+    const missOk = photo ? AUTO.miss : AUTO.logoMiss;
+    const H = colourBins(P, weightOf);
+    const curve = [];
+    const last = Math.min(LIMITS.colors[1] + bgSlot, cap + bgSlot + 1);
+    for (let k = 1; k <= last; k++) {
+      const pal = kmeansBins(H, k);
+      curve.push({ k, n: pal.centers.length, rms: pal.rms || 0, miss: missedShare(H, pal.centers, AUTO.far * spreadK) });
+      yield k / last;
+      if (pal.centers.length < k) break;            // the picture has no more distinct colours
+    }
+    const at = k => curve[Math.min(k, curve.length) - 1];
+    let k = 0;
+    for (let j = 2 + bgSlot; j <= cap + bgSlot && !k; j++) {
+      const p = at(j);
+      if (p.k < j) k = p.n;                                                     // ran out of colours
+      else if (p.rms <= AUTO.flat * spreadK && p.miss <= AUTO.flatMiss && p.rms - at(j + 2).rms <= AUTO.flat * spreadK / 3) k = j;
+      else if (p.miss <= missOk && p.rms > 0 && (p.rms - at(j + 2).rms) / p.rms < AUTO.gain) k = j;
+    }
+    if (!k) k = Math.min(cap + bgSlot, curve[curve.length - 1].n);
+    curve.forEach(c => { c.rms = Math.round(c.rms * 1e4) / 1e4; c.miss = Math.round(c.miss * 1e4) / 1e4; });
+    return { colors: Math.max(2, Math.min(cap, k - bgSlot)), curve, background: bgSlot };
+  }
+  const AUTO = { far: 0.07, flat: 0.012, flatMiss: 0.002, miss: 0.02, logoMiss: 0.005, gain: 0.2 };
+
   const labDist = (p, q) => Math.sqrt((p.L - q.L) * (p.L - q.L) + (p.a - q.a) * (p.a - q.a) + (p.b - q.b) * (p.b - q.b));
   /* Merge centres that would be the same thread, closest pair first; drop centres with too little weight. */
-  function mergePalette(centers, mergeDist, minWeight) {
+  function mergePalette(centers, mergeDist, minWeight, dropBlends) {
     centers = centers.map(c => ({ L: c.L, a: c.a, b: c.b, w: c.w }));
+    if (dropBlends) centers = withoutBlends(centers, mergeDist, minWeight);
     for (;;) {
       if (centers.length <= 1) break;
       let bi = -1, bj = -1, bd = Infinity;
@@ -527,6 +584,38 @@
       const t = q.w / w, tt = t < 0.25 ? t * 0.5 : t > 0.75 ? 1 - (1 - t) * 0.5 : t;
       centers[bi] = { L: p.L + (q.L - p.L) * tt, a: p.a + (q.a - p.a) * tt, b: p.b + (q.b - p.b) * tt, w };
       centers.splice(bj, 1);
+    }
+    return centers;
+  }
+
+  /* Flat art with more palette slots than colours: the spare slots go to the blend along edges (between a colour and
+     its neighbour, or the page), which would be sewn as hairlines of an in-between thread. A centre is such a blend when
+     it lies on the straight line between two other centres (within mergeDist, not at either end) and holds less than a
+     quarter of the lighter of them, or when it is too small to be a shape at all (under minWeight). It joins the nearer
+     end. Lightest blends first, until none is left. */
+  function withoutBlends(centers, mergeDist, minWeight) {
+    for (let guard = 0; guard < 64 && centers.length > 2; guard++) {
+      let drop = -1, into = -1;
+      const order = centers.map((c, i) => i).sort((p, q) => centers[p].w - centers[q].w);
+      for (const i of order) {
+        const c = centers[i];
+        let bestD = Infinity, bestTo = -1;
+        for (let p = 0; p < centers.length; p++) for (let q = p + 1; q < centers.length; q++) {
+          if (p === i || q === i) continue;
+          const A = centers[p], B = centers[q];
+          if (c.w * 4 > Math.min(A.w, B.w) && c.w >= minWeight) continue;
+          const dl = B.L - A.L, da = B.a - A.a, db = B.b - A.b, len2 = dl * dl + da * da + db * db;
+          if (len2 < 1e-9) continue;
+          const t = ((c.L - A.L) * dl + (c.a - A.a) * da + (c.b - A.b) * db) / len2;
+          if (t < 0.08 || t > 0.92) continue;
+          const el = A.L + t * dl - c.L, ea = A.a + t * da - c.a, eb = A.b + t * db - c.b, d = Math.sqrt(el * el + ea * ea + eb * eb);
+          if (d < mergeDist && d < bestD) { bestD = d; bestTo = t < 0.5 ? p : q; }
+        }
+        if (bestTo >= 0) { drop = i; into = bestTo; break; }
+      }
+      if (drop < 0) break;
+      centers[into] = Object.assign({}, centers[into], { w: centers[into].w + centers[drop].w });
+      centers.splice(drop, 1);
     }
     return centers;
   }
@@ -1122,7 +1211,8 @@
     if (P.nOpaque < 4) { warn('EMPTY_IMAGE', 'error', 'The picture is completely transparent, so there is nothing to sew.'); return finish(null); }
 
     // ---- 2. logo or photo?
-    const probe = buildPalette(P, () => 1, 12);
+    // (flat art with more colours than 12 is still flat art when that many are asked for: the probe grows with the ask)
+    const probe = buildPalette(P, () => 1, Math.max(12, opt.colors === 'auto' ? opt.maxColors : opt.colors));
     /* How far apart the picture's colours are at all (OKLab, between probe colours holding 1% of it or more).
        Every colour threshold below is written for a picture of ordinary contrast; a very pale one (cream on
        white, light grey on white) has all its colours inside what would otherwise count as "the same colour",
@@ -1191,11 +1281,19 @@
       for (let j = 0; j < centers.length; j++) { const d = labDist(centers[j], bgLab); if (d < bd) { bd = d; bgLabel = j; } }
       if (bd > 0.08 * spreadK && opt.background !== 'on') bgLabel = -1;
     };
+    // colours 'auto': pick the count first, then everything below runs exactly as for a number asked for
+    let autoColours = null;
+    if (opt.colors === 'auto') {
+      const gen = chooseColours(P, weightOf, spreadK, opt.maxColors, bgLab && opt.holes ? 1 : 0, photo);
+      for (;;) { const s = gen.next(); if (s.done) { autoColours = s.value; break; } yield 0.3 + 0.06 * s.value; }
+      opt.colors = autoColours.colors;
+    }
+    const manyColours = !photo && opt.colors > SEW.blendsAbove;     // see withoutBlends
     const colourise = extra => {
       pal = buildPalette(P, weightOf, opt.colors + extra);
-      centers = mergePalette(pal.centers, mergeDist, photo ? 0 : minPx * 2);
+      centers = mergePalette(pal.centers, mergeDist, photo ? 0 : minPx * 2, manyColours);
       findBg();
-      if (bgLabel < 0 && centers.length > opt.colors) { pal = buildPalette(P, weightOf, opt.colors); centers = mergePalette(pal.centers, mergeDist, photo ? 0 : minPx * 2); findBg(); }
+      if (bgLabel < 0 && centers.length > opt.colors) { pal = buildPalette(P, weightOf, opt.colors); centers = mergePalette(pal.centers, mergeDist, photo ? 0 : minPx * 2, manyColours); findBg(); }
       // a colour that only ever appears as hairlines (a pen drawing) has no solid pixels to vote for it: when many
       // thin-line pixels point at no colour of the palette, add the colour they point at
       if (!photo && centers.length < opt.colors + (bgLabel >= 0 && extra ? 1 : 0)) {
@@ -1276,7 +1374,7 @@
     colourise(bgLab && opt.holes ? 1 : 0);
     // the background colour turned out to be one of the picture's own colours too: it has to fit into the number asked for
     if (INTERNAL.hook) INTERNAL.hook('labels', { label: label.slice(), kind: cls.kind, W, H, centers, mmPx: P.mmpp });
-    if (removeBackground() && bgLab && opt.holes && centers.length > opt.colors) { colourise(0); removeBackground(); }
+    if (removeBackground() && bgLab && opt.holes && centers.length > opt.colors && !(autoColours && centers.length <= opt.maxColors)) { colourise(0); removeBackground(); }
     /* A line drawn with a pencil, a soft brush or at low resolution is dark in the middle and paler at its edge, and
        the paler shade can win a place in the palette. Sewn, that is one line cut into bits of two threads. A colour
        that (a) is a mixture of the background and another colour, (b) is thin everywhere, and (c) lies against that
@@ -1882,7 +1980,7 @@
     if (bgInfo.removed && bgInfo.reason === 'border') warn('BACKGROUND_REMOVED', 'info', 'The plain background (' + bgInfo.color + ') was left out, so the fabric shows there.', { color: bgInfo.color });
     if (lowRes && !(colors.length === 1 && kept.length === 1)) warn('LOW_RESOLUTION', 'warning', 'The picture is small for this size (' + image.width + ' pixels across ' + Math.round(opt.width) + ' mm), so edges may come out soft or wobbly. A larger picture traces better.', { pixels: image.width, widthMm: opt.width });
     if (colors.length === 1 && kept.length === 1 && !bgInfo.removed) warn('SINGLE_COLOR', 'info', 'The picture is one flat colour, so the result is a single filled shape.');
-    if (!photo && colors.length < requested && pal.centers.length > centers.length) warn('COLORS_MERGED', 'info', 'The picture has only ' + colors.length + (colors.length === 1 ? ' clearly different colour, so 1 thread is' : ' clearly different colours, so ' + colors.length + ' threads are') + ' used instead of ' + requested + '.', { colors: colors.length, requested });
+    if (!autoColours && !photo && colors.length < requested && pal.centers.length > centers.length) warn('COLORS_MERGED', 'info', 'The picture has only ' + colors.length + (colors.length === 1 ? ' clearly different colour, so 1 thread is' : ' clearly different colours, so ' + colors.length + ' threads are') + ' used instead of ' + requested + '.', { colors: colors.length, requested });
     const lostShare = lost / Math.max(1, P.nOpaque);
     if (lostShare > 0.03 || thinDropped > 0.004 * P.nOpaque) warn('DETAIL_LOST', lostShare > 0.12 ? 'warning' : 'info', 'Some fine detail is too small to sew at this size and was merged into its surroundings (about ' + Math.max(1, Math.round(lostShare * 100)) + '% of the picture). Small text under about 5 mm tall does not survive.', { share: Math.round(lostShare * 1000) / 1000 });
     if (tinyObjects > 25 || kept.length > 220) warn('MANY_SMALL_SHAPES', 'warning', 'There are ' + kept.length + ' separate shapes (' + tinyObjects + ' of them tiny). Every one costs a thread trim. Fewer colours or less detail gives a cleaner sew.', { shapes: kept.length, tiny: tinyObjects });
@@ -1890,7 +1988,7 @@
     if (estStitches > 60000) warn('MANY_STITCHES', 'warning', 'About ' + Math.round(estStitches / 1000) + ',000 stitches: a long sew and a stiff patch of thread. A smaller size or leaving the background out helps.', { stitches: Math.round(estStitches) });
     if (fallbackRings) out.fallbackRings = fallbackRings;
     lap('finish');
-    return finish(P, { objects: kept, colors, background: bgInfo, mode, points, estStitches, regions: seq.length, lines: kept.filter(o => o.type === 'polyline').length, explained, flatShare, borderShare, spread });
+    return finish(P, { objects: kept, colors, background: bgInfo, mode, points, estStitches, regions: seq.length, lines: kept.filter(o => o.type === 'polyline').length, explained, flatShare, borderShare, spread, autoColours });
 
     function finish(P_, x) {
       x = x || {};
@@ -1907,6 +2005,7 @@
           points: x.points || 0, estimatedStitches: Math.round(x.estStitches || 0),
           workWidth: P_ ? P_.W : 0, workHeight: P_ ? P_.H : 0, mmPerPixel: P_ ? Math.round(P_.mmpp * 1000) / 1000 : 0,
           timeMs: Math.round((now() - t0) * 10) / 10, stages,
+          autoColors: x.autoColours ? { picked: x.autoColours.colors, max: out.options.maxColors, curve: x.autoColours.curve } : null,
           detect: { explained: Math.round((x.explained || 0) * 1000) / 1000, flat: Math.round((x.flatShare || 0) * 1000) / 1000, border: Math.round((x.borderShare || 0) * 1000) / 1000, spread: Math.round((x.spread || 0) * 1000) / 1000 },
         },
         warnings,
@@ -1993,6 +2092,6 @@
     version: VERSION, DEFAULTS, LIMITS, THREADS: THREADS.map((t, i) => ({ index: i + 1, name: t[3], hex: hexOf(t) })),
     trace, traceAsync, toPolygon, toEditorObjects,
     // exposed for tests and tools; may change
-    _internal: Object.assign(INTERNAL, { SEW, DETAIL, resample, traceRings, smoothRing, ringsIntersect, ringArea, components, rgbToLab, labToRgb, colorName, nearestThread, fixSaddles, thin, skeletonPaths }),
+    _internal: Object.assign(INTERNAL, { AUTO, SEW, DETAIL, resample, traceRings, smoothRing, ringsIntersect, ringArea, components, rgbToLab, labToRgb, colorName, nearestThread, fixSaddles, thin, skeletonPaths }),
   };
 });

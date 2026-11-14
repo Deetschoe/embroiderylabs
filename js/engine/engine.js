@@ -8,8 +8,9 @@
  *                                      falling back to the main thread when a worker cannot start
  *
  * Loads three ways, no bundler:
- *   page:    <script src="js/engine/embwriter.js">, digitize.js, engine.js  -> window.Engine
- *   worker:  importScripts('embwriter.js', 'digitize.js', 'engine.js')      -> self.Engine
+ *   page:    <script src="js/engine/lineart.js">, embwriter.js, digitize.js, engine.js  -> window.Engine
+ *   worker:  importScripts('lineart.js', 'embwriter.js', 'digitize.js', 'engine.js')    -> self.Engine
+ *            (lineart.js is optional: without it the 'lineart' fill style falls back to the normal fill)
  *   node:    const Engine = require('./js/engine/engine.js')
  *
  * Everything runs in the browser. Nothing here talks to a server.
@@ -332,6 +333,7 @@
   Engine.OP = OP;
   Engine.DEFAULTS = Digitizer.DEFAULTS;
   Engine.FILL_PATTERNS = Digitizer.FILL_PATTERNS;   // { key: { label } }: the values `fill.pattern` accepts
+  Engine.FILL_STYLES = Digitizer.FILL_STYLES;       // { tatami, lineart }: the values `fill.style` accepts, each { label }
   Engine.LIMITS = Digitizer.LIMITS;
   Engine.FORMATS = FORMATS;
   Engine.generate = generate;

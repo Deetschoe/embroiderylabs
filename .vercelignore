@@ -3,8 +3,12 @@
 venv/
 tests/
 archive/
+designs/src/
 __pycache__/
 Dockerfile
 .dockerignore
 nginx.conf
 *.md
+
+# The API (Cloudflare Worker) is deployed separately: server/README.md
+server/

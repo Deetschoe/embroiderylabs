@@ -56,6 +56,13 @@
     }
     out.checks.files = files; out.checks.identical = identical;
 
+    // line art (fill.style 'lineart', lineart.js): the worker, the main thread and node give the same stitches
+    for (const [label, client] of [['worker', w], ['main', m]]) {
+      const t0 = performance.now(), r = await client.generate(T.designs.lineart);
+      out.timings[label + ' lineart'] = Math.round(performance.now() - t0);
+      out.hashes[label + ':lineart.ir'] = T.hash(irBytes(r)); out.checks[label + 'LineartCodes'] = r.warnings.map(x => x.code);
+    }
+
     // newest generate wins
     const [a, b, c] = await Promise.all([w.generate(T.designs.patch), w.generate(T.designs.full), w.generate(T.designs.testsew)]);
     out.checks.stale = [a ? a.name : null, b ? b.name : null, c ? c.name : null];

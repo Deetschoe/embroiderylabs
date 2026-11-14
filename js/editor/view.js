@@ -592,7 +592,6 @@
     V.resize();
     if (window.ResizeObserver) new ResizeObserver(function () { V.resize(); }).observe(el.view);
     window.addEventListener('resize', function () { V.resize(); });
-    document.addEventListener('el:themechange', function () { V.applyFabric(); });
     Editor.on('change', function (e) {
       if (e && (e.reason === 'Change hoop' || e.reason === 'load' || e.reason === 'undo' || e.reason === 'redo')) {
         var key = M.doc.hoop.w + 'x' + M.doc.hoop.h;

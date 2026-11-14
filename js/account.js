@@ -298,8 +298,7 @@
       loadGis().then(function (id) {
         if (!document.body.contains(g)) return;
         g.textContent = '';
-        var dark = document.documentElement.getAttribute('data-theme') === 'dark';
-        id.renderButton(g, { type: 'standard', theme: dark ? 'filled_black' : 'outline', size: 'large', text: 'signin_with', shape: 'pill', logo_alignment: 'left' });
+        id.renderButton(g, { type: 'standard', theme: 'outline', size: 'large', text: 'signin_with', shape: 'pill', logo_alignment: 'left' });
       }, function (err) { g.textContent = ''; g.appendChild(el('span', 'field__hint', err.message)); });
     });
   }

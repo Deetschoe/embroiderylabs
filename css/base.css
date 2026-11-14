@@ -8,6 +8,7 @@
    ========================================================================== */
 
 /* ---------- 1. TOKENS ---------------------------------------------------- */
+/* Light mode only: there is no dark palette and the OS setting is ignored. */
 :root {
   color-scheme: light;
 
@@ -44,9 +45,8 @@
   /* Work surface (hero, canvas desk, empty states): plain, no grid */
   --grid: none;
 
-  /* Fabric = the hoop field. It is the garment, not the theme: it stays light
-     in the dark theme so dark thread stays visible. The editor lets the user
-     change it. --fabric-ink is the mark colour that sits on it. */
+  /* Fabric = the hoop field. It is the garment, not the page: the editor lets
+     the user change it. --fabric-ink is the mark colour that sits on it. */
   --fabric:        #FFFFFF;
   --fabric-ink:    #2B2D31;
   --fabric-signal: #3E78B2;   /* selection / needle colour ON the fabric (not --signal) */
@@ -102,24 +102,8 @@
   --z-drawer: 40; --z-head: 50; --z-sheet: 60; --z-dock: 61; --z-tip: 70; --z-toast: 90;
 }
 
-/* Dark - soft charcoal, neutral */
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --bg: #1B1C1F; --panel: #222327; --raised: #2A2C31; --sunken: #17181B; --hover: #33353B;
-  --ink-1: #E9E8E4; --ink-2: #B9B8B3; --ink-3: #9C9B96; --ink-inv: #222327;
-  --line-1: #34363C; --line-2: #70727A; --line-3: #45474E;
-  --signal: #8FB3D6; --signal-text: #A3C3E2; --signal-ink: #14202B;
-  --ok: #7CC79A; --warn: #E0BA6A; --bad: #F08A93;
-  --fabric: #ECEAE4;
-  --scrim: rgb(0 0 0 / .55);
-  --shadow-pop: 0 0 0 1px var(--line-1), 0 18px 48px rgb(0 0 0 / .5);
-  --shadow-soft: 0 1px 2px rgb(0 0 0 / .4);
-  --shadow-sheet: 0 -8px 32px rgb(0 0 0 / .45);
-}
-
 /* Paper scope: anything that is literally a printed sheet (the tech-pack page).
-   Re-declares the light values, so every component inside it renders light in
-   both themes. */
+   Re-declares the light values, so every component inside it renders as on paper. */
 .paper {
   color-scheme: light;
   --bg: #FFFFFF; --panel: #FAF9F6; --raised: #FFFFFF; --sunken: #E9E6DF; --hover: #EFEDE7;
@@ -421,7 +405,6 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   font: var(--w-bold) 15px/1 var(--font-ui); letter-spacing: -.01em; white-space: nowrap; }
 .brand b { font-weight: var(--w-regular); color: var(--ink-2); }
 .brand__mark { width: 24px; height: 24px; flex: none; object-fit: contain; }
-:root[data-theme="dark"] .brand__mark { filter: invert(1); }   /* emb.png is black on transparent */
 .nav { display: flex; align-items: center; gap: 2px; overflow-x: auto; scrollbar-width: none; margin-left: auto; }
 .nav::-webkit-scrollbar { display: none; }
 .nav a { display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 var(--s-3); border-radius: var(--r-1); color: var(--ink-2); text-decoration: none; white-space: nowrap;
@@ -545,7 +528,7 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 
 /* ---------- 7. PRINT (must stay last) -------------------------------------- */
 @media print {
-  :root, :root[data-theme="dark"] {
+  :root {
     color-scheme: light;
     --bg: #FFFFFF; --panel: #FFFFFF; --raised: #FFFFFF; --sunken: #F0F0EC; --hover: #FFFFFF;
     --ink-1: #1E2023; --ink-2: #45484D; --ink-3: #5F6268; --ink-inv: #FFFFFF;

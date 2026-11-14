@@ -558,7 +558,6 @@
     });
     if (window.ResizeObserver) new ResizeObserver(function () { invalidate(); }).observe(el.stage);
     window.addEventListener('resize', invalidate);
-    document.addEventListener('el:themechange', invalidate);
     Editor.on('tabs', function () { if (open) { prepareAll().then(function () { renderLists(); invalidate(); }); renderLists(); } });
     Editor.on('units', function () { if (open) renderLists(); });
     renderControls();

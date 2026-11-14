@@ -29,20 +29,38 @@ const dirOf = (p, q) => deg(Math.atan2(q[1] - p[1], q[0] - p[0]));
 const line = (p, q, n) => range(0, 1, n || 6).map(t => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]);
 
 /* ================= branch ================= */
-const twig = (name, pts, w) => add(name, stroke(smooth(pts, 8)), { color: C.wood, paint: 'line', lineType: 'satin', lineWidth: w });
-twig('Twig left', [[-19, 30], [-29, 16], [-36, 2], [-40, -10]], 2.3);
+/* a twig is left out where it passes under the heart of a blossom (gaps: [x, y, r]) */
+const twig = (name, pts, w, gaps) => {
+  const all = smooth(pts, 8), parts = [[]];
+  all.forEach(p => { if ((gaps || []).some(c => Math.hypot(p[0] - c[0], p[1] - c[1]) < c[2])) { if (parts[parts.length - 1].length) parts.push([]); } else parts[parts.length - 1].push(p); });
+  parts.filter(q => q.length > 2).forEach((q, k, a) => add(name + (a.length > 1 ? ' ' + (k + 1) : ''), stroke(q), { color: C.wood, paint: 'line', lineType: 'satin', lineWidth: w }));
+};
+twig('Twig left', [[-20.6, 27.6], [-29, 16], [-36, 2], [-40, -10]], 2.3);
 twig('Twig right', [[5, 6], [19, 6.5], [31, 2], [41, -6]], 2.2);
-twig('Twig upper', [[14, -10], [6, -23], [0.5, -36], [-3, -49]], 2.0);
+twig('Twig upper', [[14, -10], [6, -23], [0.5, -36], [-3, -49]], 2.0, [[0.5, -33.5, 7]]);
 twig('Twig lower', [[-33, 42], [-27, 48.5], [-21, 52]], 2.0);
 const mainSpine = smooth([[-47, 55], [-34, 43], [-20, 31], [-6, 19], [6, 5], [15, -11], [22, -28], [27, -44], [30, -55]], 8);
 const mainW = t => 3.1 - 2.1 * Math.pow(t, 0.85) + 0.22 * Math.sin(t * 27) * (1 - t);
-const main = blade(mainSpine, mainW);
-add('Branch', poly(main.outline), { color: C.wood, angle: dirOf(mainSpine[0], mainSpine[40]) + 12, stitchLen: 2.6 });
+/* the branch is left out under the hearts of the blossoms that sit on it, so thread does not pile up there */
+const onBranch = [[-12, 25.5, 7.5, 12.5], [11, -2.5, 8, 12], [26.5, -34, 7.5, 11.5]]; /* centre, branch gap, shadow gap */
+const runsOf = j => {
+  const n = mainSpine.length - 1, keep = mainSpine.map(p => onBranch.every(c => Math.hypot(p[0] - c[0], p[1] - c[1]) >= c[j])), out = [];
+  let i0 = -1;
+  for (let i = 0; i <= n + 1; i++) {
+    if (i <= n && keep[i]) { if (i0 < 0) i0 = i; }
+    else if (i0 >= 0) { if (i - 1 - i0 >= 2) out.push([i0, i - 1]); i0 = -1; }
+  }
+  return out;
+}, runs = runsOf(2);
+const N = mainSpine.length - 1, sub = (i0, i1) => mainSpine.slice(i0, i1 + 1), at = (i0, i1) => t => (i0 + t * (i1 - i0)) / N;
+runs.forEach(([i0, i1], k) => add('Branch ' + (k + 1), poly(blade(sub(i0, i1), t => mainW(at(i0, i1)(t))).outline), { color: C.wood, angle: dirOf(mainSpine[0], mainSpine[40]) + 12, stitchLen: 2.6 }));
 /* the underside in shadow, sewn open, and a few lines of bark */
 {
-  const n = mainSpine.length - 1, cut = Math.round(n * 0.8), sp = mainSpine.slice(0, cut + 1);
-  const sh = blade(sp, () => 0, t => mainW(t * 0.8) * 0.95);
-  add('Branch shadow', poly(sh.outline), { color: C.bark, angle: dirOf(mainSpine[0], mainSpine[40]) - 20, spacing: 0.85, stitchLen: 2.4 });
+  const n = mainSpine.length - 1, cut = Math.round(n * 0.8);
+  runsOf(3).filter(([i0]) => i0 < cut).forEach(([i0, i1], k) => { i1 = Math.min(i1, cut);
+    const sh = blade(sub(i0, i1), () => 0, t => mainW(at(i0, i1)(t)) * 0.95);
+    add('Branch shadow ' + (k + 1), poly(sh.outline), { color: C.bark, angle: dirOf(mainSpine[0], mainSpine[40]) - 20, spacing: 0.85, stitchLen: 2.4 });
+  });
   const off = (i0, i1, k) => mainSpine.slice(i0, i1).map((p, j) => { const i = i0 + j, q = mainSpine[Math.min(n, i + 1)], o = mainSpine[Math.max(0, i - 1)], dx = q[0] - o[0], dy = q[1] - o[1], len = Math.hypot(dx, dy); return [p[0] - dy / len * k * mainW(i / n), p[1] + dx / len * k * mainW(i / n)]; });
   add('Bark line 1', stroke(off(2, 13, 0.45)), { color: C.bark, paint: 'line', lineType: 'running', stitchLen: 2.2 });
   add('Bark line 2', stroke(off(27, 37, 0.35)), { color: C.bark, paint: 'line', lineType: 'running', stitchLen: 2.2 });
@@ -55,7 +73,7 @@ const leaves = [
   { name: 'Leaf 2', base: [25, 5], tip: [33.5, 18], bend: -1.5 },
   { name: 'Leaf 3', base: [20.5, -21], tip: [33.5, -17.5], bend: 1.4 },
   { name: 'Leaf 4', base: [-2, -45.5], tip: [-15.5, -51], bend: -1.5 },
-  { name: 'Leaf 5', base: [-30, 39.5], tip: [-45, 33.5], bend: 1.6 },
+  { name: 'Leaf 5', base: [-31, 37.6], tip: [-46, 32], bend: 1.6 },
   { name: 'Leaf 6', base: [29, -51], tip: [41.5, -57.5], bend: 1.5 },
 ];
 leaves.forEach(lf => {
@@ -144,6 +162,9 @@ flowers.forEach(f => {
   });
   add(f.name + ' blush', stroke(pts), { color: C.rose, paint: 'line', lineType: 'running', stitchLen: 2.2 });
 });
+/* a fine rose edge round the outer rim of every petal, so neighbouring petals read apart */
+flowers.forEach(f => add(f.name + ' edges', stroke([].concat(...f.petals.map(p => p.pts.slice(4, 35)))), { color: C.rose, paint: 'line', lineType: 'running', stitchLen: 1.8 }));
+loose.forEach(f => add(f.name + ' edge', stroke(f.pts.slice(2, -1)), { color: C.rose, paint: 'line', lineType: 'running', stitchLen: 1.8 }));
 loose.forEach(f => {
   const a0 = rad(f.rot), pts = [];
   [-0.2, 0, 0.2].forEach(th => { const o = f.P(pol(a0, 0.9)), e = f.P(pol(a0 + th, f.R * (th ? 0.5 : 0.62))); pts.push(o, e, o); });

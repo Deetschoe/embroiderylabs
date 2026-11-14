@@ -291,7 +291,7 @@
   }
   function initFileMenu() {
     var btn = $('btn-file'), menu = $('file-menu'); if (!btn || !menu) return;
-    var actions = { 'new': newDesign, open: browse, save: saveProject, 'export': function () { doExport('pes'); }, mockup: function () { if (Editor.Mockup) Editor.Mockup.open(); } };
+    var actions = { 'new': newDesign, open: browse, save: saveProject, 'export': function () { doExport('pes'); }, mockup: function () { if (Editor.Mockup) Editor.Mockup.open(); }, sound: function () { if (Editor.SoundWave && Editor.SoundWave.open) Editor.SoundWave.open(); } };
     on(btn, 'click', function () {
       if (fileMenuOpen) return closeFileMenu(false);
       fileMenuOpen = true; menu.hidden = false; btn.setAttribute('aria-expanded', 'true');

@@ -23,6 +23,8 @@
 <script src="js/editor/view.js" defer></script>
 <script src="js/editor/io.js" defer></script>
 <script src="js/editor/svgimport.js" defer></script>
+<script src="js/trace/trace.js" defer></script>
+<script src="js/trace/client.js" defer></script>
 <script src="js/editor/trace.js" defer></script>
 <script src="js/editor/stitchfile.js" defer></script>
 <script src="js/editor/panels.js" defer></script>
@@ -142,8 +144,18 @@
         <div class="sec__body">
           <button class="btn btn--drop" type="button" id="trace-upload">Drop an SVG or a picture, or browse</button>
           <input type="file" id="trace-input" accept=".embroidr,.json,application/json,.pes,.pec,.dst,.svg,image/svg+xml,image/png,image/jpeg,image/webp,image/gif" hidden>
-          <span class="field__hint">An SVG becomes shapes. A picture goes under your drawing to trace over and is not exported.</span>
+          <span class="field__hint">An SVG becomes shapes. A picture can be turned into stitches, or traced over by hand.</span>
           <div class="trace" id="trace-controls" hidden>
+            <div class="stitchify" id="stitchify" aria-label="Turn the picture into stitches">
+              <div class="prop"><label class="label" for="trace-colors">Colours</label><div class="stitchify__count"><input class="slider" type="range" id="trace-colors" min="2" max="30" step="1" value="6" aria-describedby="trace-colors-value"><span class="num" id="trace-colors-value">Auto</span></div></div>
+              <label class="check-row stitchify__auto"><input class="check" type="checkbox" id="trace-colors-auto" checked><span>Pick the colours for me (up to 10)</span></label>
+              <div class="stitchify__swatches" id="trace-swatches" role="list" aria-label="Thread colours"></div>
+              <div class="stitchify__busy" id="trace-busy" hidden><span class="stitchify__bar" aria-hidden="true"><span id="trace-bar"></span></span><span class="num" id="trace-busy-text" role="status">Working</span><button class="btn btn--ghost" type="button" id="trace-cancel">Cancel</button></div>
+              <span class="stitchify__meta num" id="trace-meta" aria-live="polite"></span>
+              <span class="field__hint" id="trace-note" hidden></span>
+              <button class="btn btn--primary btn--block" type="button" id="trace-stitch">Turn into stitches</button>
+            </div>
+            <label class="check-row"><input class="check" type="checkbox" id="trace-show" checked><span>Show picture</span></label>
             <div class="prop"><label class="label" for="trace-opacity">Opacity</label><div class="prop__pair"><input class="slider" type="range" id="trace-opacity" min="5" max="100" step="5" value="50"><span class="num" id="opacity-value">50%</span></div></div>
             <div class="prop"><label class="label" for="trace-size">Width</label><div class="prop__pair"><input class="slider" type="range" id="trace-size" min="10" max="200" step="1" value="80"><span class="num" id="trace-size-value">80 mm</span></div></div>
             <label class="check-row"><input class="check" type="checkbox" id="trace-lock"><span>Lock picture in place</span></label>

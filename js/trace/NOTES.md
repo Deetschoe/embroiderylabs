@@ -16,7 +16,19 @@ Port for my own static server: 8203 only (stopped). Never touch 8000.
 - Browser: scratch demo.html run in headless Chrome 157 over http (worker mode) and from file:// (main-thread
   fallback). Worker, progress, cancel + respawn, replace-running-job, AbortSignal, missing worker file fallback,
   terminate, unreadable file, 12 MP shrink: all behaved as API.md says. Reports in scratch reports/*.json.
-- NOT done: nothing wired into app.html / the editor UI (another engineer's job, against API.md); no real sew.
+- Wired into the editor on 2026-11-13 (js/editor/trace.js). Still no real sew.
+
+## 2026-11-13: colours 'auto' and up to 30 colours (API 1.1.0)
+- `colors: 'auto'` + `maxColors` (default 10): rule in API.md "Automatic colour count", code `chooseColours` /
+  `AUTO` in trace.js. Tuned on the 47 sample pictures (trace-work/img, trace-verify-work/img, the user's line art):
+  logos pick exactly their colours (badge 4, clipart 8, cat 8, cmyk 5, pale 4), photographs 4 to 10.
+  Scratch tools: .../30968e87-.../scratchpad/autoc/ (curves.js prints the rms / miss curve per picture, same.js
+  checks that numeric colours <= 12 give byte-identical results to 1.0.0: 138 runs, 0 differ).
+- `LIMITS.colors` 2..30. Two fixes were needed above 12: the logo/photo probe palette grows with the request
+  (16 flat colours were taken for a photograph with a 12-colour probe), and `withoutBlends` stops spare palette
+  slots going to edge blends (only when more than `SEW.blendsAbove` = 12 colours are asked for).
+- `buildPalette` split into `colourBins` + `kmeansBins` (same arithmetic) so the auto scan bins once.
+- Editor wiring is js/editor/trace.js ("Turn into stitches"), see js/editor/NOTES.md.
 
 ## What the pipeline does (as coded)
 1. resample to 0.18/0.22/0.28 mm per pixel (detail high/medium/low), premultiplied alpha, alpha >= 0.5 = picture

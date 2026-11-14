@@ -530,6 +530,78 @@ test('options: colours limit, width, detail, position, hoop', () => {
   ok(!Trace.trace(img, { width: 90, hoop: { width: 100, height: 100 } }).warnings.some(w => w.code === 'EXCEEDS_HOOP'), 'fits the hoop');
 });
 
+/* 16 flat squares of clearly different colours (4 x 4 grid, 40 px each, 10 px white gaps) */
+const SIXTEEN = [[214, 40, 40], [29, 58, 110], [240, 190, 30], [40, 140, 70], [20, 20, 20], [250, 130, 180], [120, 60, 20], [90, 200, 230],
+  [150, 60, 170], [255, 120, 0], [0, 110, 110], [180, 180, 180], [120, 160, 20], [255, 240, 150], [90, 90, 255], [100, 0, 40]];
+function sixteen(n) {
+  const sh = [];
+  for (let i = 0; i < (n || 16); i++) { const gx = i % 4, gy = Math.floor(i / 4); sh.push(rect(10 + gx * 50, 10 + gy * 50, 50 + gx * 50, 50 + gy * 50, SIXTEEN[i].concat(255))); }
+  return paint(210, 210, WHITE, sh, 1);
+}
+
+test('more than 12 colours: up to 30 asked for, 16 flat colours all found, more than 30 is clamped', () => {
+  eq(Trace.LIMITS.colors[1], 30, 'the limit is 30');
+  const img = sixteen();
+  const r16 = Trace.trace(img, { width: 80, colors: 16 });
+  full(r16, 'sixteen at 16');
+  eq(r16.colors.length, 16, 'every square has its own thread'); eq(fills(r16).length, 16, 'one fill per square');
+  const r12 = Trace.trace(img, { width: 80, colors: 12 });
+  full(r12, 'sixteen at 12');
+  ok(r12.colors.length <= 12, 'at most 12 when 12 asked for: ' + r12.colors.length);
+  const r30 = Trace.trace(img, { width: 80, colors: 30 });
+  full(r30, 'sixteen at 30');
+  eq(r30.colors.length, 16, 'asking for 30 does not invent colours');
+  const r99 = Trace.trace(img, { width: 80, colors: 99 });
+  ok(r99.warnings.some(w => w.code === 'INVALID_OPTION' && w.param === 'colors'), 'colors 99 reported');
+  eq(r99.colors.length, 16, 'colors 99 works as 30');
+});
+
+test('colours "auto": the fewest that show the picture, never more than maxColors (default 10)', () => {
+  // flat art: exactly its own colours (page not counted)
+  for (const n of [2, 5, 8]) {
+    const r = Trace.trace(sixteen(n), { width: 80, colors: 'auto' });
+    full(r, 'auto ' + n);
+    eq(r.colors.length, n, n + ' flat colours on a white page');
+    ok(r.stats.autoColors && r.stats.autoColors.picked === n && r.stats.autoColors.max === 10, 'stats.autoColors ' + JSON.stringify(r.stats.autoColors && r.stats.autoColors.picked));
+    ok(!r.warnings.some(w => w.code === 'COLORS_MERGED'), 'no "merged" message for auto');
+  }
+  // more distinct colours than the cap: capped
+  const many = Trace.trace(sixteen(), { width: 80, colors: 'auto' });
+  full(many, 'auto 16');
+  ok(many.colors.length <= 10, 'auto stays at or under 10: ' + many.colors.length);
+  const cap6 = Trace.trace(sixteen(), { width: 80, colors: 'auto', maxColors: 6 });
+  ok(cap6.colors.length <= 6, 'maxColors 6: ' + cap6.colors.length);
+  const cap14 = Trace.trace(sixteen(), { width: 80, colors: 'auto', maxColors: 14 });
+  within(cap14.colors.length, 11, 14, 'maxColors 14 allows more than 10');
+  // a badge whose inner white is a thread colour next to the white page: the inner white is kept
+  const cream = [244, 241, 232, 255];
+  const badge = Trace.trace(paint(240, 240, WHITE, [disc(120, 120, 110, BLUE), disc(120, 120, 85, cream), disc(120, 120, 40, RED)]), { width: 60, colors: 'auto' });
+  full(badge, 'auto badge');
+  eq(badge.colors.length, 3, 'blue, cream and red: ' + badge.colors.map(c => c.name));
+  // photographs and gradients: between 2 and 10 (a smooth gradient keeps gaining from more threads, so it goes high)
+  const w = 300, h = 200, grad = new Uint8ClampedArray(w * h * 4), busy = new Uint8ClampedArray(w * h * 4), r = rng(5);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const o = (y * w + x) * 4, t = x / (w - 1);
+    grad[o] = 30 + 200 * t; grad[o + 1] = 60 + 60 * t; grad[o + 2] = 200 - 150 * t; grad[o + 3] = 255;
+    const q = Math.sin(x / 9) + Math.cos(y / 7) + Math.sin((x + y) / 14);
+    busy[o] = 128 + 60 * Math.sin(q * 2.1) + r() * 10; busy[o + 1] = 128 + 60 * Math.sin(q * 1.3 + 2) + r() * 10; busy[o + 2] = 128 + 60 * Math.cos(q * 0.7) + r() * 10; busy[o + 3] = 255;
+  }
+  const g = Trace.trace({ width: w, height: h, data: grad }, { width: 75, colors: 'auto' });
+  const b = Trace.trace({ width: w, height: h, data: busy }, { width: 75, colors: 'auto' });
+  checkShapes(g, 'auto gradient'); checkShapes(b, 'auto busy');
+  within(g.colors.length, 2, 10, 'gradient'); within(b.colors.length, 2, 10, 'busy');
+  ok(g.colors.length <= g.stats.autoColors.picked + 1 && b.colors.length <= b.stats.autoColors.picked + 1, 'what is sewn follows the pick');
+  ok(Trace.trace({ width: w, height: h, data: grad }, { width: 75, colors: 'auto', maxColors: 4 }).colors.length <= 4, 'gradient with maxColors 4');
+  ok(g.stats.autoColors.curve.length >= 2 && g.stats.autoColors.curve.every((c, i, a) => i === 0 || c.rms <= a[i - 1].rms + 1e-3), 'error curve falls');
+  // nonsense maxColors is clamped and reported
+  const bad = Trace.trace(sixteen(3), { width: 60, colors: 'auto', maxColors: 50 });
+  ok(bad.warnings.some(x => x.code === 'INVALID_OPTION' && x.param === 'maxColors'), 'maxColors 50 reported');
+  eq(bad.colors.length, 3);
+  // progress still runs forwards and the sliced run gives the same answer
+  const seen = []; Trace.trace(sixteen(5), { width: 60, colors: 'auto' }, { onProgress: f => seen.push(f) });
+  ok(seen.every((f, i) => i === 0 || f >= seen[i - 1]), 'progress never goes back');
+});
+
 test('mode: flat art is "logo", a shaded picture is "photo", and the hint wins', () => {
   const logo = paint(240, 240, WHITE, [disc(120, 120, 90, BLUE), rect(90, 90, 150, 150, YELLOW)]);
   eq(Trace.trace(logo, opts60).mode, 'logo');

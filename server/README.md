@@ -33,6 +33,9 @@ server/
   src/stripe.js          Checkout, portal, webhook signature, subscription events
   src/projects.js        saved designs
   src/exporter.js        imports the site's engine
+  src/market.js          marketplace: published designs, stars, key unlocks
+  src/users.js           handles, profiles, badges, activity, wallet
+  src/economy.js         the marketplace rules (mirrored for the browser in ../js/market-rules.js)
   test/*.test.mjs        node --test, local SQLite as D1, Google and Stripe mocked
 ```
 
@@ -52,11 +55,77 @@ server/
 | `PUT /api/projects/:id` | `{ name, data }` | create or replace (max 1 MB of JSON, 200 per user) |
 | `DELETE /api/projects/:id` | | |
 | `GET /api/health` | | which settings are present (never their values) |
+| Marketplace | | see [Marketplace](#marketplace) below |
 
 Requests that change something must come from the site (`SITE_ORIGIN`): other origins get `403`
 and no CORS headers. Bodies are capped (export 4 MB, design 1 MB, webhook 256 KB). One account can
 start at most 20 exports a minute (`429` after that), counted in `export_log` so it holds across
 Worker instances; refused designs count toward that cap but never toward the plan.
+
+## Marketplace
+
+People publish designs, star each other's, and spend keys earned from stars to unlock designs.
+No real money moves: selling for money is not built ("coming soon" in the site).
+
+**Rules** (`src/economy.js`; the browser copy `js/market-rules.js` must say the same, a test checks it):
+
+- **Stars**: a signed-in person stars someone else's public design, once (and can take it back). Not their own.
+  `starsReceived` is lifetime: each person's first star on each of your designs counts once, for good,
+  so an unstar or a deleted design never takes back keys already earned.
+- **Keys**: `keysEarned = floor(starsReceived / 10) + unlocksOfYourDesigns`, `keys = keysEarned - keysSpent`
+  (never below 0). Keys unlock other people's `keys` designs, once, forever; the owner gets +1 key per unlock.
+- **Sew-out discount**: `discountPct = min(50, 5 * floor(keys / 10))`.
+- **Free sew-out**: the first 5 people whose lifetime stars received reach 10,000 get one
+  (`sewout_claims`, rank 1 to 5, given in the same transaction as the star that crosses 10,000).
+- **Modes**: `free` (anyone opens and remixes), `keys` (1 to 5 keys), `show` (picture and stitch preview only:
+  the file goes to the owner only). **Visibility**: `public` (listed) or `private` (only the owner; 404 for others).
+- **Badges** (computed): first-design, first-star, stars-100, stars-1000, stars-10000, streak-7, first-unlock,
+  popular (a design with 50+ stars), early-member (first 100 people), free-sewout.
+- **Activity**: per-day counts over the last 365 days (UTC) of saves (`PUT /api/projects`), publishes,
+  exports (`POST /api/export`) and stars given.
+
+| Method and path | Body | Answer |
+|---|---|---|
+| `GET /api/market?sort=new\|top&tag=&q=&cursor=&limit=` | | `{ items: [Item], next }` (public designs; `next` is the cursor for the next page, 24 per page, at most 48) |
+| `POST /api/market` | `{ title, description, tags, mode, priceKeys, visibility, payload, thumb }` | `201` Item |
+| `GET /api/market/:id` | | Item |
+| `PATCH /api/market/:id` | any of `{ title, description, tags, mode, priceKeys, visibility }` | Item (owner only: `403 not_owner`) |
+| `DELETE /api/market/:id` | | `{ deleted: true }` (owner only) |
+| `GET /api/market/:id/file` | | the `.embroidr` JSON: owner, `free`, or `keys` after an unlock; else `403 { error: 'locked' }` |
+| `GET /api/market/:id/thumb` | | the picture (the address is in `Item.thumb`) |
+| `POST` / `DELETE /api/market/:id/star` | | `{ stars, starred }` |
+| `POST /api/market/:id/unlock` | | `{ unlocked: true, keys }`, or `402 { error: 'not-enough-keys', keys, need }` |
+| `GET /api/users/:handle` | | `{ handle, name, avatar, joined, starsReceived, badges: [{ id, label, earnedAt }], activity: [{ date, count }], designs: [Item] }` |
+| `GET /api/me/wallet` | | `{ starsReceived, keys, keysEarned, keysSpent, discountPct, freeSewout: { eligible, rank, slotsLeft }, progressTo10k }` (`progressTo10k` is 0 to 1) |
+| `PATCH /api/me` | `{ handle?, name? }` | `{ handle, name, avatar }`; handle is 3 to 24 of `a-z 0-9 -`, unique (`409 handle_taken`) |
+
+`Item = { id, title, description, tags, mode, priceKeys, visibility, owner: { handle, name, avatar }, thumb,
+stars, starred, unlocked, mine, createdAt, updatedAt }`. `unlocked` means the caller can open the file.
+`thumb` is a URL on this API (or `null`). `GET /api/me` now also has `user.handle`.
+
+Limits: title 80 characters, description 1,000, at most 8 tags of 24 characters, design 1 MB of JSON,
+picture `data:image/webp` or `data:image/png` of at most 200 KB (the first bytes are checked).
+20 publishes an hour and 500 designs per person. Everyone gets a handle at sign-in: the Google name as a
+slug (`ann-example`), with a short random ending when it is taken.
+
+**Pictures** are stored in D1 as data URLs. To keep them in R2 instead, create a bucket and bind it as
+`THUMBS` in `wrangler.toml` (new pictures go there; old ones keep working):
+
+```toml
+[[r2_buckets]]
+binding = "THUMBS"
+bucket_name = "embroiderylabs-thumbs"
+```
+
+**Safe against double clicks and races**: an unlock is one SQL statement that checks the balance and
+writes the unlock together, and `(user, design)` is unique, so keys are never spent twice. A star, its
+lifetime mark, the design's star count and a possible free sew-out are one D1 batch (a transaction);
+`sewout_claims` has rank 1 to 5 as its key and a unique user, so there can never be a 6th or a second one.
+
+Apply the new migration after pulling: `npx wrangler d1 migrations apply embroiderylabs --remote`.
+
+Stored in addition (privacy): your handle and display name, the designs you publish (until you delete
+them), who starred and unlocked what, and per-day counts of saves, publishes, exports and stars given.
 
 ## Run the tests
 

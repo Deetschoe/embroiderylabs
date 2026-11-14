@@ -13,6 +13,20 @@
 //   DELETE /api/projects/:id
 //   GET    /api/health                                   what is configured (no secrets)
 //
+// Marketplace (src/market.js, src/users.js, rules in src/economy.js):
+//   GET    /api/market?sort=new|top&tag=&q=&cursor=      { items, next }
+//   POST   /api/market             { title, description, tags, mode, priceKeys, visibility, payload, thumb }
+//   GET    /api/market/:id                               Item
+//   PATCH  /api/market/:id         { title?, description?, tags?, mode?, priceKeys?, visibility? }   owner
+//   DELETE /api/market/:id                               owner
+//   GET    /api/market/:id/file                          the .embroidr JSON, or 403 locked
+//   GET    /api/market/:id/thumb                         the picture
+//   POST   /api/market/:id/star    DELETE ...            { stars, starred }
+//   POST   /api/market/:id/unlock                        { unlocked, keys } or 402 not-enough-keys
+//   GET    /api/users/:handle                            profile, badges, activity, designs
+//   GET    /api/me/wallet                                stars, keys, discount, free sew-out
+//   PATCH  /api/me                 { handle?, name? }
+//
 // Secrets (wrangler secret put): GOOGLE_CLIENT_ID, SESSION_SECRET, STRIPE_SECRET_KEY,
 // STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_HOBBY, STRIPE_PRICE_PRO. Plain vars (wrangler.toml): SITE_ORIGIN, SITE_URL.
 
@@ -23,6 +37,8 @@ import { PLANS, currentPlan, usage, reserveExport, finishExport, startAttempt, e
 import { createCheckout, createPortal, verifyStripeSignature, handleEvent } from './stripe.js';
 import { FORMAT_IDS, checkDesign, generate, exportFile } from './exporter.js';
 import * as Projects from './projects.js';
+import * as Market from './market.js';
+import * as Users from './users.js';
 
 export const LIMITS = {
   auth: 8 * 1024,
@@ -30,6 +46,7 @@ export const LIMITS = {
   export: 4 * 1024 * 1024,             // a traced picture can be a few hundred thousand points
   project: Projects.MAX_PROJECT_BYTES + 64 * 1024,
   webhook: 256 * 1024,
+  market: Market.MAX_PAYLOAD_BYTES + 320 * 1024,     // the .embroidr JSON plus a 200 KB picture as base64
 };
 
 function db(env) {
@@ -40,7 +57,7 @@ function db(env) {
 async function userFor(request, env, deps) {
   const uid = await readSession(request, env, deps.now());
   if (!uid) return null;
-  return await db(env).prepare('SELECT id, email, name, picture, stripe_customer_id FROM users WHERE id = ?').bind(uid).first();
+  return await db(env).prepare('SELECT id, email, name, picture, stripe_customer_id, handle, display_name, created_at FROM users WHERE id = ?').bind(uid).first();
 }
 async function requireUser(request, env, deps) {
   const u = await userFor(request, env, deps);
@@ -52,7 +69,7 @@ async function account(env, user, nowMs) {
   const { plan, subscription } = await currentPlan(db(env), user.id);
   const u = await usage(db(env), user.id, plan, nowMs);
   return {
-    user: { email: user.email, name: user.name, picture: user.picture },
+    user: { email: user.email, name: user.name, picture: user.picture, handle: user.handle || null },
     plan,
     planLabel: PLANS[plan].label,
     exports: u,
@@ -87,7 +104,8 @@ async function authGoogle(request, env, deps) {
     'INSERT INTO users (id, google_sub, email, name, picture, created_at, last_login_at) VALUES (?, ?, ?, ?, ?, ?, ?) ' +
     'ON CONFLICT(google_sub) DO UPDATE SET email = excluded.email, name = excluded.name, picture = excluded.picture, last_login_at = excluded.last_login_at'
   ).bind(randomId(16), g.sub, g.email, g.name, g.picture, now, now).run();
-  const user = await D.prepare('SELECT id, email, name, picture, stripe_customer_id FROM users WHERE google_sub = ?').bind(g.sub).first();
+  const user = await D.prepare('SELECT id, email, name, picture, stripe_customer_id, handle, display_name, created_at FROM users WHERE google_sub = ?').bind(g.sub).first();
+  await Users.ensureHandle(D, user);
   const cookie = await signSession(env, user.id, now);
   return json(Object.assign({ signedIn: true }, await account(env, user, now)), 200, { 'Set-Cookie': sessionCookie(cookie) });
 }
@@ -96,6 +114,7 @@ async function me(request, env, deps) {
   const user = await userFor(request, env, deps);
   const base = { googleClientId: env.GOOGLE_CLIENT_ID || null, plans: plansInfo(), payments: !!(env.STRIPE_SECRET_KEY && env.STRIPE_PRICE_HOBBY && env.STRIPE_PRICE_PRO) };
   if (!user) return json(Object.assign({ signedIn: false }, base));
+  await Users.ensureHandle(db(env), user);
   return json(Object.assign({ signedIn: true }, base, await account(env, user, deps.now())));
 }
 
@@ -140,6 +159,7 @@ async function doExport(request, env, deps) {
     throw new HttpError(422, 'cannot_export', e && e.code && e.message ? e.message : 'The file could not be made. Your export was not counted.');
   }
   await finishExport(D, id, true, file.stitches, file.bytes.length);
+  await Users.recordEvent(D, user.id, 'export', now);
   const after = await usage(D, user.id, plan, now);
   const h = new Headers();
   h.set('Content-Type', file.mime || 'application/octet-stream');
@@ -193,9 +213,67 @@ async function projects(request, env, deps, id) {
     throw new HttpError(405, 'method', 'Not allowed.');
   }
   if (m === 'GET') return json(await Projects.get(D, user.id, id));
-  if (m === 'PUT') return json(await Projects.put(D, user.id, id, await readJson(request, LIMITS.project), deps.now()));
+  if (m === 'PUT') {
+    const saved = await Projects.put(D, user.id, id, await readJson(request, LIMITS.project), deps.now());
+    await Users.recordEvent(D, user.id, 'save', deps.now());
+    return json(saved);
+  }
   if (m === 'DELETE') { await Projects.remove(D, user.id, id); return json({ deleted: true }); }
   throw new HttpError(405, 'method', 'Not allowed.');
+}
+
+// ---------------------------------------------------------------- marketplace
+
+async function marketUser(request, env, deps) {
+  const u = await requireUser(request, env, deps);
+  await Users.ensureHandle(db(env), u);
+  return u;
+}
+async function viewerId(request, env, deps) {
+  const uid = await readSession(request, env, deps.now());
+  return uid || '';
+}
+function decodeSeg(s, what) {
+  try { return decodeURIComponent(s); } catch (e) { throw new HttpError(404, 'not_found', 'That ' + what + ' is not here.'); }
+}
+
+async function market(request, env, deps, id, sub) {
+  const D = db(env);
+  const m = request.method;
+  const base = new URL(request.url).origin;
+  if (!id) {
+    if (m === 'GET') return json(await Market.list(D, await viewerId(request, env, deps), new URL(request.url).searchParams, base));
+    if (m === 'POST') {
+      const u = await marketUser(request, env, deps);
+      return json(await Market.publish(env, D, u, await readJson(request, LIMITS.market), deps.now(), base), 201);
+    }
+    throw new HttpError(405, 'method', 'Not allowed.');
+  }
+  if (!sub) {
+    if (m === 'GET') return json(await Market.get(D, await viewerId(request, env, deps), id, base));
+    if (m === 'PATCH') {
+      const u = await marketUser(request, env, deps);
+      return json(await Market.update(D, u, id, await readJson(request, LIMITS.small * 2), deps.now(), base));
+    }
+    if (m === 'DELETE') return json(await Market.remove(env, D, await marketUser(request, env, deps), id));
+    throw new HttpError(405, 'method', 'Not allowed.');
+  }
+  if (sub === 'file' && m === 'GET') return Market.file(D, await viewerId(request, env, deps), id);
+  if (sub === 'thumb' && m === 'GET') return Market.thumb(env, D, await viewerId(request, env, deps), id);
+  if (sub === 'star' && m === 'POST') return json(await Market.star(D, await marketUser(request, env, deps), id, deps.now()));
+  if (sub === 'star' && m === 'DELETE') return json(await Market.unstar(D, await marketUser(request, env, deps), id));
+  if (sub === 'unlock' && m === 'POST') return json(await Market.unlock(D, await marketUser(request, env, deps), id, deps.now()));
+  throw new HttpError(sub === 'file' || sub === 'thumb' || sub === 'star' || sub === 'unlock' ? 405 : 404, 'not_found', 'No such endpoint.');
+}
+
+async function userPage(request, env, deps, handle) {
+  const D = db(env);
+  const u = await Users.byHandle(D, handle);
+  if (!u) throw new HttpError(404, 'not_found', 'Nobody has that name.');
+  const viewer = await viewerId(request, env, deps);
+  const p = await Users.profile(D, u, deps.now());
+  p.designs = await Market.byOwner(D, viewer, u.id, new URL(request.url).origin);
+  return json(p);
 }
 
 function health(env) {
@@ -218,6 +296,12 @@ async function route(request, env, deps) {
   const m = request.method;
   if (path === '/api/health' && m === 'GET') return health(env);
   if (path === '/api/me' && m === 'GET') return me(request, env, deps);
+  if (path === '/api/me/wallet' && m === 'GET') return json(await Users.wallet(db(env), (await marketUser(request, env, deps)).id));
+  if (path === '/api/market' && m === 'GET') return market(request, env, deps, null, null);
+  const mm = /^\/api\/market\/([^/]+)(?:\/(file|thumb|star|unlock))?$/.exec(path);
+  if (mm && m === 'GET') return market(request, env, deps, decodeSeg(mm[1], 'design'), mm[2] || null);
+  const um = /^\/api\/users\/([^/]+)$/.exec(path);
+  if (um && m === 'GET') return userPage(request, env, deps, decodeSeg(um[1], 'person'));
   if (m !== 'GET' && !originAllowed(request, env)) throw new HttpError(403, 'bad_origin', 'Requests are only accepted from the EmbroideryLabs site.');
   if (path === '/api/auth/google' && m === 'POST') return authGoogle(request, env, deps);
   if (path === '/api/auth/logout' && m === 'POST') return json({ signedIn: false }, 200, { 'Set-Cookie': clearCookie() });
@@ -225,6 +309,9 @@ async function route(request, env, deps) {
   if (path === '/api/billing/checkout' && m === 'POST') return checkout(request, env, deps);
   if (path === '/api/billing/portal' && m === 'POST') return portal(request, env, deps);
   if (path === '/api/projects') return projects(request, env, deps, null);
+  if (path === '/api/me' && m === 'PATCH') return json(await Users.updateMe(db(env), await marketUser(request, env, deps), await readJson(request, LIMITS.small)));
+  if (path === '/api/market') return market(request, env, deps, null, null);
+  if (mm) return market(request, env, deps, decodeSeg(mm[1], 'design'), mm[2] || null);
   const pm = /^\/api\/projects\/([^/]+)$/.exec(path);
   if (pm) {
     let id;

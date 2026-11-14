@@ -37,7 +37,7 @@ export function corsHeaders(request, env) {
 export function preflight(request, env) {
   const h = corsHeaders(request, env);
   if (!h.has('Access-Control-Allow-Origin')) return new Response(null, { status: 403, headers: h });
-  h.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  h.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
   h.set('Access-Control-Allow-Headers', 'Content-Type');
   h.set('Access-Control-Max-Age', '600');
   return new Response(null, { status: 204, headers: h });

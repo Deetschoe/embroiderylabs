@@ -34,7 +34,6 @@
 <script src="js/editor/tools.js" defer></script>
 <script src="js/editor/tabs.js" defer></script>
 <script src="js/editor/mockup.js" defer></script>
-<script src="js/editor/soundwave.js" defer></script>
 <script src="js/editor/tutorial.js" defer></script>
 <script src="js/editor/main.js" defer></script>
 <script src="js/config.js" defer></script>
@@ -56,7 +55,6 @@
         <button type="button" role="menuitem" tabindex="-1" data-file="save"><span>Save</span><span class="num">&#8984;S</span><small>A design file you can open and edit again.</small></button>
         <button type="button" role="menuitem" tabindex="-1" data-file="share"><span>Share to Marketplace&hellip;</span><small>Let others star it, open it or unlock it.</small></button>
         <button type="button" role="menuitem" tabindex="-1" data-file="export"><span>Export .PES</span><span class="num">&#8984;E</span><small>The file your machine sews.</small></button>
-        <button type="button" role="menuitem" tabindex="-1" data-file="sound"><span>Sound wave&hellip;</span><small>Turn 10 seconds of a song into a waveform design.</small></button>
         <button type="button" role="menuitem" tabindex="-1" data-file="mockup"><span>Mockup</span><small>See it on a hoodie or T-shirt and download a picture.</small></button>
       </div>
     </div>
@@ -346,27 +344,6 @@
     <span class="field__hint">Touch: one finger draws, two fingers zoom and move the view.</span>
   </div>
   <div class="dialog__foot"><button class="btn" type="button" data-tutorial-open>Tutorial</button><button class="btn btn--primary" type="button" data-dialog-close>Done</button></div>
-</dialog>
-<dialog class="dialog dialog--wide" id="sound" aria-labelledby="sound-title">
-  <div class="dialog__head"><span class="label" id="sound-title">Sound wave</span><button class="btn btn--ghost btn--icon" type="button" data-dialog-close aria-label="Close"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8"/></svg></button></div>
-  <div class="dialog__body sound">
-    <button class="btn btn--drop" type="button" id="sound-pick">Pick a song or sound, or drop it here</button>
-    <input type="file" id="sound-input" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.oga,.flac,.aif,.aiff" multiple hidden>
-    <span class="field__hint">One file is split into bass, mids, vocals and highs. Pick several files (your own stems) and each gets a row. Nothing is uploaded.</span>
-    <span class="field__hint" id="sound-status" role="status"></span>
-    <div class="sound__controls" id="sound-controls" hidden>
-      <div class="sound__preview" id="sound-preview"></div>
-      <div class="prop"><label class="label" for="sound-start">10 seconds</label><div class="prop__pair"><input class="slider" type="range" id="sound-start" min="0" max="0" step="0.5" value="0"><span class="num" id="sound-start-val">0:00</span></div></div>
-      <div class="prop"><span class="label">Layout</span><div class="seg" role="group" aria-label="Layout" id="sound-layout"><button type="button" data-v="stems" aria-pressed="true">Stems square</button><button type="button" data-v="wave" aria-pressed="false">One wave</button></div></div>
-      <div class="prop" id="sound-rows-prop"><span class="label">Rows</span><div class="seg" role="group" aria-label="Rows" id="sound-rows"><button type="button" data-v="4" aria-pressed="false">4</button><button type="button" data-v="5" aria-pressed="true">5</button></div></div>
-      <div class="prop"><span class="label">Style</span><div class="seg" role="group" aria-label="Style" id="sound-style"><button type="button" data-v="fill" aria-pressed="true">Filled</button><button type="button" data-v="line" aria-pressed="false">Line</button><button type="button" data-v="bars" aria-pressed="false">Bars</button></div></div>
-      <div class="prop" id="sound-size-prop"><label class="label" for="sound-size">Size</label><div class="prop__pair"><input class="slider" type="range" id="sound-size" min="60" max="300" step="5" value="180"><span class="num" id="sound-size-val"></span></div></div>
-      <div class="prop" id="sound-width-prop"><label class="label" for="sound-width">Width</label><div class="prop__pair"><input class="slider" type="range" id="sound-width" min="40" max="380" step="5" value="180"><span class="num" id="sound-width-val"></span></div></div>
-      <div class="prop" id="sound-height-prop"><label class="label" for="sound-height">Height</label><div class="prop__pair"><input class="slider" type="range" id="sound-height" min="10" max="200" step="5" value="60"><span class="num" id="sound-height-val"></span></div></div>
-      <span class="field__hint" id="sound-note"></span>
-    </div>
-  </div>
-  <div class="dialog__foot"><button class="btn" type="button" id="sound-svg" disabled>Download SVG</button><button class="btn btn--primary" type="button" id="sound-make" disabled>Open as design</button></div>
 </dialog>
 </body>
 </html>

@@ -8,18 +8,21 @@ const ISSUERS = ['accounts.google.com', 'https://accounts.google.com'];
 const SKEW_S = 60;                 // clock difference we accept, seconds
 const MAX_TOKEN = 4096;
 
-let cache = { keys: null, until: 0 };
-export function resetJwksCache() { cache = { keys: null, until: 0 }; }
+const REFETCH_MS = 60 * 1000;      // an unknown key id fetches the keys again at most once a minute
+let cache = { keys: null, until: 0, fetched: 0 };
+export function resetJwksCache() { cache = { keys: null, until: 0, fetched: 0 }; }
 
 async function loadKeys(fetchFn, nowMs, force) {
   if (!force && cache.keys && nowMs < cache.until) return cache.keys;
+  // Made-up key ids must not turn every sign-in attempt into a request to Google.
+  if (force && cache.keys && nowMs - cache.fetched < REFETCH_MS) return cache.keys;
   const res = await fetchFn(JWKS_URL);
   if (!res.ok) throw new HttpError(502, 'google_unavailable', 'Could not reach Google to check the sign-in. Try again.');
   const body = await res.json();
   if (!body || !Array.isArray(body.keys)) throw new HttpError(502, 'google_unavailable', 'Google sent an unexpected answer. Try again.');
   const m = /max-age=(\d+)/.exec(res.headers.get('Cache-Control') || '');
   const ttl = Math.min(m ? Number(m[1]) : 3600, 86400) * 1000;
-  cache = { keys: body.keys, until: nowMs + ttl };
+  cache = { keys: body.keys, until: nowMs + ttl, fetched: nowMs };
   return cache.keys;
 }
 

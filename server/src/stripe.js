@@ -30,8 +30,10 @@ async function call(env, deps, method, path, params) {
   let body = null;
   try { body = await res.json(); } catch (e) { body = null; }
   if (!res.ok) {
+    // The detail goes to the Worker log, not to the visitor (it can name prices, customers or keys).
     const msg = body && body.error && body.error.message ? body.error.message : 'HTTP ' + res.status;
-    throw new HttpError(502, 'stripe_error', 'Payments are not available right now. (' + String(msg).slice(0, 200) + ')');
+    console.error('stripe', method, path, res.status, String(msg).slice(0, 300));
+    throw new HttpError(502, 'stripe_error', 'Payments are not available right now. Try again in a few minutes.');
   }
   return body;
 }

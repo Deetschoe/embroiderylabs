@@ -19,7 +19,7 @@
 import { HttpError, json, errorResponse, preflight, corsHeaders, originAllowed, readJson, readText, randomId } from './http.js';
 import { signSession, readSession, sessionCookie, clearCookie } from './session.js';
 import { verifyGoogleIdToken } from './google.js';
-import { PLANS, currentPlan, usage, reserveExport, finishExport } from './plans.js';
+import { PLANS, currentPlan, usage, reserveExport, finishExport, startAttempt, endAttempt } from './plans.js';
 import { createCheckout, createPortal, verifyStripeSignature, handleEvent } from './stripe.js';
 import { FORMAT_IDS, checkDesign, generate, exportFile } from './exporter.js';
 import * as Projects from './projects.js';
@@ -113,14 +113,20 @@ async function doExport(request, env, deps) {
   const before = await usage(D, user.id, plan, deps.now());
   if (before.left === 0) throw new HttpError(402, 'quota', quotaMessage(plan, before), { plan, used: before.used, limit: before.limit });
 
+  const attempt = await startAttempt(D, user.id, plan, format, deps.now());
+  if (attempt == null) throw new HttpError(429, 'slow_down', 'That is a lot of exports in a minute. Wait a moment and try again.');
+
   // The stitches first: a design the engine refuses does not use up an export.
-  const result = generate(design);
+  let result;
+  try { result = generate(design); } catch (e) { await endAttempt(D, attempt, true); throw e; }
   if (!result.canExport) {
+    await endAttempt(D, attempt, true);
     const e = (result.warnings || []).filter(w => w.severity === 'error')[0];
     throw new HttpError(422, 'cannot_export', e ? e.message : 'This design cannot be exported.');
   }
   const now = deps.now();
   const id = await reserveExport(D, user.id, plan, format, now);
+  await endAttempt(D, attempt, false);
   if (id == null) {
     const u = await usage(D, user.id, plan, now);
     throw new HttpError(402, 'quota', quotaMessage(plan, u), { plan, used: u.used, limit: u.limit });
@@ -220,7 +226,11 @@ async function route(request, env, deps) {
   if (path === '/api/billing/portal' && m === 'POST') return portal(request, env, deps);
   if (path === '/api/projects') return projects(request, env, deps, null);
   const pm = /^\/api\/projects\/([^/]+)$/.exec(path);
-  if (pm) return projects(request, env, deps, decodeURIComponent(pm[1]));
+  if (pm) {
+    let id;
+    try { id = decodeURIComponent(pm[1]); } catch (e) { throw new HttpError(400, 'bad_id', 'That is not a design id.'); }
+    return projects(request, env, deps, id);
+  }
   throw new HttpError(404, 'not_found', 'No such endpoint.');
 }
 

@@ -82,6 +82,29 @@ export async function reserveExport(db, userId, plan, format, nowMs) {
   return res.meta.last_row_id;
 }
 
+// A cap on how often one account may start an export, counted in the database (a Worker has no
+// shared memory). The engine runs BEFORE the quota is taken, so without this an account could
+// keep the server busy with designs it never pays an export for. Each start writes an 'attempt'
+// row; a finished export removes it again (its 'ok' row counts instead), a refused or abandoned one
+// keeps it as 'refused' / 'attempt' (never counted against the plan). -> row id, or null when over the cap.
+export const RATE = { perWindow: 20, windowMs: 60 * 1000 };
+export async function startAttempt(db, userId, plan, format, nowMs) {
+  // Old attempt rows are only needed for the window: clear this user's stale ones as we go.
+  await db.prepare("DELETE FROM export_log WHERE user_id = ? AND status IN ('attempt','refused') AND created_at < ?")
+    .bind(userId, nowMs - 24 * 3600 * 1000).run();
+  const res = await db.prepare(
+    "INSERT INTO export_log (user_id, month, plan, format, status, created_at) SELECT ?, ?, ?, ?, 'attempt', ? " +
+    'WHERE (SELECT COUNT(*) FROM export_log WHERE user_id = ? AND created_at > ?) < ?'
+  ).bind(userId, monthKey(nowMs), plan, format, nowMs, userId, nowMs - RATE.windowMs, RATE.perWindow).run();
+  if (!res.meta || !res.meta.changes) return null;
+  return res.meta.last_row_id;
+}
+export async function endAttempt(db, id, refused) {
+  if (id == null) return;
+  if (refused) await db.prepare("UPDATE export_log SET status = 'refused' WHERE id = ?").bind(id).run();
+  else await db.prepare('DELETE FROM export_log WHERE id = ?').bind(id).run();
+}
+
 export async function finishExport(db, id, ok, stitches, bytes) {
   await db.prepare('UPDATE export_log SET status = ?, stitches = ?, bytes = ? WHERE id = ?')
     .bind(ok ? 'ok' : 'failed', stitches || 0, bytes || 0, id).run();

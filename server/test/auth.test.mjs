@@ -74,6 +74,13 @@ test('Google keys are cached, and fetched again when an unknown key id shows up'
   const jwksCalls = () => app.calls.filter(c => c.url.includes('oauth2/v3/certs')).length;
   assert.equal(jwksCalls(), 1, 'one fetch for two sign-ins');
   const k2 = await makeGoogleKey('k2');
+  // Made-up key ids right after a fetch do not reach Google again (at most one refetch a minute).
+  for (let i = 0; i < 5; i++) {
+    const r = await app.request('POST', '/api/auth/google', { body: { credential: await app.token({}, Object.assign({}, k2, { kid: 'made-up-' + i })) } });
+    assert.equal(r.status, 401);
+  }
+  assert.equal(jwksCalls(), 1, 'unknown key ids within a minute do not refetch');
+  app.clock.t += 61 * 1000;
   app.jwks = [app.google.jwk, k2.jwk];             // Google rotated in a new key
   const r = await app.request('POST', '/api/auth/google', { body: { credential: await app.token({}, k2) } });
   assert.equal(r.status, 200);

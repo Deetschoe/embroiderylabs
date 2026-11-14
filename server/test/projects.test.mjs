@@ -76,3 +76,11 @@ test('size cap, count cap and bad input', opts, async () => {
   r = await app.request('PUT', '/api/projects/design_0003', { cookie, body: { name: 'still fine', data: payload } });
   assert.equal(r.status, 200, 'replacing an existing design works at the cap');
 });
+
+test('a malformed design id in the path is a 400, not a server error', async () => {
+  const { makeApp } = await import('./helpers.mjs');
+  const app = await makeApp();
+  const { cookie } = await app.signIn();
+  const r = await app.request('GET', '/api/projects/%E0%A4%A', { cookie });
+  assert.equal(r.status, 400);
+});

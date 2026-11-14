@@ -158,3 +158,24 @@ test('a design the engine refuses, bad input and signed-out requests do not use 
   const me = await (await app.request('GET', '/api/me', { cookie })).json();
   assert.equal(me.exports.left, 3, 'nothing was counted');
 });
+
+test('one account cannot start more than 20 exports a minute, refused designs included; nothing extra is counted', opts, async () => {
+  const app = await makeApp();
+  const { cookie } = await app.signIn();
+  const uid = app.userId();
+  app.db.run("INSERT INTO subscriptions (id, user_id, plan, status, price_id, updated_at) VALUES ('sub_p', ?, 'pro', 'active', 'price_pro', 0)", uid);
+  const outside = { name: 'Out', hoop: { width: 100, height: 100 }, objects: [{ id: 'o', type: 'rect', x: 150, y: 150, width: 40, height: 30, color: '#000000' }] };
+  for (let i = 0; i < 10; i++) assert.equal((await exportOnce(app, cookie, outside)).r.status, 422);
+  for (let i = 0; i < 10; i++) assert.equal((await exportOnce(app, cookie)).r.status, 200);
+  let x = await exportOnce(app, cookie);
+  assert.equal(x.r.status, 429, 'the 21st start in a minute');
+  assert.equal(x.body.error, 'slow_down');
+  assert.equal(app.db.get("SELECT COUNT(*) AS n FROM export_log WHERE status = 'ok'").n, 10, 'only the made files count');
+  assert.equal(app.db.get("SELECT COUNT(*) AS n FROM export_log WHERE status = 'attempt'").n, 0, 'no attempt left behind');
+  app.clock.t += 61 * 1000;
+  x = await exportOnce(app, cookie);
+  assert.equal(x.r.status, 200, 'fine again a minute later');
+  app.clock.t += 2 * 86400 * 1000;
+  await exportOnce(app, cookie);
+  assert.equal(app.db.get("SELECT COUNT(*) AS n FROM export_log WHERE status = 'refused'").n, 0, 'old refused rows are cleared');
+});

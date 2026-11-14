@@ -25,7 +25,7 @@ What it does when it is on:
 ```
 server/
   wrangler.toml          Worker settings (placeholders to fill in)
-  migrations/            D1 schema: users, subscriptions, export_log, projects, stripe_events
+  migrations/            D1 schema: users, subscriptions, export_log, projects, stripe_events (apply all, in order)
   src/index.js           routes
   src/google.js          Google ID token check (RS256 against Google's keys, aud, iss, exp)
   src/session.js         signed session cookie
@@ -54,7 +54,9 @@ server/
 | `GET /api/health` | | which settings are present (never their values) |
 
 Requests that change something must come from the site (`SITE_ORIGIN`): other origins get `403`
-and no CORS headers. Bodies are capped (export 4 MB, design 1 MB, webhook 256 KB).
+and no CORS headers. Bodies are capped (export 4 MB, design 1 MB, webhook 256 KB). One account can
+start at most 20 exports a minute (`429` after that), counted in `export_log` so it holds across
+Worker instances; refused designs count toward that cap but never toward the plan.
 
 ## Run the tests
 
@@ -191,7 +193,10 @@ account is a manual job for now:
 - With accounts on, exports need the server: if it is down, the editor says so and exports wait.
   Drawing keeps working.
 - Very large designs (a big traced picture) can take seconds of CPU; `limits.cpu_ms` in
-  `wrangler.toml` is 30 s. A failed export is not counted.
+  `wrangler.toml` is 30 s. A failed export is not counted. Some odd shapes are much slower than their
+  size suggests: a polygon of 20,000 points that crosses itself everywhere takes about 40 s in the
+  engine, and the Worker stops it at 30 s. The 20-a-minute cap keeps one account from doing that
+  over and over; making the engine faster on such shapes is engine work, not server work.
 - Not yet run against the real Google, Stripe and Cloudflare accounts. Checked so far: the node tests
   (Google keys and Stripe mocked), and the Worker in `wrangler dev` (local workerd and D1) driven from
   the real editor in headless Chrome, with server files byte-identical to the browser's.

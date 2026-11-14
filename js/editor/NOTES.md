@@ -217,7 +217,7 @@ both pages with the browser asking for dark and checks that they render light.
 
 ## Tutorial (`tutorial.js`, `css/tutorial.css`)
 
-On a first visit (`localStorage['el-tutorial-v1']` missing) that did not arrive with `?design=`, main.js calls
+On a first visit (`localStorage['el-tutorial-v1']` missing) that did not arrive with `?design=` or `?market=` (the second is opened by publish.js), main.js calls
 `Editor.Tutorial.boot({ linked })` at the end of boot and the tutorial opens: the empty first tab (or a new
 tab when the hoop already holds work) becomes "Tutorial" with a small flower (8 shapes, 3 threads, loaded
 through `IO.applyPayload`, so it is not an undo step), and a tips card sits at the bottom left of the canvas

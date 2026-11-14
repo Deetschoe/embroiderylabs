@@ -13,17 +13,7 @@ main { flex: 1 0 auto; }
   --star: #C9A45C;
 }
 
-/* ---------- header (same as the home page) ---------- */
-.site-head__row { align-items: center; }
-.site-head .nav { margin-left: var(--s-2); }
-.site-head__tools { margin-left: auto; }
-@media screen and (max-width: 720px) {
-  .site-head .nav { order: 0; width: auto; height: 44px; margin: 0; padding: 0; border: 0; flex: none; }
-  .site-head .nav a { padding: 0 var(--s-2); }
-  .site-head__row { flex-wrap: nowrap; }
-  .site-head .brand { flex: 0 1 auto; padding-right: var(--s-1); }
-  .site-head__tools .btn--gh { display: none; }
-}
+/* ---------- header: .home-head in css/base.css, the same as the home page ---------- */
 
 /* ---------- shared bits ---------- */
 .mk { padding-top: var(--s-6); padding-bottom: var(--s-7); }

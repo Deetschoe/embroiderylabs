@@ -914,6 +914,8 @@
     if (Editor.Tabs) step('tabs', Editor.Tabs.init);
     if (Editor.Mockup) step('mockup', Editor.Mockup.init);
     var linked = step('design link', openFromLink);
+    /* app.html?market=<id> is opened by js/editor/publish.js (loaded after this file): no tutorial over it either */
+    if (/[?&]market=[A-Za-z0-9_-]{1,64}(?:&|$)/.test(window.location.search || '')) linked = true;
     step('export', initExport); step('right-click menu', initContext); step('empty hoop', initEmpty);
     /* first visit (and not arriving with a design link): the tutorial opens in a tab of its own */
     if (Editor.Tutorial) step('tutorial', function () { Editor.Tutorial.boot({ linked: !!linked }); });

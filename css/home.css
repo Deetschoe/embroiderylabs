@@ -12,14 +12,7 @@ body.home { display: flex; flex-direction: column; overflow-x: hidden; }
   --home-card-shadow: 0 1px 2px rgb(43 45 49 / .05), 0 12px 32px rgb(43 45 49 / .07);
 }
 
-/* ---------- header ---------- */
-.home-head { background: color-mix(in srgb, var(--panel) 88%, transparent); -webkit-backdrop-filter: saturate(1.4) blur(10px); backdrop-filter: saturate(1.4) blur(10px); }
-.home-head__row { display: flex; align-items: center; gap: var(--s-4); height: 56px; }
-.home-head .brand { font-size: 16px; }
-.home-head__nav { display: flex; align-items: center; gap: 2px; margin-left: auto; }
-.home-head__nav a { display: inline-flex; align-items: center; height: 32px; padding: 0 var(--s-3); border-radius: var(--r-1); color: var(--ink-2); text-decoration: none; font: var(--w-medium) var(--fs-3)/1 var(--font-ui); transition: background var(--t-1) var(--ease), color var(--t-1) var(--ease); }
-.home-head__nav a:hover { background: var(--hover); color: var(--ink-1); }
-.home-head__cta { height: 36px; padding: 0 var(--s-4); border-radius: 10px; }
+/* ---------- header: .home-head lives in css/base.css (6.7), shared with market.html and profile.html ---------- */
 
 /* ---------- shared bits ---------- */
 .sec-title { font: var(--w-bold) clamp(22px, 2.4vw, 28px)/1.15 var(--font-ui); letter-spacing: -.02em; }
@@ -170,10 +163,6 @@ body.home { display: flex; flex-direction: column; overflow-x: hidden; }
 /* ---------- phone ---------- */
 @media screen and (max-width: 720px) {
   .home { --gutter: 16px; }
-  .home-head__row { height: 52px; gap: var(--s-2); }
-  .home-head__nav a { padding: 0 var(--s-2); }
-  .home-head__nav a[href^="https://github"] { display: none; }
-  .home-head__cta { height: 34px; padding: 0 var(--s-3); }
   .hero { padding: var(--s-6) 0 var(--s-5); }
   .hero__grid { grid-template-columns: minmax(0, 1fr); gap: var(--s-6); }
   .hero__copy { gap: var(--s-4); }

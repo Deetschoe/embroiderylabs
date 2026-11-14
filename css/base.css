@@ -422,6 +422,23 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   .nav a { flex: 1 0 auto; justify-content: center; padding: 0 var(--s-2); }
 }
 
+/* 6.7b The calm site header of the home page, the marketplace and profiles (the same markup on all three):
+   brand, Marketplace and GitHub links, and the Open Embroidr button */
+.home-head { background: color-mix(in srgb, var(--panel) 88%, transparent); -webkit-backdrop-filter: saturate(1.4) blur(10px); backdrop-filter: saturate(1.4) blur(10px); }
+.home-head__row { display: flex; align-items: center; gap: var(--s-4); height: 56px; }
+.home-head .brand { font-size: 16px; height: auto; padding: 0; flex: none; }
+.home-head__nav { display: flex; align-items: center; gap: 2px; margin-left: auto; }
+.home-head__nav a { display: inline-flex; align-items: center; height: 32px; padding: 0 var(--s-3); border-radius: var(--r-1); color: var(--ink-2); text-decoration: none; font: var(--w-medium) var(--fs-3)/1 var(--font-ui); transition: background var(--t-1) var(--ease), color var(--t-1) var(--ease); }
+.home-head__nav a:hover { background: var(--hover); color: var(--ink-1); }
+.home-head__nav a[aria-current="page"] { color: var(--ink-1); background: var(--sunken); }
+.home-head__cta { height: 36px; padding: 0 var(--s-4); border-radius: 10px; }
+@media screen and (max-width: 720px) {
+  .home-head__row { height: 52px; gap: var(--s-2); padding-inline: 16px; }
+  .home-head__nav a { padding: 0 var(--s-2); }
+  .home-head__nav a[href^="https://github"] { display: none; }
+  .home-head__cta { height: 34px; padding: 0 var(--s-3); }
+}
+
 /* 6.8 Site footer (every page except the editor) */
 .site-foot { margin-top: var(--s-8); border-top: 1px solid var(--line-1); background: var(--panel); }
 .site-foot__care { padding-block: var(--s-4); border-bottom: 1px solid var(--line-1); }

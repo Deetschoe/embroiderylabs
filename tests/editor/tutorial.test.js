@@ -10,7 +10,7 @@
  *   - Skip closes it and stores el-tutorial-v1 = 'done', and a reload does not show it again;
  *   - Help > Tutorial opens it again (back on the Tutorial tab, no second copy of it);
  *   - Esc closes it;
- *   - arriving with ?design=<id> on a first visit does not open it;
+ *   - arriving with ?design=<id> or ?market=<id> on a first visit does not open it;
  *   - every page renders light: body background, color-scheme, no data-theme, no theme switch, no
  *     prefers-color-scheme rule in any stylesheet; and a phone-wide editor has no sideways scroll;
  *   - the pages log no errors.
@@ -202,6 +202,12 @@ const LOOK = 'var bad = 0; for (var i = 0; i < document.styleSheets.length; i++)
     s = await state();
     ok(!s.open && !s.shown && s.tabs.indexOf('Tutorial') === -1 && s.shapes > 0, 'a first visit with ?design=' + id + ' opens that design and no tutorial (' + s.name + ')');
     ok(s.key === null, '... and leaves it for next time');
+
+    /* ---- ?market= on a first visit (a free design on the demo marketplace): no tutorial either */
+    await ev('localStorage.clear(); return 1');
+    await c.goto(BASE + 'app.html?market=bee'); await ready(); await wait(1500);
+    s = await state();
+    ok(!s.open && !s.shown && s.tabs.indexOf('Tutorial') === -1 && s.shapes > 0, 'a first visit with ?market=bee opens that design and no tutorial (' + s.name + ')');
 
     /* ---- phone width: it fits, nothing scrolls sideways */
     await ev('localStorage.clear(); return 1');

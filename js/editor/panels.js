@@ -68,9 +68,9 @@
   function canFill(o) { return o.type !== 'line' && !(o.type === 'pen' && !o.closed && o.pts.length < 3); }
   /* Which controls do anything for the selection (all of them for the defaults). */
   function usage(sel) {
-    var u = { paint: true, lineType: true, lineWidth: true, spacing: true, stitchLen: true, angle: true, pattern: true };
+    var u = { paint: true, lineType: true, lineWidth: true, spacing: true, stitchLen: true, angle: true, pattern: true, fillStyle: true, lineDetail: M.defaults.fillStyle === 'lineart' };
     if (!sel.length) return u;
-    u = { paint: false, lineType: false, lineWidth: false, spacing: false, stitchLen: false, angle: false, pattern: false };
+    u = { paint: false, lineType: false, lineWidth: false, spacing: false, stitchLen: false, angle: false, pattern: false, fillStyle: false, lineDetail: false };
     sel.forEach(function (o) {
       var p = M.paintOf(o), line = p !== 'fill', fill = p !== 'line', satin = line && o.lineType === 'satin';
       if (canFill(o)) u.paint = true;
@@ -78,7 +78,7 @@
       if (satin) u.lineWidth = true;
       if (fill || satin) u.spacing = true;
       if (fill || (line && !satin)) u.stitchLen = true;
-      if (fill) { u.angle = true; u.pattern = true; }
+      if (fill) { u.angle = true; u.pattern = true; u.fillStyle = true; if (o.fillStyle === 'lineart') u.lineDetail = true; }
     });
     return u;
   }
@@ -115,6 +115,17 @@
       var pat = current('pattern');
       el.pattern.value = pat.mixed ? '' : (pat.value || 'smooth');
       setOff(el.pattern.closest('.prop'), !use.pattern, 'Only used by fills.', [el.pattern]);
+    }
+
+    /* Stitch style (Fill / Line art) and, only for line art, its Detail */
+    var fs = current('fillStyle');
+    el.styleBtns.forEach(function (b) { b.setAttribute('aria-pressed', !fs.mixed && (fs.value || 'tatami') === b.getAttribute('data-fill-style') ? 'true' : 'false'); });
+    setOff(el.styleBtns[0].closest('.prop'), !use.fillStyle, 'Only used by fills.', el.styleBtns);
+    el.detailRow.hidden = !use.lineDetail;
+    if (use.lineDetail) {
+      var det = current('lineDetail'), lineArt = sel.filter(function (o) { return o.fillStyle === 'lineart'; });
+      if (sel.length && lineArt.length !== sel.length) det = { value: lineArt[0].lineDetail, mixed: lineArt.some(function (o) { return o.lineDetail !== lineArt[0].lineDetail; }) };
+      el.detailBtns.forEach(function (b) { b.setAttribute('aria-pressed', !det.mixed && (det.value || 'normal') === b.getAttribute('data-line-detail') ? 'true' : 'false'); });
     }
 
     var why = {
@@ -206,6 +217,24 @@
     el.color.addEventListener('input', function () { apply('color', el.color.value, true); });
     el.color.addEventListener('change', function () { apply('color', el.color.value, true); M.seal(); });
     el.type.addEventListener('change', function () { apply('lineType', el.type.value); });
+    el.styleBtns = Array.prototype.slice.call(document.querySelectorAll('[data-fill-style]'));
+    el.detailBtns = Array.prototype.slice.call(document.querySelectorAll('[data-line-detail]'));
+    el.detailRow = $('line-detail-row');
+    el.styleBtns.forEach(function (b) {
+      var k = b.getAttribute('data-fill-style');
+      if (!M.FILL_STYLES[k]) { b.hidden = true; return; }
+      b.addEventListener('click', function () { apply('fillStyle', k); say(k === 'lineart' ? 'Stitch style line art' : 'Stitch style fill'); });
+    });
+    el.detailBtns.forEach(function (b) {
+      b.addEventListener('click', function () {
+        var k = b.getAttribute('data-line-detail');
+        /* only the line-art shapes of the selection have a detail to change */
+        var ids = M.selected().filter(function (o) { return o.fillStyle === 'lineart'; }).map(function (o) { return o.id; });
+        if (ids.length) M.setProp(ids, 'lineDetail', k);
+        M.setDefault('lineDetail', k);
+        say('Line art detail ' + k);
+      });
+    });
     if (el.pattern) {
       Object.keys(M.PATTERNS).forEach(function (k) {
         var opt = document.createElement('option'); opt.value = k; opt.textContent = M.PATTERNS[k].label || k; el.pattern.appendChild(opt);

@@ -384,6 +384,26 @@
   V.traceAt = function (x, y) { var t = V.trace; return !!(t && t.img && x >= t.x && x <= t.x + t.w && y >= t.y && y <= t.y + t.h); };
   function drawDraft(c, ppm) {
     var d = V.draft, i;
+    if (d.lasso) {
+      /* the cut-out outline: a soft tint inside, a dashed edge, closed back to the start */
+      var lp = d.lasso.pts, lc = d.lasso.cursor;
+      if (lp.length) {
+        c.beginPath(); c.moveTo(lp[0][0], lp[0][1]);
+        for (i = 1; i < lp.length; i++) c.lineTo(lp[i][0], lp[i][1]);
+        if (lc) c.lineTo(lc[0], lc[1]);
+        c.closePath();
+        c.fillStyle = G.rgba(colors.signal, 0.1); c.fill();
+        c.lineJoin = 'round'; c.lineCap = 'round';
+        c.lineWidth = 1.5 / ppm; c.setLineDash([5 / ppm, 4 / ppm]); c.strokeStyle = colors.signal; c.stroke(); c.setLineDash([]);
+      }
+      if (d.lasso.marks) {
+        for (i = 0; i < lp.length; i++) {
+          var lbig = i === 0 && d.lasso.canClose, ls = (lbig ? 9 : 5) / ppm;
+          c.fillStyle = colors.signal; c.fillRect(lp[i][0] - ls / 2, lp[i][1] - ls / 2, ls, ls);
+          c.lineWidth = 1 / ppm; c.strokeStyle = colors.ink; c.strokeRect(lp[i][0] - ls / 2, lp[i][1] - ls / 2, ls, ls);
+        }
+      }
+    }
     if (d.obj) { c.globalAlpha = 0.85; drawObject(c, d.obj, ppm); c.globalAlpha = 1; c.lineWidth = 1 / ppm; c.strokeStyle = colors.signal; c.setLineDash([]); c.stroke(pathOf(d.obj)); }
     if (d.poly) {
       var pts = d.poly.pts, cur = d.poly.cursor;

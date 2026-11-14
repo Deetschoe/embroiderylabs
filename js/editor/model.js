@@ -83,6 +83,13 @@
   /* Fill patterns: the engine's own list, so the panel can never offer one it does not sew. */
   var PATTERNS = ENG.FILL_PATTERNS || { smooth: { label: 'Smooth' } };
   function isPattern(v) { return typeof v === 'string' && Object.prototype.hasOwnProperty.call(PATTERNS, v); }
+  /* Stitch styles for the fill: the engine's own list when it has one (Engine.FILL_STYLES), else the two
+     this editor knows. 'tatami' is the plain fill; 'lineart' sews thin lines along their middle. An engine
+     without line art sews an unknown style as the plain fill, so the choice is always safe to offer. */
+  var FILL_STYLES = ENG.FILL_STYLES && typeof ENG.FILL_STYLES === 'object' && ENG.FILL_STYLES.tatami ? ENG.FILL_STYLES
+    : { tatami: { label: 'Fill' }, lineart: { label: 'Line art' } };
+  function isFillStyle(v) { return typeof v === 'string' && Object.prototype.hasOwnProperty.call(FILL_STYLES, v); }
+  var LINE_DETAILS = { fine: 1, normal: 1, bold: 1 };
   /* Ranges of the per-object stitch settings: the engine's own limits. */
   var RANGES = {
     lineWidth: [L.satinWidth[0], L.satinWidth[1]],
@@ -92,10 +99,10 @@
   };
 
   var M = Editor.Model = {
-    HOOPS: HOOPS, RANGES: RANGES, TYPE_NAMES: TYPE_NAMES, PATTERNS: PATTERNS, MAX_OBJECTS: MAX_OBJECTS, MAX_POINTS: MAX_POINTS,
+    HOOPS: HOOPS, RANGES: RANGES, TYPE_NAMES: TYPE_NAMES, PATTERNS: PATTERNS, FILL_STYLES: FILL_STYLES, LINE_DETAILS: LINE_DETAILS, MAX_OBJECTS: MAX_OBJECTS, MAX_POINTS: MAX_POINTS,
     doc: { name: 'untitled', hoop: { w: D.hoop ? D.hoop.width : 100, h: D.hoop ? D.hoop.height : 100 }, objects: [] },
     /* Style the next drawn shape gets. Edited by the panel when nothing is selected. */
-    defaults: { color: '#3157e0', paint: 'fill', lineType: D.line.type || 'running', lineWidth: D.line.width || 3, spacing: D.fill.spacing, stitchLen: D.fill.stitchLength, angle: D.fill.angle || 0, pattern: 'smooth' },
+    defaults: { color: '#3157e0', paint: 'fill', lineType: D.line.type || 'running', lineWidth: D.line.width || 3, spacing: D.fill.spacing, stitchLen: D.fill.stitchLength, angle: D.fill.angle || 0, pattern: 'smooth', fillStyle: 'tatami', lineDetail: 'normal' },
     selection: [],          /* object ids, in the order they were picked */
     clipboard: null
   };
@@ -235,12 +242,25 @@
     o.color = d.color; o.paint = G.isClosed(o) ? d.paint : 'line';
     o.lineType = d.lineType; o.lineWidth = d.lineWidth; o.spacing = d.spacing; o.stitchLen = d.stitchLen; o.angle = d.angle;
     o.pattern = isPattern(d.pattern) ? d.pattern : 'smooth';
+    o.fillStyle = isFillStyle(d.fillStyle) ? d.fillStyle : 'tatami';
+    o.lineDetail = LINE_DETAILS[d.lineDetail] ? d.lineDetail : 'normal';
     return o;
+  };
+  /* Every style key an object carries (what a piece of it inherits). */
+  var STYLE_KEYS = ['color', 'paint', 'lineType', 'lineWidth', 'spacing', 'stitchLen', 'angle', 'pattern', 'fillStyle', 'lineDetail'];
+  M.STYLE_KEYS = STYLE_KEYS;
+  /* A new object with geometry `geom` and every style field of `o` (the pieces of a cut). */
+  M.piece = function (o, geom, name) {
+    var n = { id: uid(), name: cleanName(name, o.name), type: geom.type };
+    G.copyGeom(n, geom);
+    STYLE_KEYS.forEach(function (k) { if (o[k] !== undefined) n[k] = o[k]; });
+    if (!G.isClosed(n)) n.paint = 'line';
+    return n;
   };
   /* A piece left over when part of a line was erased: an open stroke with the style of the original. */
   M.strokePiece = function (o, pts) {
     var n = { id: uid(), name: o.name, type: 'pen', pts: pts.map(function (p) { return [G.r2(p[0]), G.r2(p[1])]; }), closed: false };
-    ['color', 'lineType', 'lineWidth', 'spacing', 'stitchLen', 'angle', 'pattern'].forEach(function (k) { n[k] = o[k]; });
+    ['color', 'lineType', 'lineWidth', 'spacing', 'stitchLen', 'angle', 'pattern', 'fillStyle', 'lineDetail'].forEach(function (k) { if (o[k] !== undefined) n[k] = o[k]; });
     n.paint = 'line';
     return n;
   };
@@ -263,7 +283,7 @@
       var m = /^(.*) (\d+)$/.exec(o.name), n = m ? parseInt(m[2], 10) : 1;
       names[base] = Math.max(names[base] || 0, n - 1) + 1;
       o.name = st.name ? cleanName(st.name, base + ' ' + names[base]) : base + ' ' + names[base];
-      ['color', 'paint', 'lineType', 'lineWidth', 'spacing', 'stitchLen', 'angle', 'pattern'].forEach(function (k) {
+      STYLE_KEYS.forEach(function (k) {
         if (st[k] == null) return;
         var v = validProp(k, st[k]); if (v !== null) o[k] = v;
       });
@@ -300,6 +320,8 @@
     if (key === 'paint') return PAINTS[value] ? value : null;
     if (key === 'lineType') return LINE_TYPES[value] ? value : null;
     if (key === 'pattern') return isPattern(value) ? value : null;
+    if (key === 'fillStyle') return isFillStyle(value) ? value : null;
+    if (key === 'lineDetail') return typeof value === 'string' && LINE_DETAILS[value] ? value : null;
     if (RANGES[key]) { var v = Number(value); if (!isFinite(v)) return null; return G.r2(G.clamp(v, RANGES[key][0], RANGES[key][1])); }
     return null;
   }
@@ -318,7 +340,7 @@
       });
     }, coalesce ? { key: 'prop:' + key + ':' + ids.join(',') } : null);
   };
-  var PROP_LABELS = { color: 'thread', paint: 'paint', lineType: 'line type', lineWidth: 'line width', spacing: 'density', stitchLen: 'stitch length', angle: 'fill angle', pattern: 'fill pattern' };
+  var PROP_LABELS = { color: 'thread', paint: 'paint', lineType: 'line type', lineWidth: 'line width', spacing: 'density', stitchLen: 'stitch length', angle: 'fill angle', pattern: 'fill pattern', fillStyle: 'stitch style', lineDetail: 'line detail' };
   M.setDefault = function (key, value) {
     var v = validProp(key, value); if (v === null || M.defaults[key] === v) return false;
     M.defaults[key] = v;
@@ -419,6 +441,11 @@
           fill: { spacing: o.spacing, stitchLength: o.stitchLen, angle: o.angle, pattern: o.pattern || 'smooth' },
           line: { type: o.lineType, stitchLength: o.stitchLen, width: o.lineWidth, spacing: o.spacing }
         };
+        /* Only line art adds keys: a plain fill gives exactly the engine input it always did. */
+        if (o.fillStyle === 'lineart') {
+          e.fill.style = 'lineart';
+          e.fill.lineart = { detail: LINE_DETAILS[o.lineDetail] ? o.lineDetail : 'normal' };
+        }
         switch (o.type) {
           case 'rect': e.type = 'rect'; e.x = o.x; e.y = o.y; e.width = o.w; e.height = o.h; break;
           case 'ellipse': e.type = 'ellipse'; e.cx = o.cx; e.cy = o.cy; e.rx = o.rx; e.ry = o.ry; break;
@@ -443,6 +470,9 @@
     o.paint = PAINTS[r.paint] ? r.paint : base.paint;
     o.lineType = LINE_TYPES[r.lineType] ? r.lineType : base.lineType;
     o.pattern = isPattern(r.pattern) ? r.pattern : (isPattern(base.pattern) ? base.pattern : 'smooth');
+    /* designs saved before stitch styles existed have neither key: plain fill, normal detail */
+    o.fillStyle = isFillStyle(r.fillStyle) ? r.fillStyle : (isFillStyle(base.fillStyle) ? base.fillStyle : 'tatami');
+    o.lineDetail = typeof r.lineDetail === 'string' && LINE_DETAILS[r.lineDetail] ? r.lineDetail : (LINE_DETAILS[base.lineDetail] ? base.lineDetail : 'normal');
     ['lineWidth', 'spacing', 'stitchLen', 'angle'].forEach(function (k) {
       var v = typeof r[k] === 'number' ? validProp(k, r[k]) : null;
       o[k] = v === null ? base[k] : v;

@@ -576,7 +576,7 @@
   }
 
   /* ---------- keyboard -------------------------------------------------------------------------- */
-  var TOOL_KEYS = { v: 'select', p: 'pen', l: 'line', r: 'rect', o: 'ellipse', g: 'polygon', e: 'eraser', h: 'pan' };
+  var TOOL_KEYS = { v: 'select', p: 'pen', l: 'line', r: 'rect', o: 'ellipse', g: 'polygon', e: 'eraser', k: 'cut', h: 'pan' };
   function isTyping(t) {
     if (!t || t.nodeType !== 1) return false;
     if (t.isContentEditable) return true;

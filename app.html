@@ -15,6 +15,7 @@
 <link rel="stylesheet" href="css/editor.css">
 <script src="js/site.js" defer></script>
 <script src="js/engine/embwriter.js" defer></script>
+<script src="js/engine/lineart.js" defer></script>
 <script src="js/engine/digitize.js" defer></script>
 <script src="js/engine/engine.js" defer></script>
 <script src="js/editor/geom.js" defer></script>
@@ -24,6 +25,8 @@
 <script src="js/editor/svgimport.js" defer></script>
 <script src="js/editor/trace.js" defer></script>
 <script src="js/editor/panels.js" defer></script>
+<script src="js/vendor/polygon-clipping.min.js" defer></script>
+<script src="js/editor/cut.js" defer></script>
 <script src="js/editor/tools.js" defer></script>
 <script src="js/editor/tabs.js" defer></script>
 <script src="js/editor/mockup.js" defer></script>
@@ -77,6 +80,7 @@
     <button class="tool" type="button" data-tool="polygon" aria-pressed="false" aria-label="Polygon" data-tip="Polygon" data-key="G"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M9 2l6.5 4.7-2.5 7.8H5L2.5 6.7z"/></svg><span class="tool__key" aria-hidden="true">G</span></button>
     <span class="rail__sep"></span>
     <button class="tool" type="button" data-tool="eraser" aria-pressed="false" aria-label="Eraser" data-tip="Eraser" data-key="E"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M6.5 15 2.5 11l8-8 5 5-7 7zM6 7.5l5 5M8.5 15H16"/></svg><span class="tool__key" aria-hidden="true">E</span></button>
+    <button class="tool" type="button" data-tool="cut" aria-pressed="false" aria-label="Cut out" data-tip="Cut out" data-key="K"><svg viewBox="0 0 18 18" aria-hidden="true"><circle cx="4.5" cy="13.5" r="2.2"/><circle cx="13.5" cy="13.5" r="2.2"/><path d="M6.2 12 13 2.5M11.8 12 5 2.5"/></svg><span class="tool__key" aria-hidden="true">K</span></button>
     <button class="tool" type="button" data-tool="pan" aria-pressed="false" aria-label="Pan" data-tip="Pan" data-key="H or hold Space"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M9 2v14M2 9h14M9 2 7 4M9 2l2 2M9 16l-2-2M9 16l2-2M2 9l2-2M2 9l2 2M16 9l-2-2M16 9l-2 2"/></svg><span class="tool__key" aria-hidden="true">H</span></button>
     <button class="tool rail__end" type="button" id="btn-clear" aria-label="Clear design" data-tip="Clear design" data-key=""><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M3 5h12M7 5V3h4v2M4.5 5l.8 10h7.4l.8-10M7.5 8v4.5M10.5 8v4.5"/></svg></button>
   </nav>
@@ -107,6 +111,8 @@
       <section class="sec">
         <div class="sec__head"><span class="label">Stitch</span></div>
         <div class="sec__body">
+          <div class="prop"><span class="label">Style</span><div class="seg" role="group" aria-label="Stitch style" id="fill-style"><button type="button" data-fill-style="tatami" aria-pressed="true" title="Even rows that cover the whole shape">Fill</button><button type="button" data-fill-style="lineart" aria-pressed="false" title="For drawings and traced line art: thin lines are sewn along their middle, wide parts are filled">Line art</button></div></div>
+          <div class="prop" id="line-detail-row" hidden><span class="label">Detail</span><div class="seg" role="group" aria-label="Line art detail" id="line-detail"><button type="button" data-line-detail="fine" aria-pressed="false" title="Keeps the smallest lines and gaps">Fine</button><button type="button" data-line-detail="normal" aria-pressed="true">Normal</button><button type="button" data-line-detail="bold" aria-pressed="false" title="Merges tiny gaps and drops specks">Bold</button></div></div>
           <div class="prop"><label class="label" for="stitch-density">Density</label><div class="prop__pair"><input class="slider" type="range" id="stitch-density" min="0.2" max="2" step="0.1" value="0.4"><div class="input-unit"><input type="number" id="density-value" value="0.4" min="0.2" max="2" step="0.1" inputmode="decimal" aria-label="Row spacing in millimetres"><span>mm</span></div></div></div>
           <div class="prop"><label class="label" for="max-stitch-length">Max length</label><div class="prop__pair"><input class="slider" type="range" id="max-stitch-length" min="1" max="7" step="0.5" value="3"><div class="input-unit"><input type="number" id="max-stitch-value" value="3" min="1" max="7" step="0.5" inputmode="decimal" aria-label="Maximum stitch length in millimetres"><span>mm</span></div></div></div>
           <div class="prop"><label class="label" for="fill-angle">Fill angle</label><div class="prop__pair"><input class="slider" type="range" id="fill-angle" min="0" max="175" step="5" value="0"><div class="input-unit"><input type="number" id="fill-angle-value" value="0" min="0" max="175" step="5" inputmode="numeric" aria-label="Fill row angle in degrees"><span>deg</span></div></div></div>
@@ -257,6 +263,7 @@
     <button type="button" data-tool="line">Line</button>
     <button type="button" data-tool="polygon">Polygon</button>
     <button type="button" data-tool="eraser">Eraser</button>
+    <button type="button" data-tool="cut">Cut out</button>
     <button type="button" data-tool="pan">Pan</button>
     <button type="button" data-action="new">New design</button>
     <button type="button" data-action="import">Open a file</button>
@@ -281,10 +288,11 @@
           <tr><td><kbd>V</kbd> <kbd>P</kbd> <kbd>L</kbd></td><td>Select, pen, line</td></tr>
           <tr><td><kbd>R</kbd> <kbd>O</kbd> <kbd>G</kbd></td><td>Rectangle, ellipse, polygon</td></tr>
           <tr><td><kbd>E</kbd> <kbd>H</kbd></td><td>Eraser, pan</td></tr>
+          <tr><td><kbd>K</kbd></td><td>Cut out: draw around part of a shape to split it off, then change its thread or stitch style</td></tr>
           <tr><td><kbd>Space</kbd> + drag</td><td>Pan the view</td></tr>
           <tr><td><kbd>+</kbd> <kbd>-</kbd> <kbd>0</kbd></td><td>Zoom in, zoom out, fit the hoop</td></tr>
           <tr><td><kbd>Shift</kbd> + drag</td><td>Square, circle, straight angles, keep proportions</td></tr>
-          <tr><td><kbd>Enter</kbd> <kbd>Esc</kbd></td><td>Finish or cancel a polygon</td></tr>
+          <tr><td><kbd>Enter</kbd> <kbd>Esc</kbd></td><td>Finish or cancel a polygon or a cut-out outline</td></tr>
           <tr><td><kbd>⌘Z</kbd> <kbd>⇧⌘Z</kbd></td><td>Undo, redo</td></tr>
           <tr><td><kbd>⌘C</kbd> <kbd>⌘X</kbd> <kbd>⌘V</kbd></td><td>Copy, cut, paste</td></tr>
           <tr><td><kbd>⌘D</kbd> <kbd>⌘A</kbd></td><td>Duplicate, select all</td></tr>

@@ -110,7 +110,7 @@ export function parseThumb(v) {
 // Columns for an Item as seen by `viewer` (a user id or ''). Never the payload or the picture itself.
 const ITEM_COLS =
   'i.id, i.title, i.description, i.tags, i.mode, i.price_keys, i.visibility, i.stars, i.created_at, i.updated_at,' +
-  " i.user_id, (i.thumb != '') AS has_thumb, u.handle, u.name, u.display_name, u.picture," +
+  ' i.user_id, i.has_thumb, u.handle, u.name, u.display_name, u.picture,' +
   ' EXISTS(SELECT 1 FROM stars s WHERE s.user_id = ? AND s.item_id = i.id) AS starred,' +
   ' EXISTS(SELECT 1 FROM unlocks k WHERE k.user_id = ? AND k.item_id = i.id) AS unlock_row';
 const ITEM_FROM = ' FROM market_items i JOIN users u ON u.id = i.user_id ';
@@ -218,7 +218,7 @@ export async function file(db, viewer, id) {
   if (!ok) {
     throw new HttpError(403, 'locked', r.mode === 'show' ? 'This design is for looking at only.' : 'Unlock this design with keys to open it.');
   }
-  return new Response(r.payload, { status: 200, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'private, no-store' } });
+  return new Response(r.payload, { status: 200, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' } });
 }
 
 function dataUrlBytes(url) {
@@ -288,10 +288,10 @@ export async function publish(env, db, user, body, nowMs, base) {
   const stored = await storeThumb(env, id, th);
   // One statement: under the per-person cap and the hourly publish limit, or nothing is written.
   const res = await db.prepare(
-    'INSERT INTO market_items (id, user_id, title, description, tags, tags_key, mode, price_keys, visibility, payload, size, thumb, stars, created_at, updated_at) ' +
-    'SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ? ' +
+    'INSERT INTO market_items (id, user_id, title, description, tags, tags_key, mode, price_keys, visibility, payload, size, thumb, has_thumb, stars, created_at, updated_at) ' +
+    'SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ? ' +
     'WHERE (SELECT COUNT(*) FROM market_items WHERE user_id = ?) < ? AND (SELECT COUNT(*) FROM market_items WHERE user_id = ? AND created_at > ?) < ?'
-  ).bind(id, user.id, title, description, JSON.stringify(tagList), tagsKey(tagList), m, p, vis, pl.text, pl.size, stored, nowMs, nowMs,
+  ).bind(id, user.id, title, description, JSON.stringify(tagList), tagsKey(tagList), m, p, vis, pl.text, pl.size, stored, stored ? 1 : 0, nowMs, nowMs,
     user.id, MAX_ITEMS_PER_USER, user.id, nowMs - PUBLISH_RATE.windowMs, PUBLISH_RATE.perWindow).run();
   if (!res.meta || !res.meta.changes) {
     await dropThumb(env, stored);
@@ -422,7 +422,8 @@ export async function unlock(db, user, id, nowMs) {
   const res = await db.prepare(
     'INSERT INTO unlocks (user_id, item_id, owner_id, price_keys, created_at) ' +
     "SELECT ?, i.id, i.user_id, i.price_keys, ? FROM market_items i WHERE i.id = ? AND i.mode = 'keys' AND i.visibility = 'public' AND i.user_id != ? " +
-    'AND ((SELECT COUNT(*) FROM star_marks WHERE owner_id = ?) / ? + (SELECT COUNT(*) FROM unlocks WHERE owner_id = ?) ' +
+    // CAST: whole keys, as in economy.js, even when the driver binds 10 as a REAL.
+    'AND (CAST((SELECT COUNT(*) FROM star_marks WHERE owner_id = ?) / ? AS INTEGER) + (SELECT COUNT(*) FROM unlocks WHERE owner_id = ?) ' +
     '     - (SELECT COALESCE(SUM(price_keys), 0) FROM unlocks WHERE user_id = ?)) >= i.price_keys ' +
     'ON CONFLICT(user_id, item_id) DO NOTHING'
   ).bind(user.id, nowMs, r.id, user.id, user.id, Economy.RULES.starsPerKey, user.id, user.id).run();

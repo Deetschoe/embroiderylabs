@@ -374,6 +374,13 @@ test('PATCH and DELETE: owner only', opts, async () => {
     assert.equal(r.data.error, code);
   }
 
+  // The longest allowed fields fit in one PATCH, even with every character escaped as \uXXXX.
+  const long = JSON.stringify({ description: '蜂'.repeat(1000), tags: new Array(8).fill('蜂'.repeat(24)) })
+    .replace(/[\u0080-￿]/g, c => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
+  r = await app.request('PATCH', '/api/market/' + item.id, { cookie: app.p.ann.cookie, raw: long, headers: { 'Content-Type': 'application/json' } });
+  assert.equal(r.status, 200, await r.clone().text());
+  assert.equal((await r.json()).description.length, 1000);
+
   r = await app.call('PATCH', '/api/market/' + item.id, 'bob', { title: 'Mine now' });
   assert.equal(r.status, 403);
   assert.equal(r.data.error, 'not_owner');
@@ -731,4 +738,20 @@ test('auth failures: forged, expired and missing sessions', opts, async () => {
   // Reading stays open to everyone.
   assert.equal((await app.request('GET', '/api/market', { cookie: forged })).status, 200);
   assert.equal((await app.request('GET', '/api/market/' + item.id, {})).status, 200);
+});
+
+test('lists never read the big columns: thumb and payload are last, has_thumb is a flag', opts, async () => {
+  const app = await marketApp();
+  const cols = app.db.db.prepare('PRAGMA table_info(market_items)').all().map(c => c.name);
+  assert.deepEqual(cols.slice(-2), ['thumb', 'payload']);
+  const a = await app.publish('ann', { thumb: PNG });
+  const b = await app.publish('ann', { thumb: undefined });
+  assert.equal(app.db.get('SELECT has_thumb FROM market_items WHERE id = ?', a.id).has_thumb, 1);
+  assert.equal(app.db.get('SELECT has_thumb FROM market_items WHERE id = ?', b.id).has_thumb, 0);
+  const r = await app.call('GET', '/api/market', null);
+  const byId = Object.fromEntries(r.data.items.map(i => [i.id, i]));
+  assert.ok(byId[a.id].thumb);
+  assert.equal(byId[b.id].thumb, null);
+  const f = await app.call('GET', '/api/market/' + a.id + '/file', null);
+  assert.equal(f.res.headers.get('X-Content-Type-Options'), 'nosniff');
 });

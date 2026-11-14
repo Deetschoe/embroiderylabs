@@ -18,12 +18,15 @@ CREATE TABLE IF NOT EXISTS market_items (
   mode         TEXT NOT NULL CHECK (mode IN ('free','keys','show')),
   price_keys   INTEGER NOT NULL DEFAULT 0,             -- 1..5 when mode = 'keys', else 0
   visibility   TEXT NOT NULL CHECK (visibility IN ('public','private')),
-  payload      TEXT NOT NULL,                          -- the .embroidr JSON
   size         INTEGER NOT NULL,
-  thumb        TEXT NOT NULL DEFAULT '',               -- data:image/... URL, 'r2:<key>', or '' (none)
   stars        INTEGER NOT NULL DEFAULT 0,             -- = COUNT(stars) for this item, kept in the same batch
   created_at   INTEGER NOT NULL,
-  updated_at   INTEGER NOT NULL
+  updated_at   INTEGER NOT NULL,
+  has_thumb    INTEGER NOT NULL DEFAULT 0,             -- 1 when thumb is set (lists never read thumb itself)
+  -- The two big values go last: SQLite keeps them in overflow pages, and reading any column after
+  -- them walks those pages. Lists and stars read only the columns above.
+  thumb        TEXT NOT NULL DEFAULT '',               -- data:image/... URL, 'r2:<key>', or '' (none)
+  payload      TEXT NOT NULL                           -- the .embroidr JSON
 );
 CREATE INDEX IF NOT EXISTS market_new ON market_items(visibility, created_at, id);
 CREATE INDEX IF NOT EXISTS market_top ON market_items(visibility, stars, created_at, id);

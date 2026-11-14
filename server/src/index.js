@@ -253,7 +253,7 @@ async function market(request, env, deps, id, sub) {
     if (m === 'GET') return json(await Market.get(D, await viewerId(request, env, deps), id, base));
     if (m === 'PATCH') {
       const u = await marketUser(request, env, deps);
-      return json(await Market.update(D, u, id, await readJson(request, LIMITS.small * 2), deps.now(), base));
+      return json(await Market.update(D, u, id, await readJson(request, LIMITS.small * 4), deps.now(), base));
     }
     if (m === 'DELETE') return json(await Market.remove(env, D, await marketUser(request, env, deps), id));
     throw new HttpError(405, 'method', 'Not allowed.');

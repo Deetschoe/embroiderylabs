@@ -12,7 +12,9 @@ The page is `app.html`. It loads, in this order (classic scripts, `defer`, no mo
 
 ```
 js/site.js                       shared (EL.toast, EL.confirm, EL.store, EL.download ...)   DO NOT EDIT
-js/engine/{embwriter,digitize,engine}.js    window.Engine, see js/engine/API.md            DO NOT EDIT
+js/engine/{embwriter,lineart,digitize,engine}.js  window.Engine, see js/engine/API.md     DO NOT EDIT
+                                 (lineart.js comes with the line-art engine change; until it is there the
+                                 page logs one 404 for it and line art is sewn as the plain fill)
 js/editor/geom.js     Editor.Geom    pure geometry + colour helpers, no DOM
 js/editor/model.js    Editor.Model   document in mm, selection, defaults, undo history, event bus
 js/editor/view.js     Editor.View    pan/zoom transform, DPR canvas, rulers, hoop, drawing, hit testing, side preview
@@ -20,7 +22,9 @@ js/editor/io.js       Editor.IO      engine client (live stitches), export, auto
 js/editor/svgimport.js Editor.SvgImport  SVG file -> shapes (own parser, reads a DOMParser tree, never inserts it)
 js/editor/trace.js    Editor.Trace   picture to draw over: decode, move / scale / opacity / lock, optional storage
 js/editor/panels.js   Editor.Panels  properties panel, sewing-order list, stats, warnings, hoop + fabric controls
-js/editor/tools.js    Editor.Tools   pointer tools (select/pen/line/rect/ellipse/polygon/eraser/pan), wheel, pinch
+js/vendor/polygon-clipping.min.js   polygon booleans (MIT, pinned 0.15.7; version + sha256 in cut.js)
+js/editor/cut.js      Editor.Cut     Cut out: split shapes along a drawn outline (polygon booleans, line splits)
+js/editor/tools.js    Editor.Tools   pointer tools (select/pen/line/rect/ellipse/polygon/eraser/cut/pan), wheel, pinch
 js/editor/main.js                    boot, top bar (name, undo, view mode, export menu), keyboard, zoom HUD, drawer,
                                      phone sheet + dock + More menu, playback, file drops, example, help
 css/editor.css                       editor-only styles (base.css is shared, do not edit)
@@ -53,7 +57,8 @@ One global, `window.Editor`. Modules talk through a tiny event bus, `Editor.on(n
 Model.doc = { name, hoop: { w, h }, objects: [ object, ... ] }     // array order = sewing order, last is on top
 object    = { id, name, type, <geometry>,
               color '#rrggbb', paint 'fill'|'line'|'both',
-              lineType 'running'|'bean'|'satin', lineWidth, spacing, stitchLen, angle }
+              lineType 'running'|'bean'|'satin', lineWidth, spacing, stitchLen, angle,
+              pattern, fillStyle 'tatami'|'lineart', lineDetail 'fine'|'normal'|'bold' }
 geometry  = rect    { x, y, w, h }
             ellipse { cx, cy, rx, ry }
             line    { x1, y1, x2, y2 }
@@ -112,14 +117,54 @@ per pixel; see `mockups/README.md` for where they come from and the licence ques
 
 The eraser is a disc (`eraserRadius()` in `tools.js`, about 9 px on screen). Rubbing over a line, a stroke or
 an outline-only shape removes just the part under it (`Geom.eraseLine`); what is left becomes open strokes with
-the same thread (`Model.strokePiece`), one undo step per rub. A filled shape cannot lose a bite (that needs the
-fill outline to be cut, which is not built), so pressing one without rubbing removes it whole.
+the same thread (`Model.strokePiece`), one undo step per rub. A filled shape cannot lose a bite, so pressing one
+without rubbing removes it whole; to take a piece out of a fill, use Cut out (K) and delete the inside part.
 
 ## Fill patterns
 
 Each filled shape has `pattern` (`smooth`, `brick`, `ribbed`, `diagonal`, `crosshatch`), shown as Pattern in
 the Stitch section. The list comes from `Engine.FILL_PATTERNS`; the engine does the work (`fill.pattern`, see
 js/engine/API.md). Designs saved before this have no `pattern` and load as `smooth`.
+
+## Stitch style (Fill / Line art)
+
+Each object has `fillStyle`: `tatami` (the plain fill, the default) or `lineart` (for drawings and traced line
+art: the engine sews thin lines along their middle with satin, bean or running stitch and fills the wide parts),
+and `lineDetail` (`fine`, `normal`, `bold`), which only line art uses. The panel shows them as Style (Fill / Line
+art) at the top of the Stitch section, for fills and Both; Detail appears only while line art is on. The list of
+styles is `Engine.FILL_STYLES` when the engine has it, else `{ tatami, lineart }` (`M.FILL_STYLES`); an engine
+without line art sews an unknown style as the plain fill. `M.toEngine` adds `fill.style: 'lineart'` and
+`fill.lineart: { detail }` ONLY for line art, so a plain fill gives exactly the engine input it always did
+(tests/editor/model.test.js checks every design in designs/*.embroidr against the old mapping). Designs saved
+before this have neither key and load as `tatami` / `normal`; an unknown value loads as `tatami`. SVG import
+can pass `style.fillStyle` through `M.addMany`.
+
+## Cut out (`cut.js`, key K)
+
+Draw an outline over the hoop: drag for freehand (it closes on release), or click points and close it like a
+polygon (click the first point, double-click or Enter; Backspace takes back a point, Esc drops it). Every
+SELECTED shape, or when nothing is selected every shape under the outline, is split into the part inside and
+the part outside, as ONE undo step "Cut out"; the inside parts become the selection, so the panel can change
+their thread, paint, line type, fill pattern or stitch style straight away. Both parts keep every style field
+of the original (`M.piece`); the outside part keeps the name, the inside part is "<name> cut" and is sewn
+right after it.
+
+- Filled shapes (paint Fill or Both: rect, ellipse, polygon, closed stroke, compound path, line art) are cut
+  with polygon booleans (`polygonClipping.intersection` / `difference`). `Cut.region(o)` turns the shape into
+  the area the engine fills: one ring as it is; evenodd paths by XOR of the rings; nonzero paths by XOR when
+  the rings nest cleanly (what the importer and drawn shapes give), otherwise by exact winding numbers.
+  Ellipses are flattened to 0.02 mm. The result is rounded to 1/100 mm and becomes a `polygon` (one ring) or
+  a `path` (rings, nonzero rule; holes kept); slivers under 0.02 mm2 are dropped. Over `M.MAX_POINTS` points
+  or 2000 rings it is split into several shapes by island.
+- Lines, open strokes and outline-only shapes are split where the outline edge crosses them, into open
+  strokes of the same thread, as the eraser does. The rings of an outline-only shape that the edge does not
+  cross stay together as one closed shape per side (a polygon, or a path keeping the fill rule), so cutting
+  a traced outline with hundreds of rings adds a handful of layers, not hundreds.
+- The outline's size is checked on the region it encloses, not its signed area, so a figure-8 still cuts.
+- A shape wholly inside the outline is only selected. An outline that misses everything changes nothing and
+  says so in a toast. The draft outline is `V.draft.lasso` (drawn in view.js).
+- Speed: a 300-ring line-art path is cut in well under 100 ms in Chrome; the user's 519-ring traced file in
+  about 110 ms. tests/editor/cut.test.js drives the tool with real pointer and key events in headless Chrome.
 
 ## Units
 

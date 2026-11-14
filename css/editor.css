@@ -369,6 +369,7 @@ button.warn:focus-visible { outline-offset: -2px; }
 
 .hoop-custom { display: grid; gap: var(--s-1); }
 .hoop-custom[hidden] { display: none; }
+.prop[hidden] { display: none; }
 
 /* ---------- Small switch row (Show grid) -------------------------------------------- */
 .prop > .check-row { min-height: var(--row-h); font-size: var(--fs-2); color: var(--ink-2); }

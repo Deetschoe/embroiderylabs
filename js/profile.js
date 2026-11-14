@@ -316,6 +316,12 @@
       });
     });
   }
+  /* profile.html has <base href="/"> (for /u/<handle>), so "#main" would point at the home page */
+  var skip = document.querySelector('a.skip[href="#main"]');
+  if (skip) skip.addEventListener('click', function (e) {
+    var m = document.getElementById('main'); if (!m) return;
+    e.preventDefault(); if (!m.hasAttribute('tabindex')) m.setAttribute('tabindex', '-1'); m.focus(); m.scrollIntoView();
+  });
   window.ProfilePage = { reload: function () { start(wantedHandle()); } };
   start(wantedHandle());
 })();

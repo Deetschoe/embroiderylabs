@@ -343,7 +343,17 @@
     if (!raw) return Promise.reject(err(404, 'not-found', 'The file of this design is not on this device.'));
     try { return Promise.resolve(JSON.parse(raw)); } catch (e) { return Promise.reject(err(404, 'not-found')); }
   }
-  function run(fn) { return load().then(function (s) { return fn(s); }); }
+  /* Read the stored state again right before each change: two calls started in the same tick (or another
+     tab) would otherwise both work on the same old copy and the second save would undo the first. */
+  function run(fn) {
+    return load().then(function (s) {
+      if (!memory) {
+        var raw = lsGet(KEY);
+        if (raw) { try { var now = JSON.parse(raw); if (now && now.v === 1 && Array.isArray(now.designs) && Array.isArray(now.users)) s = now; } catch (e) { /* keep s */ } }
+      }
+      return fn(s);
+    });
+  }
 
   var demo = {
     list: function (o) {

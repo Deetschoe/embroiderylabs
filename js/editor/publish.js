@@ -93,6 +93,7 @@
     '.share-tags>[aria-pressed="true"]{background:var(--ink-1);border-color:var(--ink-1);color:var(--ink-inv)}',
     '.share-row{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s-2)}',
     '.share-row .seg{height:32px}',
+    '.share-fields .seg{justify-self:start}',
     '.share-row .select>select{height:32px;min-width:110px}',
     '.share-soon{color:var(--ink-3);font-size:var(--fs-1)}',
     '.share-demo{color:var(--ink-3);font-size:var(--fs-1)}',

@@ -8,8 +8,6 @@
   'use strict';
 
   var root = document.documentElement;
-  var THEME_KEY = 'el-theme';
-  var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
 
   /* ---------- storage that never throws (private mode, quota, blocked) ---- */
   var store = {
@@ -25,53 +23,15 @@
     remove: function (key) { try { localStorage.removeItem(key); } catch (e) {} }
   };
 
-  /* ---------- theme -------------------------------------------------------- */
-  /* el-theme is stored as a bare string ("light" | "dark"), not JSON, so the
-     inline head script can read it without parsing. Absent = follow the OS. */
-  function storedTheme() {
-    try { var t = localStorage.getItem(THEME_KEY); return t === 'light' || t === 'dark' ? t : null; } catch (e) { return null; }
-  }
-  function systemTheme() { return mq && mq.matches ? 'dark' : 'light'; }
-  function currentTheme() { return root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'; }
+  /* ---------- light mode only ------------------------------------------- */
+  /* The site has one look, light. The OS dark setting is ignored and there is
+     no switch. A theme stored by an older version is forgotten. EL.theme stays
+     as a stub so older callers keep working: it always answers "light". */
+  ['el-theme', 'theme-mode'].forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
+  root.removeAttribute('data-theme');
+  var theme = { get: function () { return 'light'; }, set: function () {}, toggle: function () {} };
 
-  function syncThemeUi(theme) {
-    var buttons = document.querySelectorAll('[data-theme-toggle]');
-    for (var i = 0; i < buttons.length; i++) {
-      buttons[i].setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
-      buttons[i].setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
-    }
-    var meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', theme === 'dark' ? '#222327' : '#FAF9F6');
-  }
-  function applyTheme(theme) {
-    var changed = currentTheme() !== theme || !root.hasAttribute('data-theme');
-    root.setAttribute('data-theme', theme);
-    syncThemeUi(theme);
-    if (changed) document.dispatchEvent(new CustomEvent('el:themechange', { detail: { theme: theme } }));
-  }
-  var theme = {
-    get: currentTheme,
-    /* set('light' | 'dark') stores the choice; set('system') forgets it. */
-    set: function (value) {
-      if (value === 'light' || value === 'dark') {
-        try { localStorage.setItem(THEME_KEY, value); } catch (e) {}
-        applyTheme(value);
-      } else {
-        store.remove(THEME_KEY);
-        applyTheme(systemTheme());
-      }
-    },
-    toggle: function () { theme.set(currentTheme() === 'dark' ? 'light' : 'dark'); }
-  };
-  if (mq) {
-    var onSystem = function () { if (!storedTheme()) applyTheme(systemTheme()); };
-    if (mq.addEventListener) mq.addEventListener('change', onSystem); else if (mq.addListener) mq.addListener(onSystem);
-  }
-  window.addEventListener('storage', function (e) {          /* keep open tabs in step */
-    if (e.key === THEME_KEY) applyTheme(storedTheme() || systemTheme());
-  });
-
-  /* Read a design token (for canvas drawing). Re-read on "el:themechange". */
+  /* Read a design token (for canvas drawing). */
   function token(name, el) {
     return getComputedStyle(el || root).getPropertyValue(name).trim();
   }
@@ -246,7 +206,6 @@
   document.addEventListener('click', function (e) {
     var t = e.target instanceof Element ? e.target : null; if (!t) return;
     var el;
-    if ((el = t.closest('[data-theme-toggle]'))) { theme.toggle(); return; }
     if ((el = t.closest('[data-dialog-open]'))) { dialog.open(el.getAttribute('data-dialog-open')); return; }
     if ((el = t.closest('[data-dialog-close]'))) { dialog.close(el.closest('dialog')); return; }
     if (t.matches('dialog.dialog')) {                           /* click on the backdrop */
@@ -269,8 +228,6 @@
   });
 
   function init() {
-    if (!root.hasAttribute('data-theme')) root.setAttribute('data-theme', storedTheme() || systemTheme());
-    syncThemeUi(currentTheme());
     markCurrentNav();
     var sliders = document.querySelectorAll('input.slider');
     for (var i = 0; i < sliders.length; i++) syncSlider(sliders[i]);

@@ -150,7 +150,7 @@ div.sec__head { cursor: default; }
    or --sheet-h in px while the grip is dragged. */
 .sheet { display: contents; }
 .sheet__grip, .sheet__peek, .sheet__tabs { display: none; }
-/* "More" menu: the tools that do not fit in the dock, plus Clear and theme */
+/* "More" menu: the tools that do not fit in the dock, plus Clear and Help */
 .more { position: fixed; right: var(--s-2); bottom: calc(var(--dock-h) + env(safe-area-inset-bottom, 0px) + var(--s-2)); z-index: calc(var(--z-dock) + 1); display: grid; min-width: 200px; border-radius: var(--r-0); background: var(--raised); box-shadow: var(--shadow-pop); overflow: hidden; }
 .more > button { display: flex; align-items: center; gap: var(--s-3); height: 44px; padding: 0 var(--s-3); border: 0; border-bottom: 1px solid var(--line-1); background: transparent; text-align: left; font: var(--w-semi) var(--fs-3)/1 var(--font-ui); }
 .more > button:last-child { border-bottom: 0; }
@@ -174,7 +174,7 @@ div.sec__head { cursor: default; }
 /* ---------- Phone: canvas first, tools along the bottom, the rest in the sheet */
 @media screen and (max-width: 720px) {
   .ed { grid-template: "bar" var(--bar-h) "tabs" var(--tabs-h) "stage" minmax(0, 1fr) "dock" calc(var(--dock-h) + env(safe-area-inset-bottom, 0px)) / 100%; }
-  .rail, .status, .ed-bar__drawer, .ed-bar .seg, .ed-bar__state, .ed-bar__help, .ed-bar__sep, .ed-bar .brand > span, .ed-bar [data-theme-toggle], .ed-bar .filemenu { display: none; }   /* File lives in the More menu on phones */
+  .rail, .status, .ed-bar__drawer, .ed-bar .seg, .ed-bar__state, .ed-bar__help, .ed-bar__sep, .ed-bar .brand > span, .ed-bar .filemenu { display: none; }   /* File lives in the More menu on phones */
   .ed-bar__file { flex: 1; }
   .ed-bar__file > input { flex: 1; width: auto; max-width: none; }
   .ed-bar__spacer { display: none; }
@@ -380,7 +380,6 @@ button.warn:focus-visible { outline-offset: -2px; }
   .ed-bar__state, .ed-bar__file > .num { display: none; }   /* the Export button already names the format */
   .ed-bar > .brand { flex: none; }
   .ed-bar__file { flex: 1; min-width: 0; }
-  .more > [data-theme-toggle][aria-pressed="true"] { background: transparent; color: inherit; }   /* a switch, not the active tool */
   .menu { top: calc(var(--bar-h) + env(safe-area-inset-top, 0px) + 4px); }
   .sheet { left: env(safe-area-inset-left, 0px); right: env(safe-area-inset-right, 0px); max-height: calc(100dvh - var(--top-h) - var(--dock-h) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); }
   .sheet[data-detent="half"] ~ .stage .hud { bottom: calc(46dvh + var(--s-2)); }   /* stays above the open sheet */
@@ -430,7 +429,7 @@ button.warn:focus-visible { outline-offset: -2px; }
 .mock__left { border-right: 1px solid var(--line-1); }
 .mock__right { border-left: 1px solid var(--line-1); }
 .mock .pane > .sec__head, .mock .pane > .sec, .mock .pane > .mock__foot { flex: none; }
-/* the stage is the picture: white in both themes, like the file that is downloaded */
+/* the stage is the picture: white, like the file that is downloaded */
 .mock__stage { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: #FFFFFF; touch-action: none; }
 .mock__stage > canvas { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; cursor: grab; }
 .mock__stage > canvas:focus, .mock__stage > canvas:focus-visible { outline: none; }   /* the dashed box round the picked design shows where the keys go */

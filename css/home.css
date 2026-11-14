@@ -5,7 +5,7 @@
 body { display: flex; flex-direction: column; }
 main { flex: 1 0 auto; }
 
-/* Header: with no tool nav, the GitHub link and theme switch sit on the right */
+/* Header: with no tool nav, the GitHub link sits on the right */
 .site-head__tools { margin-left: auto; }
 
 /* Hero: copy left, figure right */

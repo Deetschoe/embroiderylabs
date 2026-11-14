@@ -17,3 +17,6 @@ README.md
 .backup-*
 tests
 archive
+
+# The API (Cloudflare Worker) is deployed separately: server/README.md
+server

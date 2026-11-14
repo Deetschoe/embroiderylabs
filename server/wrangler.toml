@@ -1,0 +1,29 @@
+# EmbroideryLabs API (Cloudflare Worker). Setup: server/README.md.
+# Secrets are NOT in this file. Set them with `npx wrangler secret put NAME`:
+#   GOOGLE_CLIENT_ID, SESSION_SECRET, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_HOBBY, STRIPE_PRICE_PRO
+
+name = "embroiderylabs-api"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+
+# The engine (../js/engine/*.js) is the same file the browser loads; wrangler bundles it into the Worker.
+# Digitizing a big design takes more than the free plan's 10 ms of CPU: use Workers Paid ($5/month).
+[limits]
+cpu_ms = 30000
+
+[vars]
+# The site that may call this API (comma separated, no trailing slash) and where Stripe sends people back.
+SITE_ORIGIN = "https://embroiderylabs.com,https://www.embroiderylabs.com"
+SITE_URL = "https://embroiderylabs.com"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "embroiderylabs"
+database_id = "REPLACE_WITH_THE_ID_FROM_wrangler_d1_create"
+migrations_dir = "migrations"
+
+# Serve the API on a subdomain of the site so the session cookie is first-party (SameSite=Lax).
+# Uncomment once the domain is on Cloudflare (or add the custom domain in the dashboard instead).
+# routes = [
+#   { pattern = "api.embroiderylabs.com", custom_domain = true }
+# ]

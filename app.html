@@ -28,6 +28,8 @@
 <script src="js/editor/tabs.js" defer></script>
 <script src="js/editor/mockup.js" defer></script>
 <script src="js/editor/main.js" defer></script>
+<script src="js/config.js" defer></script>
+<script src="js/account.js" defer></script>
 </head>
 <body>
 <div class="ed" id="app">
@@ -54,6 +56,7 @@
     <button class="btn btn--ghost btn--icon ed-bar__help" type="button" id="btn-help" data-dialog-open="help" aria-label="Help and shortcuts" data-tip="Help" data-key="?" data-tip-pos="below"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M4.5 5.2a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.1.8-1.1 1.6M7 11.4v.2"/></svg></button>
     <button class="btn btn--ghost btn--icon" type="button" data-theme-toggle aria-label="Switch theme" aria-pressed="false"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor"/></svg></button>
     <button class="btn btn--ghost btn--icon ed-bar__drawer" type="button" id="btn-drawer" aria-label="Layers and stitch-out" aria-controls="side" aria-expanded="false"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M1.5 2.5h11v9h-11zM8.5 2.5v9"/></svg></button>
+    <div class="acct" id="account-slot" hidden></div>
     <div class="split" id="export-group">
       <button class="btn btn--primary" type="button" id="btn-export" aria-disabled="true">Export .PES <kbd>⌘E</kbd></button>
       <button class="btn btn--primary btn--icon split__more" type="button" id="btn-export-menu" aria-label="Other file formats" aria-haspopup="menu" aria-controls="export-menu" aria-expanded="false"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3.5 5.5 7 9l3.5-3.5"/></svg></button>

@@ -156,7 +156,14 @@
         toast(e ? e.message : 'This design cannot be exported yet.', { kind: 'bad', label: 'Export', timeout: 7000 });
         return false;
       }
-      return client.export(result, { format: format, name: M.doc.name }).then(function (file) {
+      /* With accounts on (js/account.js), the server makes the file and counts it. It resolves
+         null when it has already told the visitor why not (sign in, plan used up). */
+      var hook = window.EL_ACCOUNT && typeof window.EL_ACCOUNT.export === 'function' ? window.EL_ACCOUNT.export : null;
+      var made = hook
+        ? Promise.resolve(hook({ design: M.toEngine(), format: format, name: M.doc.name }))
+        : client.export(result, { format: format, name: M.doc.name });
+      return made.then(function (file) {
+        if (hook && !file) return false;
         if (!file || !file.bytes || !file.bytes.length) throw new Error('The engine returned an empty file.');
         window.EL.download(file.filename, file.bytes, file.mime);
         var b = result.bounds || { width: 0, height: 0 }, colors = result.totals.colors;
